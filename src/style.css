@@ -52,3 +52,6 @@ input[readonly]{background:#edf0ee;color:#53605b;cursor:default}
 /* Review 27 October: bounded readable charts; stable review references. */
 .column-chart{width:100%;max-width:720px;margin:0 auto}.column-chart svg{display:block;width:100%;height:auto;max-height:280px;overflow:visible}.gender-chart-controls{display:flex;gap:8px;justify-content:center;margin:4px 0 0}.demographics-grid{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);margin:22px 0}.compact-centre-chart{max-width:880px;margin:0 auto 22px}.compact-centre-chart .card{padding:20px}.comparison-definition{margin:0 0 18px;padding:12px 16px;background:#edf3fa;border-radius:8px}.grid.two-col:empty{display:none}.save-indicator{font-size:10px;white-space:nowrap}.engagement-centre{max-width:100%}
 @media(max-width:850px){.demographics-grid{grid-template-columns:1fr}.column-chart svg{max-height:250px}}
+
+/* Keep axis captions outside the plotting area so peak-value labels cannot collide. */
+.chart-axis-label{font-size:12px;color:var(--muted,#647775);line-height:1.5;margin:0 0 8px;padding-left:6.6%;text-align:left}.gender-chart-controls{flex-wrap:wrap;row-gap:10px}.column-chart{min-width:0}
