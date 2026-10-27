@@ -2,6 +2,10 @@
 
 This package preserves the current frontend implementation, design, logo, styling, chart references and interactions. The application is vanilla JavaScript with HTML and CSS, **not React**; there are no React components or React dependencies to omit. No framework migration has been performed.
 
+## Frontend review update — 27 October 2026
+
+Applied the programme review feedback on the existing `migration/frontend` branch. See [review checklist](docs/FRONTEND-REVIEW.md) for changed behaviour and validation. The existing Vercel Git connection currently deploys this branch to its production aliases; no branch or project settings were changed. The older migration instructions below describe the original intended setup, not the currently observed deployment configuration.
+
 ## Deploy through the existing Vercel project
 
 Use the existing GitHub repository `mass-org-data/mass-cac-dashboard` and existing Vercel project `mass-cac-dashboard` (ID `prj_MvZqQP2cdpRce7NxWR1JzvBsIBdL`). Do not create or import a replacement project.
@@ -65,3 +69,4 @@ The demo operating date remains fixed at 20 October 2026, as in the source; it h
 `npm run check` checks JavaScript syntax; it is not a type checker or linter. No type-check, lint, or automated test suite is configured in the supplied project. Migration verification additionally exercised the actual local server in Chromium; results and remaining deployment checks are recorded in [docs/MIGRATION.md](docs/MIGRATION.md).
 
 Keep `dist/`, `node_modules/`, `.vercel/`, and environment files out of Git. The build intentionally generates a publicly downloadable source archive to preserve the existing prototype feature. Never put credentials or private data in `src/`, `scripts/`, `docs/`, or other archive inputs.
+
