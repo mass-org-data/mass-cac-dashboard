@@ -471,3 +471,5 @@ The following is the preserved Phase 2C analysis; its recommendation is not auto
 ## Approval recording
 
 For each decision, record disposition (approved/rejected/revise), approver and authority, date, exact selected values, affected source scope, conditions and evidence. Do not turn the word Approved into a blanket acceptance of identities/years/status semantics that have not been supplied. Preserve D01-D15 IDs when revising the design; Phase 2A/2B documents remain unchanged historical baselines.
+
+> **Current reconciliation — 27 October 2026:** Phase 2E records 6 Conditional / 8 Partial / 1 Pending across D01–D15. The preceding text is preserved historical evidence, not the current unanswered-question list. See [PHASE-2E-RULE-RECONCILIATION.md](PHASE-2E-RULE-RECONCILIATION.md) for every updated rule, source, condition and status, and [PHASE-2E-IMPLEMENTATION-READINESS.md](PHASE-2E-IMPLEMENTATION-READINESS.md) for outstanding approvals. No implementation is authorized.

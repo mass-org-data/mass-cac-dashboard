@@ -2,15 +2,19 @@
 
 Status: source-informed design for review; not approved for implementation. All table/field names, UUID choices, nullability, keys, indexes and access boundaries below are proposals. Source observations are cited independently. No SQL or Supabase resource has been created.
 
+## Phase 2E revision — 27 October 2026
+
+Current confirmed business scope and unresolved gates: [PHASE-2E-RULE-RECONCILIATION.md](PHASE-2E-RULE-RECONCILIATION.md). Earlier dictionary version is preserved in Git at `9a2190c8a1c6a020a5024e94ff6b7445a212382e`. Only confirmed-rule-driven changes are made below; no new tables or SQL. Foundation fields remain proposals. Mumbai/project reference is user-identified, not independently verified platform or privacy approval.
+
 ## Design contract
 
 - Use internal UUID primary keys only for confirmed entities. A UUID is a database surrogate, not an invented source student ID. Keep missing external identifiers NULL, and never seed frontend CAC IDs or use name/DOB/phone as an automatic identity key.
 - Every relation below has `id uuid PRIMARY KEY`. Mutable relations additionally have `created_at timestamptz NOT NULL`, `created_by uuid NULL REFERENCES auth.users(id)`, `updated_at timestamptz NOT NULL`, `updated_by uuid NULL REFERENCES auth.users(id)`, and `row_version bigint NOT NULL`. These are system transaction metadata, never fabricated source authors or event dates. Use server-managed optimistic revisions, not client timestamps as concurrency guarantees.
 - Source-backed records additionally carry `origin_row_id uuid NULL REFERENCES source_rows(id)` and `origin_cells jsonb NULL` containing column/range locators only, plus `origin_fact_key text NULL` for a stable extracted field/section identity within a source row. Imported records require non-null origin; new operational records use an actual creator/audit event. One wide source row can produce many dated facts, each with distinct source-cell locators. Require a per-table uniqueness/idempotency guard on origin_row_id + origin_fact_key for imported observations after the extraction grain is approved. Additional source duplicates remain in source_rows with reviewed canonical-source links; identity_resolutions preserve corroborating person evidence. No polymorphic provenance link is claimed to be a real FK.
 - Frozen source metadata/rows, approved definitions and audit events are immutable/append-only under their reviewed service interface. Later import batches can reference the same frozen source_rows; the first extraction batch is not rewritten. Tables that reference source_rows are promoted only after staging exists, avoiding bootstrapping issues in a future migration order.
-- `?` in the source design metadata becomes Nullable=yes below. Null never means false, absent, zero, no scholarship or not contacted. Business dates use date; system timestamps use timestamptz in UTC. Dated assignments use proposed half-open intervals [start,end). Actual academic/cohort boundaries remain unconfirmed.
-- Raw observations stay distinct from accepted canonical facts. Incomplete source dates/years/identities can be retained in protected staging/observations without being fabricated to satisfy canonical constraints.
-- Reference values require explicit review: source Morning/Evening, Q1-Q4 and Yes/No are evidence; frontend statuses/catalogues/roles are proposals, not MASS policy. Do not equate source sex labels with gender identity or Q1 with F1 without approval.
+- `?` in the source design metadata becomes Nullable=yes below. Null never means false, absent, zero, no scholarship or not contacted. Business dates use date; system timestamps use timestamptz in UTC. Dated assignments use proposed half-open intervals [start,end). Academic year is confirmed April 1–March 31 with four quarters; historical row-year attribution and cohort boundaries remain unresolved.
+- Raw observations stay distinct from accepted canonical facts. Unverifiable records must not be imported into final operational tables; preserve restricted exceptions and aggregate reconciliation under an approved privacy boundary. Incomplete source dates/years/identities can be retained in protected staging/observations without being fabricated to satisfy canonical constraints.
+- Reference values require explicit review except the Phase 2E confirmed rules and existing controlled registration options. Source Morning/Evening, Q1-Q4 and Yes/No are evidence; other frontend statuses/catalogues remain proposals. Leadership is read-only; teacher/officer writes require verified assigned scope. Do not equate source sex labels with gender identity or Q1 with F1 without approval.
 - Normalized operational identities, enrolments, assessments, monthly responses, events and programme memberships prevent year/round/assignment overwrites. Private baseline answers are an intentional immutable questionnaire archive: source-column/version keys preserve ambiguous repeated labels. Do not use generic answer JSON/EAV as the operational student/attendance/assessment model. Sensitive baseline retention requires purpose/retention approval.
 - General audit target locators are intentionally not polymorphic business FKs; they retain history. All modeled business FKs below are explicit. Audit payload minimization and non-client access are mandatory design requirements pending security review.
 - Foreign-key indexes are not created automatically by PostgreSQL; add only reviewed FK/scope/time indexes and verify plans with synthetic data. Do not turn every field into an index. No indexes are created now.
@@ -78,8 +82,8 @@ Grain: One defined academic year.
 | Field | Type | Nullable | FK / definition |
 | --- | --- | --- | --- |
 | `label` | `text` | no | Verified academic-year label, e.g. source year label format |
-| `starts_on` | `date` | yes | Approved boundary, not derived from label alone |
-| `ends_on` | `date` | yes | Approved boundary |
+| `starts_on` | `date` | yes | April 1 for a verified year; NULL only for unresolved draft definitions |
+| `ends_on` | `date` | yes | Proposed exclusive April 1 of next year; inclusive business end March 31 |
 | `approval_state` | `text` | no | Proposed pending/approved state |
 
 Keys/constraints: PK id; unique label; if both dates known ends_on > starts_on; no automatic year fill.
@@ -100,7 +104,7 @@ Grain: One quarter within an academic year.
 | `ends_on` | `date` | yes | Owner-approved date bounds |
 | `frontend_round_code` | `text` | yes | F1-F4 mapping only if separately approved |
 
-Keys/constraints: PK id; unique(year,code); do not assume calendar-quarter boundaries or Q-to-F equivalence.
+Keys/constraints: PK id; unique(year,code); confirmed Q1 Apr–Jun, Q2 Jul–Sep, Q3 Oct–Dec, Q4 Jan–Mar; Q-to-F equivalence remains unapproved. Use reviewed consistent date-boundary encoding.
 
 Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
 
@@ -112,10 +116,11 @@ Grain: One adjudicated person, identified internally by UUID.
 
 | Field | Type | Nullable | FK / definition |
 | --- | --- | --- | --- |
+| `generated_student_id` | `text` | no (new student) | Permanent unique human-readable application ID; server-issued; format/allocation and legacy backfill remain approval gates |
 | `external_student_id` | `text` | yes | Existing verified business ID only; remains NULL when missing |
 | `lifecycle_state` | `text` | no | Proposed active/archived identity lifecycle, not CAC dropout status |
 
-Keys/constraints: PK id is a technical surrogate, never an invented source student ID. No unique name/DOB/phone constraints. External ID uniqueness only within verified issuing scope; not assumed global.
+Keys/constraints: PK id is an internal technical surrogate; generated_student_id is a distinct permanent application identity with confirmed permanent uniqueness; implementation pending and collision-safe server allocation required. It is never passed off as a historical source ID. No browser max+1; never regenerate on transfer. Legacy allocation policy remains pending. No unique name/DOB/phone constraints. External ID uniqueness only within verified issuing scope; not assumed global.
 
 Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
 
@@ -130,6 +135,8 @@ Grain: One current private identity projection per child; old observations remai
 | `child_id` | `uuid` | no | `children.id`; Resolved child |
 | `full_name` | `text` | no | Approved current display identity, not a uniqueness key |
 | `birth_date` | `date` | yes | Only unambiguous/approved DOB |
+| `gender_code` | `text` | yes | Confirmed registration controlled values Girl/Boy; required for new form entry, unknown historical values stay NULL pending review |
+| `class10_board_passed` | `boolean` | yes | Existing Yes/No/unknown profile projection; only Grade 10 form entry; exam-year/history semantics remain pending |
 | `source_sex_label` | `text` | yes | Retain source wording; sex/gender vocabulary mapping requires review |
 | `preferred_language` | `text` | yes | Approved interpretation of baseline Mother Tongue, if needed |
 
@@ -172,13 +179,13 @@ Grain: One confirmed dated placement/enrolment episode.
 | `project_id` | `uuid` | yes | `projects.id`; Programme project |
 | `shift_code` | `text` | no | Approved shift |
 | `academic_year_id` | `uuid` | yes | `academic_years.id`; Approved year if applicable |
-| `grade_label` | `text` | yes | Grade for this episode |
+| `grade_label` | `text` | yes | Grade for this episode; confirmed new registration options 1–10 |
 | `starts_on` | `date` | no | Confirmed effective start, never defaulted to grid start |
 | `ends_on` | `date` | yes | Exclusive effective end under proposed interval convention |
 | `exit_reason` | `text` | yes | Approved reason, not inferred dropout |
-| `status_code` | `text` | no | Proposed episode status |
+| `status_code` | `text` | no | Existing controlled registration values Active / CAC dropout / Left programme; no automatic dropout classification |
 
-Keys/constraints: PK id; end > start; overlap rule and status list require approval. Historical rows without dates remain observations/staging, not fabricated episodes.
+Keys/constraints: PK id; end > start; overlap and exclusive-end versus frontend exit-date semantics require approval. New-entry controls preserve Morning/Evening, grades 1–10 and confirmed status values; source anomalies remain exceptions, not invented options. Historical rows without dates remain observations/staging, not fabricated episodes.
 
 Index plan: (child_id,starts_on); (centre_id,shift_code,starts_on); reviewed range exclusion only after overlap policy approval.
 
@@ -276,7 +283,7 @@ Index plan: Foreign-key lookup indexes plus workload-specific indexes after quer
 
 ### 15. `user_scope_grants` — Security infrastructure proposal
 
-Evidence/justification: Frontend role/scope requirements and absence of real authorization; no source approves permissions.
+Evidence/justification: Frontend role/scope requirements and absence of real authorization; Phase 2E confirms read-only Leadership and assigned-scope teacher/officer writes; no actual assignments are granted.
 
 Grain: One explicit approved capability/scope grant.
 
@@ -290,7 +297,7 @@ Grain: One explicit approved capability/scope grant.
 | `ends_at` | `timestamptz` | yes | Grant validity end |
 | `approved_by` | `uuid` | no | `auth.users.id`; Authorized granting actor |
 
-Keys/constraints: PK id; empty scope must not silently mean global access; deny by default. Exact capabilities/roles require D11. No policies/grants are implemented.
+Keys/constraints: PK id; empty scope must not silently mean global access; deny by default. Phase 2E role write boundaries apply; actual assignments, read/private/export/import/admin capabilities and granting authority still require D11. Check old/new record scope and all related FKs; null scope never implies global. No policies/grants are implemented.
 
 Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
 
@@ -306,7 +313,7 @@ Grain: One status vocabulary entry.
 | `meaning` | `text` | yes | Owner-approved definition |
 | `approved` | `boolean` | no | Whether semantics are accepted for operational use |
 
-Keys/constraints: PK id; unique code; retain unmapped WO/MM/L; H only as a separately approved frontend extension. Denominator/credit rules are versioned calculation decisions, not inferred here.
+Keys/constraints: PK id; unique code; P=Present, A=Absent, L=Leave, WO=Sunday, MM=Monthly Meeting (Phase 2E user confirmation). Rate is 100*P/(P+A+L), excluding WO/MM/confirmed holidays; non-scheduled days are holidays only under an authoritative calendar. Missing remains unknown. H representation, conflict adjudication, zero-denominator display/rounding and calendar authority remain pending. Preserve distinct literal reasons; do not collapse into H.
 
 Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
 
@@ -361,11 +368,11 @@ Grain: One approved paper/scale definition per period/project/shift/revision.
 | `period_id` | `uuid` | no | `assessment_periods.id`; Verified year/quarter |
 | `shift_code` | `text` | no | Source shift |
 | `paper_label` | `text` | yes | Only if verified; no invented paper name |
-| `max_score` | `numeric` | no | Confirmed maximum, not inferred from observed maximum |
+| `max_score` | `numeric` | no | 25 for the confirmed process; conflicted historical max100 metadata requires reviewed applicability, not rescaling |
 | `revision` | `integer` | no | Immutable approved definition revision |
 | `approval_state` | `text` | no | Pending/approved definition |
 
-Keys/constraints: PK id; max_score > 0; approved definition immutable once results reference it. Definition uniqueness depends on paper/attempt decision D06.
+Keys/constraints: PK id; max_score > 0; approved definition immutable once results reference it. Definition uniqueness depends on paper identity D06. Preserve raw max100 metadata in restricted provenance; pending definitions/results are not accepted operational facts. No automatic scale conversion.
 
 Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
 
@@ -391,7 +398,7 @@ Index plan: Foreign-key lookup indexes plus workload-specific indexes after quer
 
 Evidence/justification: ASM A:H; frontend marks and correction forms.
 
-Grain: One approved result/attempt for child and paper definition.
+Grain: One accepted current result per child and approved paper definition; routine repeat attempts are outside the confirmed process. Corrections retain audit/revision history.
 
 | Field | Type | Nullable | FK / definition |
 | --- | --- | --- | --- |
@@ -401,11 +408,10 @@ Grain: One approved result/attempt for child and paper definition.
 | `batch_id` | `uuid` | yes | `assessment_batches.id`; Optional entry batch |
 | `assessed_on` | `date` | yes | Reviewed source date; future canonical recorded results require date per approved policy |
 | `score` | `numeric` | yes | Literal numeric score; zero is a score |
-| `status_code` | `text` | no | Proposed Recorded/Absent/Not entered/Unresolved |
-| `attempt_number` | `integer` | yes | Only if a repeat attempt is verified |
+| `status_code` | `text` | no | Proposed Recorded/Absent/Not entered; unresolved source rows stay outside final operational tables |
 | `teacher_remark` | `text` | yes | Frontend requirement, not an existing ASM column |
 
-Keys/constraints: PK id; proposed natural uniqueness child+definition+approved attempt. Plain CHECK cannot read definition maximum: use reviewed transaction/RPC/trigger validation. Source missing score is not Absent; retain unresolved rows in staging. Decimal policy must follow D06.
+Keys/constraints: PK id; proposed unique(child,definition) for confirmed non-repeat process; exceptional evidenced repeats need separate approval, never a fabricated attempt 1. Plain CHECK cannot read definition maximum: use reviewed transaction/RPC/trigger validation. Source missing score is not Absent; retain unresolved rows in staging. Decimal policy must follow D06.
 
 Index plan: (child_id,definition_id); (definition_id,centre_id); unresolved/status coverage queries.
 
@@ -456,11 +462,11 @@ Grain: One explicitly recorded activity session.
 | `centre_id` | `uuid` | no | `centres.id`; Centre |
 | `shift_code` | `text` | yes | Explicit applicability; Both shifts semantics require review |
 | `activity_date` | `date` | no | Entered actual/planned date |
-| `name` | `text` | no | Approved catalogue or entered title |
+| `name` | `text` | no | Staff-entered named activity; no confirmed catalogue supplied |
 | `category_code` | `text` | yes | Approved category; no sample catalogue seeded as MASS policy |
 | `status_code` | `text` | no | Proposed Planned/Held/Cancelled |
 
-Keys/constraints: PK id; duplicate rule centre/date/shift/name is proposed, not a verified universal business key. Do not auto-generate events from historical monthly slots.
+Keys/constraints: PK id; duplicate rule centre/date/shift/name is proposed, not a verified universal business key. Do not auto-generate events from historical monthly slots. Four Saturday activities is a general monthly pattern, not a required exact count or inferred dates/categories.
 
 Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
 
@@ -547,7 +553,7 @@ Grain: One outcome set per membership, with audited corrections.
 | --- | --- | --- | --- |
 | `membership_id` | `uuid` | no | `cohort_memberships.id`; Cohort member |
 | `applied` | `boolean` | yes | Literal source Yes/No or unknown |
-| `exam_attended` | `boolean` | yes | Literal source flag; not training-day attendance |
+| `attended` | `boolean` | yes | Literal applied/attended/passed workflow flag; exact attended context still unresolved, never a derived training-day count |
 | `passed` | `boolean` | yes | Literal source flag; No not automatically failed/absent/pending |
 | `passed_school_name` | `text` | yes | Source School Name (if Passed) |
 | `reported_training_days` | `integer` | yes | Optional frontend-only reported count; no source derivation |
@@ -825,7 +831,7 @@ Index plan: Foreign-key lookup indexes plus workload-specific indexes after quer
 
 ## Acceptance gates and normalization decisions
 
-Before DDL, approve D01-D15 in OPEN-DECISIONS. The audit does not establish an import-ready person registry, calendar policy, result scale, donor grant or cohort year. Nullability here supports truthful observations; accepted operational writes still require approved completeness rules. Do not load unresolved results as Recorded or visit rows as Completed.
+Before DDL, resolve relevant remaining gates in PHASE-2E-RULE-RECONCILIATION and PHASE-2E-IMPLEMENTATION-READINESS. Confirmed policy does not approve historical row attribution, privacy, audit, foundation scope or execution. The audit does not establish an import-ready person registry, calendar policy, result scale, donor grant or cohort year. Nullability here supports truthful observations; accepted operational writes still require approved completeness rules. Do not load unresolved results as Recorded or visit rows as Completed.
 
 Source surveys deliberately retain question responses before field-by-field canonicalization because the two meal blocks and financial/health questions have ambiguous semantics. This is a source-backed private archive, not a decision that every sensitive field must be retained indefinitely. Current profile projections are not a replacement for snapshots or identity adjudication. Do not infer shared households from parent names or shared phone numbers.
 

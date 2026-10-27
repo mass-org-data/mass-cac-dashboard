@@ -27,6 +27,7 @@ erDiagram
     }
     children {
         uuid id PK
+        text generated_student_id UK
     }
     private_child_profiles {
         uuid id PK
@@ -334,3 +335,9 @@ erDiagram
 - audit_events entity_id is an intentional durable audit locator, not an unmodeled business FK. No FK cascade may erase historical audit evidence.
 
 All optional future guidance/funding relations are proposals. No source supports converting project labels directly into funder accounts or inferring programme admission/award outcomes.
+
+## Phase 2E confirmed-rule revision — 27 October 2026
+
+`children.generated_student_id` is a permanent unique human-readable application ID alongside the internal UUID; external IDs remain separate. Format/allocator and verified legacy backfill are pending. No relationship or table was added (43 relation catalogue retained). Dictionary adds controlled profile gender and nullable Class-10 result projection, retains dated placement history, and removes routine assessment attempt numbering in favor of a proposed single accepted child/definition result with revision history. No exceptional-repeat workflow is approved.
+
+Academic year and four quarter bounds now follow April–March; Q-to-F aliases remain pending. Current process max is 25, historical max100 conflicts stay unaccepted until reviewed, without rescaling. Attendance formula and scoped role constraints are in PHASE-2E-RULE-RECONCILIATION.md; they are not expressible as ER cardinality alone. Existing event/monthly-history separation supports confirmed activities; Morarji attended context is not assumed by a field name. Original ERD preserved in Git at the Phase 2D commit. No schema is deployed.

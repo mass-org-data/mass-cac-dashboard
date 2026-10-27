@@ -32,3 +32,5 @@ Suggested review order: D01 identity -> D02 historical placement -> D05/D06 acad
 ## Dated approval boundary
 
 Only the specific Phase 2D technical principles are conditionally/partially approved. The original recommendations are review proposals except where explicitly covered by those principles. No business code meaning, date/year, scale, person match, retention period, actual grant, database scope or platform target has been approved by inference. D10/D12/D14 remain Pending. Detailed current conditions are in PHASE-2D-CONDITIONAL-APPROVALS.md; remaining questions and readiness are in the other two Phase 2D documents.
+
+> **Current reconciliation — 27 October 2026:** Phase 2E records 6 Conditional / 8 Partial / 1 Pending across D01–D15. The preceding text is preserved historical evidence, not the current unanswered-question list. See [PHASE-2E-RULE-RECONCILIATION.md](PHASE-2E-RULE-RECONCILIATION.md) for every updated rule, source, condition and status, and [PHASE-2E-IMPLEMENTATION-READINESS.md](PHASE-2E-IMPLEMENTATION-READINESS.md) for outstanding approvals. No implementation is authorized.
