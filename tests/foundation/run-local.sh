@@ -23,7 +23,7 @@ echo 'Target: new isolated PostgreSQL container; no network, host mounts or publ
 sql -Atc 'SELECT version();'
 # Supabase-like roles ONLY inside this synthetic database, not real Auth/resources.
 sql < "$repo_root/tests/foundation/bootstrap.sql"
-for migration in "$repo_root"/supabase/migrations/*.sql; do
+for migration in "$repo_root"/supabase/migrations/20261027000[1-6]_*.sql; do
   echo "Applying locally: $(basename "$migration")"
   sql -q < "$migration"
 done
