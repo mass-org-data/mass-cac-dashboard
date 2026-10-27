@@ -12,11 +12,19 @@ Prerequisites: a working Docker daemon, Bash and Python 3 available as `python`.
 bash tests/foundation/run-local.sh
 MASS_TEST_REST=1 bash tests/core/run-local.sh
 bash tests/schema/run-local.sh
+bash tests/deployment/run-local.sh
+bash tests/deployment/run-role-probe.sh
 ```
 
 The first suite applies the original six foundation migrations. The second applies all 15 and runs synthetic core SQL/concurrency tests plus a real PostgREST HTTP suite with ephemeral signed test JWTs. The third checks the complete dictionary, ERDs, policy/ACL inventory and migration checksums against an independently migrated local catalog. All runners create disposable databases, use temporary storage, accept no hosted database URL and remove their containers on exit. SQL-only core testing (`MASS_TEST_REST=0`) does not verify API behavior.
 
 The existing behavioral suite has **207 checks**: 87 foundation, 102 core SQL/concurrency/attribution and 18 signed-token API checks. Managed Supabase Auth is represented by a test-only stub; these results do **not** verify real signup/login/session refresh or the hosted project. Full local Supabase startup was blocked by an image-registry `Forbidden` response. See [compatibility evidence](docs/PHASE-3C-COMPATIBILITY.md).
+
+The deployment suite additionally verifies the read-only preflight/postflight reports against a fresh closed installation, 15 catalog/security invariants, effective ACLs, initial reference data and failed-file rollback/retry. It never accepts an existing database target. See the [Phase 3D validation and deployment checklist](docs/PHASE-3D-DEPLOYMENT-VALIDATION.md) for current evidence, remaining hosted gates and the exact migration sequence.
+
+The [final production preflight](docs/PRODUCTION-MIGRATION-PREFLIGHT.md) freezes all 15 [SQL hashes](supabase/compatibility/MIGRATIONS.sha256), reviews [all 19 SECURITY DEFINER functions](docs/PRODUCTION-DEFINER-REVIEW.md), and prepares a private Free-project backup/recovery procedure. The deployment suite also verifies all 22 non-reference tables are empty and restores a synthetic custom-format archive in isolation. These checks do not establish managed Supabase compatibility or authorize hosted execution.
+
+The separate role probe applies the unchanged files as an isolated non-superuser with delegated Auth privileges. PostgreSQL 17 default creator membership and SET-only settings each fail safely; explicit SET plus INHERIT creator membership permits the full sequence in this local model. Verify equivalent capabilities with the actual managed provider before approval; the probe changes no hosted settings.
 
 - [Implemented dictionary: columns, types, PKs/FKs and constraints](docs/DATABASE-DATA-DICTIONARY.md)
 - [Complete implemented ER diagrams](docs/DATABASE-ERD.md)
