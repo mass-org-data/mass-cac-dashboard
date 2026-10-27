@@ -55,3 +55,5 @@ input[readonly]{background:#edf0ee;color:#53605b;cursor:default}
 
 /* Keep axis captions outside the plotting area so peak-value labels cannot collide. */
 .chart-axis-label{font-size:12px;color:var(--muted,#647775);line-height:1.5;margin:0 0 8px;padding-left:6.6%;text-align:left}.gender-chart-controls{flex-wrap:wrap;row-gap:10px}.column-chart{min-width:0}
+
+.record-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 18px}.record-tools small{color:var(--muted);line-height:1.5}.remove-button{color:#a94438;border-color:#e6c7c2}.record-tools .btn{min-height:44px}

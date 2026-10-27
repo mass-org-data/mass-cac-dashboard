@@ -22,7 +22,7 @@ async function walk(root, relative) {
 }
 export async function writeSourceZip(root, destination) {
   const files=['.gitignore','README.md','package.json','package-lock.json','vercel.json'];
-  for(const dir of ['src','scripts','docs']) files.push(...await walk(root,dir));
+  for(const dir of ['src','scripts','docs','tests']) files.push(...await walk(root,dir));
   const local=[],central=[];
   let offset=0;
   for(const relative of files) {
@@ -50,3 +50,4 @@ export async function writeSourceZip(root, destination) {
   end.writeUInt32LE(offset,16);
   await writeFile(destination,Buffer.concat([...local,directory,end]));
 }
+
