@@ -1,838 +1,640 @@
-# Proposed database data dictionary — review draft, not SQL
+# Implemented database data dictionary
 
-Status: source-informed design for review; not approved for implementation. All table/field names, UUID choices, nullability, keys, indexes and access boundaries below are proposals. Source observations are cited independently. No SQL or Supabase resource has been created.
+Phase 3C, 27 October 2026. **23 locally implemented relations: six foundation and 17 core; 15 migrations. Not hosted or approved for production execution.**
 
-## Phase 2E revision — 27 October 2026
+This dictionary is generated from PostgreSQL catalog metadata after all 15 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.
 
-Current confirmed business scope and unresolved gates: [PHASE-2E-RULE-RECONCILIATION.md](PHASE-2E-RULE-RECONCILIATION.md). Earlier dictionary version is preserved in Git at `9a2190c8a1c6a020a5024e94ff6b7445a212382e`. Only confirmed-rule-driven changes are made below; no new tables or SQL. Foundation fields remain proposals. Mumbai/project reference is user-identified, not independently verified platform or privacy approval.
+The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E dictionary snapshot](DATABASE-PROPOSED-DATA-DICTIONARY-PHASE-2E.md); see [deferred relations](DATABASE-DEFERRED-RELATIONS.md). Historical decision documents retain their original context. This current dictionary makes no claim that every proposal is implemented.
 
-## Design contract
+`auth.users` is an existing managed dependency, not a 24th relation created by these migrations. All 23 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; generated student_id/year-end values are nevertheless non-null under the current strict expressions over required inputs. No generic shared timestamp/origin columns are implied.
 
-- Use internal UUID primary keys only for confirmed entities. A UUID is a database surrogate, not an invented source student ID. Keep missing external identifiers NULL, and never seed frontend CAC IDs or use name/DOB/phone as an automatic identity key.
-- Every relation below has `id uuid PRIMARY KEY`. Mutable relations additionally have `created_at timestamptz NOT NULL`, `created_by uuid NULL REFERENCES auth.users(id)`, `updated_at timestamptz NOT NULL`, `updated_by uuid NULL REFERENCES auth.users(id)`, and `row_version bigint NOT NULL`. These are system transaction metadata, never fabricated source authors or event dates. Use server-managed optimistic revisions, not client timestamps as concurrency guarantees.
-- Source-backed records additionally carry `origin_row_id uuid NULL REFERENCES source_rows(id)` and `origin_cells jsonb NULL` containing column/range locators only, plus `origin_fact_key text NULL` for a stable extracted field/section identity within a source row. Imported records require non-null origin; new operational records use an actual creator/audit event. One wide source row can produce many dated facts, each with distinct source-cell locators. Require a per-table uniqueness/idempotency guard on origin_row_id + origin_fact_key for imported observations after the extraction grain is approved. Additional source duplicates remain in source_rows with reviewed canonical-source links; identity_resolutions preserve corroborating person evidence. No polymorphic provenance link is claimed to be a real FK.
-- Frozen source metadata/rows, approved definitions and audit events are immutable/append-only under their reviewed service interface. Later import batches can reference the same frozen source_rows; the first extraction batch is not rewritten. Tables that reference source_rows are promoted only after staging exists, avoiding bootstrapping issues in a future migration order.
-- `?` in the source design metadata becomes Nullable=yes below. Null never means false, absent, zero, no scholarship or not contacted. Business dates use date; system timestamps use timestamptz in UTC. Dated assignments use proposed half-open intervals [start,end). Academic year is confirmed April 1–March 31 with four quarters; historical row-year attribution and cohort boundaries remain unresolved.
-- Raw observations stay distinct from accepted canonical facts. Unverifiable records must not be imported into final operational tables; preserve restricted exceptions and aggregate reconciliation under an approved privacy boundary. Incomplete source dates/years/identities can be retained in protected staging/observations without being fabricated to satisfy canonical constraints.
-- Reference values require explicit review except the Phase 2E confirmed rules and existing controlled registration options. Source Morning/Evening, Q1-Q4 and Yes/No are evidence; other frontend statuses/catalogues remain proposals. Leadership is read-only; teacher/officer writes require verified assigned scope. Do not equate source sex labels with gender identity or Q1 with F1 without approval.
-- Normalized operational identities, enrolments, assessments, monthly responses, events and programme memberships prevent year/round/assignment overwrites. Private baseline answers are an intentional immutable questionnaire archive: source-column/version keys preserve ambiguous repeated labels. Do not use generic answer JSON/EAV as the operational student/attendance/assessment model. Sensitive baseline retention requires purpose/retention approval.
-- General audit target locators are intentionally not polymorphic business FKs; they retain history. All modeled business FKs below are explicit. Audit payload minimization and non-client access are mandatory design requirements pending security review.
-- Foreign-key indexes are not created automatically by PostgreSQL; add only reviewed FK/scope/time indexes and verify plans with synthetic data. Do not turn every field into an index. No indexes are created now.
+## Inventory
 
-## Scope and justification
-
-The dictionary includes source-backed relations, migration/security infrastructure, and clearly marked frontend-only/future extensions. This is not a requirement to implement every proposed extension in the first release. In particular guidance/funding, new follow-ups, explicit events/sessions, and unsupported Morarji outcome fields require approval; they are not historical source facts. No data is invented to populate them.
-
-## Relations
-
-### 1. `projects` — Reference
-
-Evidence/justification: ATT workbook/project context; VISIT/MOR/ACT/ASM project-labelled tabs. These labels are not verified donor or funding contracts.
-
-Grain: One confirmed programme project.
-
-| Field | Type | Nullable | FK / definition |
+| Relation | Columns | PK | Creation migration |
 | --- | --- | --- | --- |
-| `label` | `text` | no | Owner-approved project label; preserve source aliases in provenance |
-| `code` | `text` | yes | Existing approved external project code only; never synthesized as source identity |
+| `mass_core.academic_years` | 4 | `id` | `202610270009_academic_periods.sql` |
+| `mass_core.activity_events` | 6 | `id` | `202610270012_named_activities.sql` |
+| `mass_core.activity_participation` | 8 | `id` | `202610270012_named_activities.sql` |
+| `mass_core.assessment_definitions` | 4 | `id` | `202610270011_assessments.sql` |
+| `mass_core.assessment_periods` | 4 | `id` | `202610270009_academic_periods.sql` |
+| `mass_core.assessment_results` | 9 | `id` | `202610270011_assessments.sql` |
+| `mass_core.attendance_codes` | 3 | `code` | `202610270010_attendance.sql` |
+| `mass_core.attendance_records` | 8 | `id` | `202610270010_attendance.sql` |
+| `mass_core.cac_sessions` | 7 | `id` | `202610270010_attendance.sql` |
+| `mass_core.centres` | 3 | `id` | `202610270007_auth_scope.sql` |
+| `mass_core.children` | 3 | `id` | `202610270008_identity_history.sql` |
+| `mass_core.cohort_memberships` | 7 | `id` | `202610270013_morarji.sql` |
+| `mass_core.enrolments` | 9 | `id` | `202610270008_identity_history.sql` |
+| `mass_core.morarji_outcomes` | 8 | `id` | `202610270013_morarji.sql` |
+| `mass_core.private_child_profiles` | 6 | `id` | `202610270008_identity_history.sql` |
+| `mass_core.programme_cohorts` | 4 | `id` | `202610270013_morarji.sql` |
+| `mass_core.user_scope_grants` | 10 | `id` | `202610270007_auth_scope.sql` |
+| `mass_foundation.audit_events` | 10 | `id` | `202610270006_audit_events.sql` |
+| `mass_foundation.import_batches` | 13 | `id` | `202610270003_import_batches.sql` |
+| `mass_foundation.import_exceptions` | 10 | `id` | `202610270005_import_exceptions.sql` |
+| `mass_foundation.source_files` | 7 | `id` | `202610270001_source_files.sql` |
+| `mass_foundation.source_rows` | 6 | `id` | `202610270004_source_rows.sql` |
+| `mass_foundation.source_sheets` | 6 | `id` | `202610270002_source_sheets.sql` |
+
+## mass_core.academic_years
+
+April 1 academic-year start and generated next-April-1 exclusive end.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `starts_on` | `date` | no | UK | `none` | Explicit April 1 for a verified academic year. |
+| `ends_before` | `date` | yes | — | `GENERATED ALWAYS STORED: ((starts_on + '1 year'::interval))::date` | Generated next April 1; inclusive business end is March 31. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+academic_years_pkey: PRIMARY KEY (id)
+academic_years_starts_on_check: CHECK (((EXTRACT(month FROM starts_on) = (4)::numeric) AND (EXTRACT(day FROM starts_on) = (1)::numeric)))
+academic_years_starts_on_key: UNIQUE (starts_on)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.activity_events
+
+Explicit named, dated single-shift event; no invented catalogue/category or historical slot bridge.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | composite UK, PK | `gen_random_uuid()` | Stable technical UUID. |
+| `centre_id` | `uuid` | no | FK, composite UK | `none` | Verified centre scope; not inferred residence. |
+| `shift_code` | `text` | no | composite UK | `none` | Morning/Evening controlled applicability. |
+| `activity_date` | `date` | no | — | `none` | Explicit event date; no generated Saturday or historical slot date. |
+| `name` | `text` | no | — | `none` | Explicit non-personal activity name. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+activity_events_centre_id_fkey: FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT
+activity_events_id_centre_id_shift_code_key: UNIQUE (id, centre_id, shift_code)
+activity_events_name_check: CHECK (((length(btrim(name)) >= 1) AND (length(btrim(name)) <= 160)))
+activity_events_pkey: PRIMARY KEY (id)
+activity_events_shift_code_check: CHECK ((shift_code = ANY (ARRAY['Morning'::text, 'Evening'::text])))
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.activity_participation
+
+One child response per event, including unknown NULL, with matching episode/context.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `event_id` | `uuid` | no | FK, composite UK | `none` | Explicit event FK; scope/date checked against enrolment. |
+| `child_id` | `uuid` | no | FK, composite UK | `none` | Registered child reference; never a name-derived identity. |
+| `centre_id` | `uuid` | no | FK | `none` | Verified centre scope; not inferred residence. |
+| `shift_code` | `text` | no | FK | `none` | Morning/Evening controlled applicability. |
+| `enrolment_id` | `uuid` | no | FK | `none` | Verified historical episode; composite FK preserves child/centre/shift context. |
+| `participated` | `boolean` | yes | — | `none` | True/false/NULL; unknown is never automatically false. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+activity_participation_enrolment_id_child_id_centre_id_shi_fkey: FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT
+activity_participation_event_id_centre_id_shift_code_fkey: FOREIGN KEY (event_id, centre_id, shift_code) REFERENCES mass_core.activity_events(id, centre_id, shift_code) ON DELETE RESTRICT
+activity_participation_event_id_child_id_key: UNIQUE (event_id, child_id)
+activity_participation_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.assessment_definitions
+
+Current-process 25-mark quarter definition; conflicted historical maxima are not accepted here.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `period_id` | `uuid` | no | FK, UK | `none` | Approved quarter/year definition FK. |
+| `max_score` | `numeric` | no | — | `25` | Exactly 25 for current confirmed process; never historical rescaling. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+assessment_definitions_max_score_check: CHECK ((max_score = (25)::numeric))
+assessment_definitions_period_id_fkey: FOREIGN KEY (period_id) REFERENCES mass_core.assessment_periods(id) ON DELETE RESTRICT
+assessment_definitions_period_id_key: UNIQUE (period_id)
+assessment_definitions_pkey: PRIMARY KEY (id)
+```
 
-Keys/constraints: PK id; label/code normalization and uniqueness require owner review; no automatic project-name typo merge.
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
 
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
+## mass_core.assessment_periods
 
-### 2. `centres` — Reference
+Quarter 1–4 within an explicit academic year; Q/F alias is not inferred.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `academic_year_id` | `uuid` | no | FK, composite UK | `none` | Explicit academic-year FK; unknown historical years are not inferred. |
+| `quarter` | `smallint` | no | composite UK | `none` | Quarter 1–4; Apr–Jun/Jul–Sep/Oct–Dec/Jan–Mar. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+assessment_periods_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES mass_core.academic_years(id) ON DELETE RESTRICT
+assessment_periods_academic_year_id_quarter_key: UNIQUE (academic_year_id, quarter)
+assessment_periods_pkey: PRIMARY KEY (id)
+assessment_periods_quarter_check: CHECK (((quarter >= 1) AND (quarter <= 4)))
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.assessment_results
+
+One recorded result per child/definition with verified date/context; no routine repeat attempts.
 
-Evidence/justification: ATT centre tabs and Village Name context; VISIT Center Name and dropdowns; ASM Village Name.
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `child_id` | `uuid` | no | composite UK, FK | `none` | Registered child reference; never a name-derived identity. |
+| `centre_id` | `uuid` | no | FK | `none` | Verified centre scope; not inferred residence. |
+| `shift_code` | `text` | no | FK | `none` | Morning/Evening controlled applicability. |
+| `enrolment_id` | `uuid` | no | FK | `none` | Verified historical episode; composite FK preserves child/centre/shift context. |
+| `definition_id` | `uuid` | no | composite UK, FK | `none` | Approved current quarter/scale definition FK. |
+| `assessed_on` | `date` | no | — | `none` | Actual verified date within quarter and episode. |
+| `score` | `numeric` | no | — | `none` | Recorded numeric 0..25; zero valid, missing is no accepted result row. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
 
-Grain: One confirmed centre.
+Exact final constraints (including composite FK columns/actions and CHECKs):
 
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `name` | `text` | no | Approved programme centre name, not a person residence inferred automatically |
-| `external_code` | `text` | yes | Verified existing centre identifier if provided |
+```sql
+assessment_results_child_id_definition_id_key: UNIQUE (child_id, definition_id)
+assessment_results_definition_id_fkey: FOREIGN KEY (definition_id) REFERENCES mass_core.assessment_definitions(id) ON DELETE RESTRICT
+assessment_results_enrolment_id_child_id_centre_id_shift_c_fkey: FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT
+assessment_results_pkey: PRIMARY KEY (id)
+assessment_results_score_check: CHECK (((score >= (0)::numeric) AND (score <= (25)::numeric)))
+```
 
-Keys/constraints: PK id; names alone are not globally unique identity; centre aliases require review.
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
 
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
+## mass_core.attendance_codes
 
-### 3. `centre_aliases` — Reference
+Confirmed P/A/L/WO/MM reference definitions; no unapproved H code.
 
-Evidence/justification: Spelling/whitespace variation across ATT tabs and VISIT controlled centre lists.
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `code` | `text` | no | PK | `none` | Exact P/A/L/WO/MM status reference. |
+| `meaning` | `text` | no | — | `none` | Confirmed status meaning. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
 
-Grain: One reviewed source-label/context mapping.
+Exact final constraints (including composite FK columns/actions and CHECKs):
 
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `centre_id` | `uuid` | no | `centres.id`; Confirmed centre |
-| `project_id` | `uuid` | yes | `projects.id`; Disambiguating source project context |
-| `source_family` | `text` | no | ATT/VISIT/etc context for alias scope |
-| `raw_label` | `text` | no | Exact source label |
-| `approved_by` | `uuid` | yes | `auth.users.id`; Reviewer accepting the alias |
+```sql
+attendance_codes_code_check: CHECK ((code = ANY (ARRAY['P'::text, 'A'::text, 'L'::text, 'WO'::text, 'MM'::text])))
+attendance_codes_pkey: PRIMARY KEY (code)
+```
 
-Keys/constraints: PK id; unique source_family + project context + raw_label with explicit NULL handling; never fuzzy-map automatically.
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
 
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
+## mass_core.attendance_records
 
-### 4. `academic_years` — Reference
+One accepted child/centre/shift/day mark tied to a verified episode; no automatic absence.
 
-Evidence/justification: ASM A dropdown and sparse populated A values; ATT annual grid does not itself establish school-year boundaries.
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `child_id` | `uuid` | no | composite UK, FK | `none` | Registered child reference; never a name-derived identity. |
+| `centre_id` | `uuid` | no | composite UK, FK | `none` | Verified centre scope; not inferred residence. |
+| `shift_code` | `text` | no | composite UK, FK | `none` | Morning/Evening controlled applicability. |
+| `enrolment_id` | `uuid` | no | FK | `none` | Verified historical episode; composite FK preserves child/centre/shift context. |
+| `attendance_date` | `date` | no | composite UK | `none` | Explicit distinct, verified day. |
+| `code` | `text` | no | FK | `none` | Exact P/A/L/WO/MM status reference. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
 
-Grain: One defined academic year.
+Exact final constraints (including composite FK columns/actions and CHECKs):
 
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `label` | `text` | no | Verified academic-year label, e.g. source year label format |
-| `starts_on` | `date` | yes | April 1 for a verified year; NULL only for unresolved draft definitions |
-| `ends_on` | `date` | yes | Proposed exclusive April 1 of next year; inclusive business end March 31 |
-| `approval_state` | `text` | no | Proposed pending/approved state |
+```sql
+attendance_records_child_id_centre_id_shift_code_attendance_key: UNIQUE (child_id, centre_id, shift_code, attendance_date)
+attendance_records_code_fkey: FOREIGN KEY (code) REFERENCES mass_core.attendance_codes(code) ON DELETE RESTRICT
+attendance_records_enrolment_id_child_id_centre_id_shift_c_fkey: FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT
+attendance_records_pkey: PRIMARY KEY (id)
+```
 
-Keys/constraints: PK id; unique label; if both dates known ends_on > starts_on; no automatic year fill.
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
 
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
+## mass_core.cac_sessions
 
-### 5. `assessment_periods` — Reference
+Explicit confirmed scheduled/non-scheduled calendar entry, not frontend Held/Cancelled delivery status.
 
-Evidence/justification: ASM B Quarter: Q1-Q4; actual named data Q1/Q2.
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `centre_id` | `uuid` | no | FK, composite UK | `none` | Verified centre scope; not inferred residence. |
+| `shift_code` | `text` | no | composite UK | `none` | Morning/Evening controlled applicability. |
+| `session_date` | `date` | no | composite UK | `none` | Explicit confirmed calendar date. |
+| `is_scheduled` | `boolean` | no | — | `none` | Confirmed calendar fact; missing row never proves holiday. |
+| `confirmation_ref` | `uuid` | no | — | `none` | Opaque reference to verification evidence; no evidence payload or authority invented. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+cac_sessions_centre_id_fkey: FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT
+cac_sessions_centre_id_shift_code_session_date_key: UNIQUE (centre_id, shift_code, session_date)
+cac_sessions_pkey: PRIMARY KEY (id)
+cac_sessions_shift_code_check: CHECK ((shift_code = ANY (ARRAY['Morning'::text, 'Evening'::text])))
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.centres
 
-Grain: One quarter within an academic year.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `academic_year_id` | `uuid` | no | `academic_years.id`; Confirmed year |
-| `code` | `text` | no | Source Q1-Q4 code |
-| `starts_on` | `date` | yes | Owner-approved date bounds |
-| `ends_on` | `date` | yes | Owner-approved date bounds |
-| `frontend_round_code` | `text` | yes | F1-F4 mapping only if separately approved |
-
-Keys/constraints: PK id; unique(year,code); confirmed Q1 Apr–Jun, Q2 Jul–Sep, Q3 Oct–Dec, Q4 Jan–Mar; Q-to-F equivalence remains unapproved. Use reviewed consistent date-boundary encoding.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 6. `children` — Identity
-
-Evidence/justification: Name-bearing ATT/CHILD/ACT/MOR/ASM records require reviewed resolution; no reliable shared child ID is supplied.
-
-Grain: One adjudicated person, identified internally by UUID.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `generated_student_id` | `text` | no (new student) | Permanent unique human-readable application ID; server-issued; format/allocation and legacy backfill remain approval gates |
-| `external_student_id` | `text` | yes | Existing verified business ID only; remains NULL when missing |
-| `lifecycle_state` | `text` | no | Proposed active/archived identity lifecycle, not CAC dropout status |
-
-Keys/constraints: PK id is an internal technical surrogate; generated_student_id is a distinct permanent application identity with confirmed permanent uniqueness; implementation pending and collision-safe server allocation required. It is never passed off as a historical source ID. No browser max+1; never regenerate on transfer. Legacy allocation policy remains pending. No unique name/DOB/phone constraints. External ID uniqueness only within verified issuing scope; not assumed global.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 7. `private_child_profiles` — Restricted identity
-
-Evidence/justification: CHILD-01 B/D/F and names/gender context from CHILD-02/ATT/ASM; frontend Student Profile.
-
-Grain: One current private identity projection per child; old observations remain in source/baseline history.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Resolved child |
-| `full_name` | `text` | no | Approved current display identity, not a uniqueness key |
-| `birth_date` | `date` | yes | Only unambiguous/approved DOB |
-| `gender_code` | `text` | yes | Confirmed registration controlled values Girl/Boy; required for new form entry, unknown historical values stay NULL pending review |
-| `class10_board_passed` | `boolean` | yes | Existing Yes/No/unknown profile projection; only Grade 10 form entry; exam-year/history semantics remain pending |
-| `source_sex_label` | `text` | yes | Retain source wording; sex/gender vocabulary mapping requires review |
-| `preferred_language` | `text` | yes | Approved interpretation of baseline Mother Tongue, if needed |
-
-Keys/constraints: PK id; unique child_id; private schema/no anonymous grants; do not overwrite identity on a name-only match.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 8. `placement_observations` — History
-
-Evidence/justification: ATT A:E; ASM C:E/H and shift context; CHILD-01 village/class and CHILD-02 current class.
-
-Grain: One sourced placement/class observation.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Reviewed person |
-| `centre_id` | `uuid` | yes | `centres.id`; Confirmed programme centre, not automatically residence |
-| `project_id` | `uuid` | yes | `projects.id`; Observed project context |
-| `shift_code` | `text` | yes | Source Morning/Evening if known |
-| `academic_year_id` | `uuid` | yes | `academic_years.id`; Only when source year resolved |
-| `grade_label` | `text` | yes | Source grade/class value |
-| `residence_label` | `text` | yes | Private source village context, separated from programme centre |
-| `observed_on` | `date` | yes | Known observation date only |
-| `certainty` | `text` | no | Proposed observed/confirmed status |
-
-Keys/constraints: PK id; provenance identity prevents repeated extraction; observations do not assert an enrolment start or transfer date.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 9. `enrolments` — History / frontend proposal
-
-Evidence/justification: Frontend enrolment/exit form and historical retrieval requirement; CHILD-02 retain/remove is evidence to investigate, not dated enrolment history.
-
-Grain: One confirmed dated placement/enrolment episode.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Child |
-| `centre_id` | `uuid` | no | `centres.id`; Centre |
-| `project_id` | `uuid` | yes | `projects.id`; Programme project |
-| `shift_code` | `text` | no | Approved shift |
-| `academic_year_id` | `uuid` | yes | `academic_years.id`; Approved year if applicable |
-| `grade_label` | `text` | yes | Grade for this episode; confirmed new registration options 1–10 |
-| `starts_on` | `date` | no | Confirmed effective start, never defaulted to grid start |
-| `ends_on` | `date` | yes | Exclusive effective end under proposed interval convention |
-| `exit_reason` | `text` | yes | Approved reason, not inferred dropout |
-| `status_code` | `text` | no | Existing controlled registration values Active / CAC dropout / Left programme; no automatic dropout classification |
-
-Keys/constraints: PK id; end > start; overlap and exclusive-end versus frontend exit-date semantics require approval. New-entry controls preserve Morning/Evening, grades 1–10 and confirmed status values; source anomalies remain exceptions, not invented options. Historical rows without dates remain observations/staging, not fabricated episodes.
-
-Index plan: (child_id,starts_on); (centre_id,shift_code,starts_on); reviewed range exclusion only after overlap policy approval.
-
-### 10. `roster_reviews` — Source-backed history
-
-Evidence/justification: CHILD-02 A:G, including Remove/Retain?, Current Class and removal reasons.
-
-Grain: One source roster-review observation or later reviewed decision.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Resolved person |
-| `project_id` | `uuid` | yes | `projects.id`; Confirmed context |
-| `reviewed_on` | `date` | yes | Actual review date if established |
-| `source_action` | `text` | no | Exact observed action; not auto-normalized to enrolment closure |
-| `current_class` | `text` | yes | Recorded retained class |
-| `reason` | `text` | yes | Restricted free-text reason |
-| `review_state` | `text` | no | Proposed pending/approved/rejected interpretation |
-
-Keys/constraints: PK id; no automatic exit-date creation; 82 noncanonical labels need review.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 11. `private_baseline_surveys` — Restricted source-backed survey
-
-Evidence/justification: CHILD-01 complete 55-column questionnaire, including family, economic and safeguarding information not needed for normal operational charts.
-
-Grain: One captured baseline survey per child/source occurrence.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Resolved child |
-| `survey_version` | `text` | no | Version of the captured questionnaire/header structure |
-| `observed_on` | `date` | yes | Known survey date only |
-| `purpose_approval_ref` | `text` | yes | Secure owner approval to retain these sensitive responses |
-| `retention_review_on` | `date` | yes | Proposed retention review date |
-
-Keys/constraints: PK id; no inferred survey date or shared household identity. Import/retention of sensitive sections remains gated by D10.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 12. `private_baseline_answers` — Restricted source-backed survey
-
-Evidence/justification: CHILD-01 A:BC field map in SOURCE-INVENTORY; repeated occupation/meal headers must not be collapsed.
-
-Grain: One answer per versioned source question within a survey.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `survey_id` | `uuid` | no | `private_baseline_surveys.id`; Survey |
-| `question_key` | `text` | no | Versioned column-position key, not label alone |
-| `source_column` | `text` | no | Exact source column coordinate |
-| `response_text` | `text` | yes | Literal response after approved safe extraction; NULL remains unknown |
-| `observed_value_type` | `text` | yes | Source number/text/date classification |
-| `approved_typed_value` | `jsonb` | yes | Optional reviewed interpretation; not an automatic coercion |
-
-Keys/constraints: PK id; unique(survey_id,question_key). Intentional questionnaire archive exception: generic answers only for sensitive evolving baseline, not operational relationships/metrics. No household merges, meal-block semantics or ROI-scale assumptions.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 13. `staff` — Identity / security proposal
-
-Evidence/justification: VISIT officer context in B2; frontend officer scope. Source officer names are not accounts.
-
-Grain: One confirmed staff person.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `user_id` | `uuid` | yes | `auth.users.id`; Auth account only after explicit identity confirmation |
-| `private_name` | `text` | no | Restricted staff display identity |
-| `external_staff_id` | `text` | yes | Verified existing staff ID |
-
-Keys/constraints: PK id; no name-only account linking; unique non-null user_id if one-person/account policy approved.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 14. `staff_assignments` — History / approval required
-
-Evidence/justification: VISIT officer-centre dropdown/context and frontend scope; effective dates are not supplied.
-
-Grain: One dated business responsibility assignment.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `staff_id` | `uuid` | no | `staff.id`; Confirmed staff |
-| `centre_id` | `uuid` | no | `centres.id`; Centre |
-| `shift_code` | `text` | yes | Optional confirmed shift scope |
-| `role_code` | `text` | no | Approved business responsibility, not a browser role |
-| `starts_on` | `date` | no | Confirmed effective start |
-| `ends_on` | `date` | yes | Exclusive end |
-
-Keys/constraints: PK id; reviewed interval/overlap rules; source tab ownership alone cannot grant database rights.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 15. `user_scope_grants` — Security infrastructure proposal
-
-Evidence/justification: Frontend role/scope requirements and absence of real authorization; Phase 2E confirms read-only Leadership and assigned-scope teacher/officer writes; no actual assignments are granted.
-
-Grain: One explicit approved capability/scope grant.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `user_id` | `uuid` | no | `auth.users.id`; Authenticated principal |
-| `centre_id` | `uuid` | yes | `centres.id`; Scoped centre, if approved |
-| `project_id` | `uuid` | yes | `projects.id`; Scoped project, if approved |
-| `capability_code` | `text` | no | Explicit reviewed capability |
-| `starts_at` | `timestamptz` | no | Grant validity start |
-| `ends_at` | `timestamptz` | yes | Grant validity end |
-| `approved_by` | `uuid` | no | `auth.users.id`; Authorized granting actor |
-
-Keys/constraints: PK id; empty scope must not silently mean global access; deny by default. Phase 2E role write boundaries apply; actual assignments, read/private/export/import/admin capabilities and granting authority still require D11. Check old/new record scope and all related FKs; null scope never implies global. No policies/grants are implemented.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 16. `attendance_codes` — Source-backed lookup
-
-Evidence/justification: ATT list validations and observed P/A/WO/MM/L; frontend H is not present in source validations.
-
-Grain: One status vocabulary entry.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `code` | `text` | no | Exact source status code |
-| `meaning` | `text` | yes | Owner-approved definition |
-| `approved` | `boolean` | no | Whether semantics are accepted for operational use |
-
-Keys/constraints: PK id; unique code; P=Present, A=Absent, L=Leave, WO=Sunday, MM=Monthly Meeting (Phase 2E user confirmation). Rate is 100*P/(P+A+L), excluding WO/MM/confirmed holidays; non-scheduled days are holidays only under an authoritative calendar. Missing remains unknown. H representation, conflict adjudication, zero-denominator display/rounding and calendar authority remain pending. Preserve distinct literal reasons; do not collapse into H.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 17. `cac_sessions` — Frontend-only operational extension
-
-Evidence/justification: Frontend sessionEntry; ATT day grids are not proof of explicitly Held/Cancelled sessions.
-
-Grain: One explicit centre/shift/day session under current frontend assumption.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `centre_id` | `uuid` | no | `centres.id`; Centre |
-| `shift_code` | `text` | no | Approved shift |
-| `session_date` | `date` | no | Actual session date |
-| `status_code` | `text` | no | Proposed Planned/Held/Cancelled |
-| `correction_reason` | `text` | yes | If required by approved editing policy |
-
-Keys/constraints: PK id; proposed unique(centre,shift,date) requires D03/D13. Do not infer Held from P or Planned from calendar/date.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 18. `attendance_records` — Source-backed operational fact
-
-Evidence/justification: ATT dated cell grid; frontend single/bulk attendance.
-
-Grain: One child/centre/shift/date observation after reconciliation.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Resolved child |
-| `centre_id` | `uuid` | no | `centres.id`; Confirmed source centre |
-| `shift_code` | `text` | no | Confirmed source shift |
-| `attendance_date` | `date` | no | Resolved distinct day header |
-| `code_id` | `uuid` | no | `attendance_codes.id`; Literal approved/mapped code |
-| `enrolment_id` | `uuid` | yes | `enrolments.id`; Confirmed historical episode, if available |
-| `session_id` | `uuid` | yes | `cac_sessions.id`; Explicit session, not inferred |
-| `correction_reason` | `text` | yes | Approved correction context |
-
-Keys/constraints: PK id; proposed unique(child,centre,shift,date), subject to multi-shift policy. No blank -> A/H coercion; unknown is no accepted observation. Cross-FK centre/date/shift consistency must be validated transactionally.
-
-Index plan: (centre_id,shift_code,attendance_date); (child_id,attendance_date); provenance-cell idempotency guard.
-
-### 19. `assessment_definitions` — Source-backed reference
-
-Evidence/justification: ASM B3 maximum, project/shift tab context, Academic Year and Quarter; paper identity unresolved.
-
-Grain: One approved paper/scale definition per period/project/shift/revision.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `project_id` | `uuid` | no | `projects.id`; Project |
-| `period_id` | `uuid` | no | `assessment_periods.id`; Verified year/quarter |
-| `shift_code` | `text` | no | Source shift |
-| `paper_label` | `text` | yes | Only if verified; no invented paper name |
-| `max_score` | `numeric` | no | 25 for the confirmed process; conflicted historical max100 metadata requires reviewed applicability, not rescaling |
-| `revision` | `integer` | no | Immutable approved definition revision |
-| `approval_state` | `text` | no | Pending/approved definition |
-
-Keys/constraints: PK id; max_score > 0; approved definition immutable once results reference it. Definition uniqueness depends on paper identity D06. Preserve raw max100 metadata in restricted provenance; pending definitions/results are not accepted operational facts. No automatic scale conversion.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 20. `assessment_batches` — Frontend-only extension
-
-Evidence/justification: Frontend group exam date/comment form; ASM does not provide a stable batch ID or overall comment field.
-
-Grain: One explicit entry batch, not a filter-string identity.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `definition_id` | `uuid` | no | `assessment_definitions.id`; Paper definition |
-| `centre_id` | `uuid` | yes | `centres.id`; Explicit reviewed scope |
-| `shift_code` | `text` | yes | Scope |
-| `assessment_date` | `date` | yes | Shared date only if applicable |
-| `comment` | `text` | yes | Restricted overall assessment comment |
-
-Keys/constraints: PK id; changing UI filters must not redefine a historical batch. Results retain individual dates and membership through batch FK.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 21. `assessment_results` — Source-backed operational fact
-
-Evidence/justification: ASM A:H; frontend marks and correction forms.
-
-Grain: One accepted current result per child and approved paper definition; routine repeat attempts are outside the confirmed process. Corrections retain audit/revision history.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Resolved child |
-| `definition_id` | `uuid` | no | `assessment_definitions.id`; Approved year/quarter/paper/scale |
-| `centre_id` | `uuid` | no | `centres.id`; Confirmed assessment centre |
-| `batch_id` | `uuid` | yes | `assessment_batches.id`; Optional entry batch |
-| `assessed_on` | `date` | yes | Reviewed source date; future canonical recorded results require date per approved policy |
-| `score` | `numeric` | yes | Literal numeric score; zero is a score |
-| `status_code` | `text` | no | Proposed Recorded/Absent/Not entered; unresolved source rows stay outside final operational tables |
-| `teacher_remark` | `text` | yes | Frontend requirement, not an existing ASM column |
-
-Keys/constraints: PK id; proposed unique(child,definition) for confirmed non-repeat process; exceptional evidenced repeats need separate approval, never a fabricated attempt 1. Plain CHECK cannot read definition maximum: use reviewed transaction/RPC/trigger validation. Source missing score is not Absent; retain unresolved rows in staging. Decimal policy must follow D06.
-
-Index plan: (child_id,definition_id); (definition_id,centre_id); unresolved/status coverage queries.
-
-### 22. `monthly_activity_returns` — Source-backed historical fact
-
-Evidence/justification: ACT B2 month and A:C child/name/class context under project-labelled tabs.
-
-Grain: One reviewed monthly source return per child/project/month.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Resolved child |
-| `project_id` | `uuid` | no | `projects.id`; Verified project |
-| `month` | `date` | no | First day of the source month as period key, not an event date |
-| `source_class` | `text` | yes | Observed class snapshot |
-| `centre_id` | `uuid` | yes | `centres.id`; Only with independently confirmed mapping |
-
-Keys/constraints: PK id; proposed unique child/project/month only after duplicate review; no source centre or shift is invented.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 23. `monthly_activity_responses` — Source-backed historical fact
-
-Evidence/justification: ACT D:G Activity 1-4 Yes/No/blank.
-
-Grain: One response per return/slot.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `return_id` | `uuid` | no | `monthly_activity_returns.id`; Monthly return |
-| `slot_number` | `smallint` | no | Source ordinal 1..4 |
-| `participated` | `boolean` | yes | Yes=true; No=false; blank=NULL |
-| `activity_event_id` | `uuid` | yes | `activity_events.id`; Only an explicitly approved later mapping |
-
-Keys/constraints: PK id; unique(return,slot); slot between 1 and 4; never synthesize dates/categories/Held from slot or Yes.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 24. `activity_events` — Frontend-only operational extension
-
-Evidence/justification: Frontend two-stage activity entry; source ACT lacks event identity/date/category/status.
-
-Grain: One explicitly recorded activity session.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `project_id` | `uuid` | yes | `projects.id`; Approved project |
-| `centre_id` | `uuid` | no | `centres.id`; Centre |
-| `shift_code` | `text` | yes | Explicit applicability; Both shifts semantics require review |
-| `activity_date` | `date` | no | Entered actual/planned date |
-| `name` | `text` | no | Staff-entered named activity; no confirmed catalogue supplied |
-| `category_code` | `text` | yes | Approved category; no sample catalogue seeded as MASS policy |
-| `status_code` | `text` | no | Proposed Planned/Held/Cancelled |
-
-Keys/constraints: PK id; duplicate rule centre/date/shift/name is proposed, not a verified universal business key. Do not auto-generate events from historical monthly slots. Four Saturday activities is a general monthly pattern, not a required exact count or inferred dates/categories.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 25. `activity_participation` — Frontend-only operational extension
-
-Evidence/justification: Frontend per-event participation editor, distinct from historical ACT slots.
-
-Grain: One child response per event.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `event_id` | `uuid` | no | `activity_events.id`; Explicit event |
-| `child_id` | `uuid` | no | `children.id`; Child |
-| `participated` | `boolean` | yes | Attended/Not attended/unknown |
-| `eligibility_enrolment_id` | `uuid` | yes | `enrolments.id`; If verified for event date |
-
-Keys/constraints: PK id; unique(event,child); transactionally validate eligibility, Held/all-marked rule if approved, non-Held constraints and changes of event scope. Preserve audit on clears.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 26. `centre_visits` — Source-backed operational fact
-
-Evidence/justification: VISIT log A:D and officer B2; summary counts are derived.
-
-Grain: One verified visit occurrence.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `staff_id` | `uuid` | no | `staff.id`; Confirmed officer |
-| `centre_id` | `uuid` | no | `centres.id`; Approved centre alias |
-| `shift_code` | `text` | no | Morning/Evening source label |
-| `visited_on` | `date` | no | Actual confirmed date; all current non-example rows are unresolved |
-| `remarks` | `text` | yes | Source remarks, restricted free text |
-| `next_action` | `text` | yes | Frontend extension, not separate source field |
-| `status_code` | `text` | yes | Frontend Planned/Completed only when explicitly entered or approved |
-
-Keys/constraints: PK id; no unique centre/day rule: multiple visits may be legitimate. Do not infer Completed or dates from summaries, row order or example.
-
-Index plan: (centre_id,visited_on,shift_code); (staff_id,visited_on).
-
-### 27. `programme_cohorts` — History / conditional source mapping
-
-Evidence/justification: MOR programme/project context; frontend cohort-year comparison. No source cohort year is supplied.
-
-Grain: One confirmed programme cohort.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `programme_code` | `text` | no | Approved Morarji/guidance programme identity |
-| `label` | `text` | no | Confirmed cohort label, not fabricated from example date |
-| `academic_year_id` | `uuid` | yes | `academic_years.id`; Only if equivalent and confirmed |
-| `starts_on` | `date` | yes | Confirmed period boundary |
-| `ends_on` | `date` | yes | Confirmed period boundary |
-
-Keys/constraints: PK id; cohort identity and repeated participation require D08; no automatic mapping from file year or grade progression.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 28. `cohort_memberships` — History / conditional source mapping
-
-Evidence/justification: MOR named rows and frontend add-to-cohort requirement; source person/cohort must be resolved first.
-
-Grain: One child membership in one cohort; multiple cohorts per child are allowed.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `cohort_id` | `uuid` | no | `programme_cohorts.id`; Confirmed cohort |
-| `child_id` | `uuid` | no | `children.id`; Resolved child |
-| `project_id` | `uuid` | yes | `projects.id`; Source project context |
-| `centre_id` | `uuid` | yes | `centres.id`; Confirmed historical centre |
-| `source_observed_on` | `date` | yes | Source Date only after meaning is agreed |
-
-Keys/constraints: PK id; proposed unique(cohort,child); duplicates/attempts may require further distinction before implementation.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 29. `morarji_outcomes` — Source-backed + explicitly optional frontend fields
-
-Evidence/justification: MOR D:G Applied/Attended/Passed/School; frontend training days/selection/admission/scholarship are unsupported extensions.
-
-Grain: One outcome set per membership, with audited corrections.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `membership_id` | `uuid` | no | `cohort_memberships.id`; Cohort member |
-| `applied` | `boolean` | yes | Literal source Yes/No or unknown |
-| `attended` | `boolean` | yes | Literal applied/attended/passed workflow flag; exact attended context still unresolved, never a derived training-day count |
-| `passed` | `boolean` | yes | Literal source flag; No not automatically failed/absent/pending |
-| `passed_school_name` | `text` | yes | Source School Name (if Passed) |
-| `reported_training_days` | `integer` | yes | Optional frontend-only reported count; no source derivation |
-| `selected` | `boolean` | yes | Optional extension, no source backfill |
-| `admitted` | `boolean` | yes | Optional extension, no source backfill |
-| `scholarship_state` | `text` | yes | Optional extension, no source backfill |
-
-Keys/constraints: PK id; unique membership; boolean consistency rules require approval because source has 35 flag conflicts. Optional training days >=0 if used. No pass -> admission/scholarship inference.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 30. `followup_actions` — Frontend-only extension
-
-Evidence/justification: Existing follow-up modal and overwrite-history risk; no matching standalone source in six workbooks.
-
-Grain: One follow-up episode/action; append new episodes rather than replacing the child latest note.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `child_id` | `uuid` | no | `children.id`; Child |
-| `centre_id` | `uuid` | yes | `centres.id`; Confirmed scope at action time |
-| `membership_id` | `uuid` | yes | `cohort_memberships.id`; Optional programme link |
-| `status_code` | `text` | no | Proposed To follow up/In progress/Completed |
-| `note` | `text` | no | Restricted action/observation |
-| `next_contact_on` | `date` | yes | Explicit next date |
-| `occurred_at` | `timestamptz` | no | Actual action creation time, not invented source history |
-
-Keys/constraints: PK id; nonblank note; status/history/retention require D12/D13. No invented historical follow-ups.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 31. `guidance_sessions` — Unapproved future extension
-
-Evidence/justification: Frontend optional Career Guidance; none of six source workbooks supplies this dataset.
-
-Grain: One explicit career-guidance session.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `cohort_id` | `uuid` | yes | `programme_cohorts.id`; Approved cohort if applicable |
-| `centre_id` | `uuid` | yes | `centres.id`; Session scope |
-| `session_date` | `date` | no | Explicit session date |
-| `title` | `text` | yes | Approved programme/session label |
-
-Keys/constraints: PK id; extension only after D12, not part of historical source import.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 32. `guidance_participants` — Unapproved future extension
-
-Evidence/justification: Frontend newGuidance standalone person; no source-backed guidance dataset.
-
-Grain: One participant in one session.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `session_id` | `uuid` | no | `guidance_sessions.id`; Session |
-| `child_id` | `uuid` | yes | `children.id`; Only confirmed linkage to shared person registry |
-| `private_participant_name` | `text` | yes | Restricted temporary identity if non-roster participation is approved |
-| `centre_id` | `uuid` | yes | `centres.id`; Confirmed centre |
-| `grade_label` | `text` | yes | Recorded class |
-
-Keys/constraints: PK id; require approved identity model before accepting unmatched participants; do not copy frontend free-standing names into children automatically.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 33. `guidance_followups` — Unapproved future extension
-
-Evidence/justification: Frontend follow-up date/contact/destination/evidence; no source worksheet.
-
-Grain: One dated guidance follow-up, not an overwrite of the only history row.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `participant_id` | `uuid` | no | `guidance_participants.id`; Participant |
-| `followed_up_on` | `date` | no | Actual contact/review date |
-| `contact_state` | `text` | no | Approved contact vocabulary |
-| `destination_label` | `text` | yes | Owner-approved destinations, not sample enums |
-| `verification_state` | `text` | yes | Approved evidence vocabulary |
-
-Keys/constraints: PK id; contact/destination consistency and evidence policy require D12.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 34. `guidance_feedback` — Unapproved future extension
-
-Evidence/justification: Frontend single guidanceFeedback value; no source supports its original global scope.
-
-Grain: One authored session feedback record.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `session_id` | `uuid` | no | `guidance_sessions.id`; Explicit session scope |
-| `staff_id` | `uuid` | yes | `staff.id`; Confirmed author when applicable |
-| `feedback` | `text` | no | Restricted qualitative response |
-
-Keys/constraints: PK id; no source migration; replace global context with explicit session/author only after review.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 35. `funders` — Unapproved reporting extension
-
-Evidence/justification: Frontend donor filter; workbook project labels are not verified funder identities/contracts.
-
-Grain: One verified funder.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `name` | `text` | no | Confirmed funder identity |
-| `external_code` | `text` | yes | Existing verified code only |
-
-Keys/constraints: PK id; no automatic mapping project -> funder; external donor accounts not authorized.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 36. `centre_funding_periods` — Unapproved reporting extension
-
-Evidence/justification: Frontend donor aggregate requirement and absence of source funding history.
-
-Grain: One verified funding relationship/period.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `funder_id` | `uuid` | no | `funders.id`; Funder |
-| `centre_id` | `uuid` | no | `centres.id`; Centre |
-| `project_id` | `uuid` | yes | `projects.id`; Confirmed project link |
-| `starts_on` | `date` | no | Confirmed funding start |
-| `ends_on` | `date` | yes | Confirmed exclusive end |
-| `attribution_rule` | `text` | yes | Approved overlapping-funding allocation |
-
-Keys/constraints: PK id; overlap may be legitimate; do not duplicate child counts across funders without approved attribution. No source import until D11/D12.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 37. `source_files` — Migration infrastructure
-
-Evidence/justification: All six exact XLSX copies, hashes in SOURCE-INVENTORY.
-
-Grain: One immutable source snapshot.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `original_file_id` | `text` | yes | Original Drive ID only when supplied |
-| `filename` | `text` | no | Exact input filename |
-| `sha256` | `text` | no | Exact immutable file fingerprint |
-| `source_version` | `text` | yes | Known original version, never invented |
-| `storage_ref` | `text` | no | Restricted immutable artifact reference |
-| `exported_at` | `timestamptz` | yes | Known export timestamp |
-| `received_at` | `timestamptz` | no | System receipt time, not a record event date |
-
-Keys/constraints: PK id; unique SHA-256 under reviewed storage rules; changed snapshots never overwrite prior provenance.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 38. `source_sheets` — Migration infrastructure
-
-Evidence/justification: All 53 audited worksheets, including hidden/report/example-only tabs.
-
-Grain: One sheet within one immutable workbook snapshot.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `file_id` | `uuid` | no | `source_files.id`; Immutable snapshot |
-| `native_sheet_id` | `text` | yes | XLSX sheet identifier; not falsely called a Google sheet ID |
-| `ordinal` | `integer` | no | Workbook tab ordinal |
-| `name` | `text` | no | Exact tab name, retaining whitespace |
-| `classification` | `text` | no | Input/master/helper/report/template pending owner approval |
-| `header_spec` | `jsonb` | no | Versioned header/column/date/validation metadata, no personal records |
-
-Keys/constraints: PK id; unique(file,ordinal), native ID where trustworthy. Hidden sheets must be explicitly classified, not skipped.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 39. `import_batches` — Migration infrastructure
-
-Evidence/justification: Requested safe retries/reconciliation and all source families.
-
-Grain: One import execution/retry context.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `mapping_version` | `text` | no | Reviewed transformation version |
-| `extractor_version` | `text` | no | Reproducible extraction code version |
-| `state` | `text` | no | Proposed staged/validated/approved/running/complete/failed |
-| `started_at` | `timestamptz` | no | Actual run time |
-| `completed_at` | `timestamptz` | yes | Actual completion |
-| `checkpoint` | `jsonb` | yes | Non-PII retry state |
-| `counts` | `jsonb` | yes | Extracted/accepted/quarantined/excluded/reconciled counts |
-
-Keys/constraints: PK id; state transitions restricted to import service; no import performed by this design.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 40. `source_rows` — Migration infrastructure
-
-Evidence/justification: Every real/partial/example/report row must be accounted for with file/tab/row provenance.
-
-Grain: One row occurrence in a frozen source snapshot.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `sheet_id` | `uuid` | no | `source_sheets.id`; Exact snapshot/tab |
-| `first_batch_id` | `uuid` | no | `import_batches.id`; First extraction context |
-| `row_locator` | `text` | no | Physical row/range in immutable snapshot |
-| `source_record_identifier` | `text` | yes | Literal source record identifier/local serial if present; not a canonical person ID |
-| `content_hash` | `text` | no | Private row fingerprint, not a child ID |
-| `payload_ref` | `text` | yes | Restricted/encrypted raw payload reference, not a public URL |
-| `classification` | `text` | no | Candidate/example/scaffold/summary/rejected etc |
-| `canonical_source_row_id` | `uuid` | yes | `source_rows.id`; Reviewed duplicate-source equivalence only; not automatic person merge |
-
-Keys/constraints: PK id; unique(sheet,row_locator); changed file -> new source snapshot. Fingerprint alone does not identify legitimate identical rows.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 41. `identity_resolutions` — Migration infrastructure / restricted
-
-Evidence/justification: Absent person IDs and ambiguous links across ATT/CHILD/ACT/MOR/ASM; staff context also needs explicit linkage.
-
-Grain: One versioned resolution decision for a source person observation.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `source_row_id` | `uuid` | no | `source_rows.id`; Source person observation |
-| `child_id` | `uuid` | yes | `children.id`; Confirmed child if accepted |
-| `staff_id` | `uuid` | yes | `staff.id`; Confirmed staff if accepted |
-| `decision` | `text` | no | Proposed unresolved/accepted/rejected/ambiguous |
-| `method` | `text` | yes | Verified-ID/manual-evidence method; no name-only auto matching |
-| `reviewed_by` | `uuid` | yes | `auth.users.id`; Authorized reviewer |
-| `evidence_ref` | `text` | yes | Restricted evidence reference |
-
-Keys/constraints: PK id; accepted decisions require exactly one child/staff target and reviewer; only one current accepted decision per observation. Internal child UUID is created only for an adjudicated person, not guessed duplicates.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 42. `import_exceptions` — Migration infrastructure / restricted
-
-Evidence/justification: Private audit exception register and requested failed-record logging.
-
-Grain: One issue for one source row/field/run; reasons can overlap.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `batch_id` | `uuid` | no | `import_batches.id`; Run context |
-| `source_row_id` | `uuid` | no | `source_rows.id`; File/tab/row locator |
-| `field_locator` | `text` | yes | Source field/cell |
-| `reason_code` | `text` | no | Non-PII category |
-| `review_state` | `text` | no | Open/assigned/resolved/rejected proposal |
-| `resolution_note` | `text` | yes | Restricted review detail; no raw values in general logs |
-| `resolved_by` | `uuid` | yes | `auth.users.id`; Authorized reviewer |
-| `resolved_at` | `timestamptz` | yes | Actual resolution time |
-
-Keys/constraints: PK id; deduplicate repeated issue generation by batch,row,field,reason with explicit NULL handling. Audit flags are not imported records or proven failures.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-### 43. `audit_events` — Security / migration infrastructure
-
-Evidence/justification: Frontend overwrite/edit workflows and required actor/record history; no source audit history is invented.
-
-Grain: One append-only audited operation.
-
-| Field | Type | Nullable | FK / definition |
-| --- | --- | --- | --- |
-| `actor_user_id` | `uuid` | yes | `auth.users.id`; Actual actor/service identity |
-| `entity_type` | `text` | no | Allowlisted target type |
-| `entity_id` | `uuid` | no | Audit locator, intentionally not a polymorphic business FK |
-| `operation` | `text` | no | Create/update/clear/approve/import etc |
-| `changed_at` | `timestamptz` | no | Actual transaction time |
-| `change_metadata` | `jsonb` | no | Minimized field/revision metadata; sensitive values protected separately |
-| `batch_id` | `uuid` | yes | `import_batches.id`; Import context when applicable |
-
-Keys/constraints: PK id; no client writes/edits; entity locator intentionally survives archival without FK cascade. Canonical business FKs are enforced separately; validate target allowlist and audit completeness. No PII-rich generic before/after dumps.
-
-Index plan: Foreign-key lookup indexes plus workload-specific indexes after query-plan review.
-
-## Acceptance gates and normalization decisions
-
-Before DDL, resolve relevant remaining gates in PHASE-2E-RULE-RECONCILIATION and PHASE-2E-IMPLEMENTATION-READINESS. Confirmed policy does not approve historical row attribution, privacy, audit, foundation scope or execution. The audit does not establish an import-ready person registry, calendar policy, result scale, donor grant or cohort year. Nullability here supports truthful observations; accepted operational writes still require approved completeness rules. Do not load unresolved results as Recorded or visit rows as Completed.
-
-Source surveys deliberately retain question responses before field-by-field canonicalization because the two meal blocks and financial/health questions have ambiguous semantics. This is a source-backed private archive, not a decision that every sensitive field must be retained indefinitely. Current profile projections are not a replacement for snapshots or identity adjudication. Do not infer shared households from parent names or shared phone numbers.
-
-Quantitative dashboard outputs should be derived from approved source-grain facts through reviewed SQL views/RPCs. Preserve raw inputs, calculation version and reconciliation evidence. Do not store mutable copies of aggregate charts as the authoritative data model. Materialized views are optional only after measured performance need and disclosure review.
+Confirmed centre identity/reference; labels are not automatically merged or globally unique.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `label` | `text` | no | — | `none` | Explicit supplied non-personal reference label; no automatic fuzzy identity. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+centres_label_check: CHECK (((length(btrim(label)) >= 1) AND (length(btrim(label)) <= 120)))
+centres_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.children
+
+One explicitly registered person, internal UUID and immutable generated display ID; no name-only matching.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `student_id` | `text` | yes | UK | `GENERATED ALWAYS STORED: upper((id)::text)` | Permanent generated uppercase UUID display representation; not a fabricated source/student numbering scheme. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+children_pkey: PRIMARY KEY (id)
+children_student_id_key: UNIQUE (student_id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.cohort_memberships
+
+Unique cohort/child membership with verified centre/shift/episode linkage.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | composite UK, PK | `gen_random_uuid()` | Stable technical UUID. |
+| `cohort_id` | `uuid` | no | composite UK, FK | `none` | Explicit Morarji cohort FK. |
+| `child_id` | `uuid` | no | composite UK, FK | `none` | Registered child reference; never a name-derived identity. |
+| `centre_id` | `uuid` | no | FK, composite UK | `none` | Verified centre scope; not inferred residence. |
+| `shift_code` | `text` | no | FK | `none` | Morning/Evening controlled applicability. |
+| `enrolment_id` | `uuid` | no | FK | `none` | Verified historical episode; composite FK preserves child/centre/shift context. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+cohort_memberships_cohort_id_child_id_key: UNIQUE (cohort_id, child_id)
+cohort_memberships_cohort_id_fkey: FOREIGN KEY (cohort_id) REFERENCES mass_core.programme_cohorts(id) ON DELETE RESTRICT
+cohort_memberships_enrolment_id_child_id_centre_id_shift_c_fkey: FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT
+cohort_memberships_id_centre_id_key: UNIQUE (id, centre_id)
+cohort_memberships_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.enrolments
+
+Explicit dated child/centre/grade/shift episode; historical context cannot be overwritten.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | composite UK, PK | `gen_random_uuid()` | Stable technical UUID. |
+| `child_id` | `uuid` | no | composite UK, FK | `none` | Registered child reference; never a name-derived identity. |
+| `centre_id` | `uuid` | no | FK, composite UK | `none` | Verified centre scope; not inferred residence. |
+| `grade_label` | `text` | no | — | `none` | Controlled grade 1–10 for this episode. |
+| `shift_code` | `text` | no | composite UK | `none` | Morning/Evening controlled applicability. |
+| `starts_on` | `date` | no | composite UK | `none` | Explicit verified business start date; no source year/date fill. |
+| `ends_before` | `date` | yes | — | `none` | Exclusive interval end; do not assume frontend exit-date equivalence. |
+| `status_code` | `text` | no | — | `none` | Active/CAC dropout/Left programme vocabulary; no automatic dropout classification. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+enrolments_centre_id_fkey: FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT
+enrolments_check: CHECK ((ends_before > starts_on))
+enrolments_check1: CHECK (((status_code = 'Active'::text) OR (ends_before IS NOT NULL)))
+enrolments_child_id_centre_id_shift_code_starts_on_key: UNIQUE (child_id, centre_id, shift_code, starts_on)
+enrolments_child_id_fkey: FOREIGN KEY (child_id) REFERENCES mass_core.children(id) ON DELETE RESTRICT
+enrolments_grade_label_check: CHECK ((grade_label = ANY (ARRAY['1'::text, '2'::text, '3'::text, '4'::text, '5'::text, '6'::text, '7'::text, '8'::text, '9'::text, '10'::text])))
+enrolments_id_child_id_centre_id_shift_code_key: UNIQUE (id, child_id, centre_id, shift_code)
+enrolments_pkey: PRIMARY KEY (id)
+enrolments_shift_code_check: CHECK ((shift_code = ANY (ARRAY['Morning'::text, 'Evening'::text])))
+enrolments_status_code_check: CHECK ((status_code = ANY (ARRAY['Active'::text, 'CAC dropout'::text, 'Left programme'::text])))
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.morarji_outcomes
+
+Nullable applied/attended/passed and supplied school text only; no additional outcomes inferred.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `membership_id` | `uuid` | no | FK, UK | `none` | Verified cohort membership FK. |
+| `centre_id` | `uuid` | no | FK | `none` | Verified centre scope; not inferred residence. |
+| `applied` | `boolean` | yes | — | `none` | Nullable supplied indicator; NULL remains unknown. |
+| `attended` | `boolean` | yes | — | `none` | Nullable supplied indicator; training/exam context is not inferred. |
+| `passed` | `boolean` | yes | — | `none` | Nullable supplied indicator; no extra outcome/status inferred. |
+| `school_name` | `text` | yes | — | `none` | Supplied school observation only; not inferred admission or award. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+morarji_outcomes_membership_id_centre_id_fkey: FOREIGN KEY (membership_id, centre_id) REFERENCES mass_core.cohort_memberships(id, centre_id) ON DELETE RESTRICT
+morarji_outcomes_membership_id_key: UNIQUE (membership_id)
+morarji_outcomes_pkey: PRIMARY KEY (id)
+morarji_outcomes_school_name_check: CHECK ((length(school_name) <= 160))
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.private_child_profiles
+
+Minimal restricted name, controlled gender and nullable Class-10 result projection; no household/contact data.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `child_id` | `uuid` | no | FK, UK | `none` | Registered child reference; never a name-derived identity. |
+| `full_name` | `text` | no | — | `none` | Minimal private display identity, not an automatic identity key. |
+| `gender_code` | `text` | yes | — | `none` | Girl/Boy/unknown; no invented controlled options. |
+| `class10_board_passed` | `boolean` | yes | — | `none` | Private Yes/No/unknown projection; live correction/year/history contract still pending. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+private_child_profiles_child_id_fkey: FOREIGN KEY (child_id) REFERENCES mass_core.children(id) ON DELETE RESTRICT
+private_child_profiles_child_id_key: UNIQUE (child_id)
+private_child_profiles_full_name_check: CHECK (((length(btrim(full_name)) >= 1) AND (length(btrim(full_name)) <= 160)))
+private_child_profiles_gender_code_check: CHECK ((gender_code = ANY (ARRAY['Girl'::text, 'Boy'::text])))
+private_child_profiles_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.programme_cohorts
+
+Explicit Morarji cohort reference in the current scope; no inferred year or other programme activation.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `label` | `text` | no | — | `none` | Explicit supplied non-personal reference label; no automatic fuzzy identity. |
+| `academic_year_id` | `uuid` | yes | FK | `none` | Explicit academic-year FK; unknown historical years are not inferred. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+programme_cohorts_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES mass_core.academic_years(id) ON DELETE RESTRICT
+programme_cohorts_label_check: CHECK (((length(btrim(label)) >= 1) AND (length(btrim(label)) <= 120)))
+programme_cohorts_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.user_scope_grants
+
+Verified, server-controlled, time-bounded per-centre business role/private-profile grant; no real grants seeded.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `user_id` | `uuid` | no | composite UK, FK | `none` | Verified managed Auth principal; role labels alone never establish this link. |
+| `centre_id` | `uuid` | no | FK, composite UK | `none` | Verified centre scope; not inferred residence. |
+| `role_code` | `text` | no | composite UK | `none` | Leadership/Teacher/Cluster Officer; server-controlled grant only. |
+| `starts_at` | `timestamp with time zone` | no | composite UK | `none` | Explicit grant validity start. |
+| `ends_at` | `timestamp with time zone` | yes | — | `none` | Optional exclusive grant end; no null/global centre scope. |
+| `verified_by` | `uuid` | no | FK | `none` | Authorized verifier Auth principal reference; no actual person inferred. |
+| `verified_at` | `timestamp with time zone` | no | — | `none` | Explicit verification timestamp; actual evidence/authority required before real use. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+| `can_read_profiles` | `boolean` | no | — | `false` | Explicit additional profile-read capability; Leadership still cannot read profiles. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+user_scope_grants_centre_id_fkey: FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT
+user_scope_grants_check: CHECK ((ends_at > starts_at))
+user_scope_grants_pkey: PRIMARY KEY (id)
+user_scope_grants_role_code_check: CHECK ((role_code = ANY (ARRAY['Leadership'::text, 'Teacher'::text, 'Cluster Officer'::text])))
+user_scope_grants_user_id_centre_id_role_code_starts_at_key: UNIQUE (user_id, centre_id, role_code, starts_at)
+user_scope_grants_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE RESTRICT
+user_scope_grants_verified_by_fkey: FOREIGN KEY (verified_by) REFERENCES auth.users(id) ON DELETE RESTRICT
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_foundation.audit_events
+
+Append-only minimized operation/revision history; core Auth subject is optional and separately attributed.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `actor_database_principal` | `name` | no | — | `none` | Actual database login/session principal. |
+| `actor_database_role` | `name` | no | — | `none` | Actual active database role. |
+| `entity_type` | `text` | no | — | `none` | Allowlisted durable audit target type. |
+| `entity_id` | `uuid` | no | — | `none` | Durable audit UUID locator; intentionally not a polymorphic business FK. |
+| `operation` | `text` | no | — | `none` | INSERT/UPDATE only in current audit scope. |
+| `changed_at` | `timestamp with time zone` | no | — | `clock_timestamp()` | Actual operation time. |
+| `change_metadata` | `jsonb` | no | — | `none` | Revision-only JSON object; no personal values, free-text notes or before/after dump. |
+| `batch_id` | `uuid` | yes | FK | `none` | Technical batch association; optional for non-import audit events. |
+| `actor_user_id` | `uuid` | yes | FK | `none` | Optional trusted core request Auth UID; no fabricated historical actor. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+audit_events_actor_user_id_fkey: FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE RESTRICT
+audit_events_batch_id_fkey: FOREIGN KEY (batch_id) REFERENCES mass_foundation.import_batches(id) ON DELETE RESTRICT
+audit_events_change_metadata_check: CHECK (((jsonb_typeof(change_metadata) = 'object'::text) AND (change_metadata ? 'revision'::text) AND ((change_metadata - 'revision'::text) = '{}'::jsonb) AND (jsonb_typeof((change_metadata -> 'revision'::text)) = 'number'::text) AND ((change_metadata ->> 'revision'::text) ~ '^[1-9][0-9]*$'::text)))
+audit_events_entity_type_check: CHECK ((entity_type = ANY (ARRAY['source_files'::text, 'source_sheets'::text, 'import_batches'::text, 'source_rows'::text, 'import_exceptions'::text, 'core.centres'::text, 'core.user_scope_grants'::text, 'core.children'::text, 'core.private_child_profiles'::text, 'core.enrolments'::text, 'core.academic_years'::text, 'core.assessment_periods'::text, 'core.cac_sessions'::text, 'core.attendance_records'::text, 'core.assessment_definitions'::text, 'core.assessment_results'::text, 'core.activity_events'::text, 'core.activity_participation'::text, 'core.programme_cohorts'::text, 'core.cohort_memberships'::text, 'core.morarji_outcomes'::text])))
+audit_events_operation_check: CHECK ((operation = ANY (ARRAY['INSERT'::text, 'UPDATE'::text])))
+audit_events_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_foundation.import_batches
+
+Technical execution state, progress, counts and optimistic revision; not a business-data approval.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `mapping_version` | `text` | no | — | `none` | Reviewed mapping token. |
+| `extractor_version` | `text` | no | — | `none` | Extractor implementation token. |
+| `state` | `text` | no | — | `'staged'::text` | Technical execution state; see exact transition trigger in migration 3. |
+| `created_at` | `timestamp with time zone` | no | — | `clock_timestamp()` | Actual server creation time. |
+| `started_at` | `timestamp with time zone` | yes | — | `none` | Server time when run enters running; NULL until then. |
+| `completed_at` | `timestamp with time zone` | yes | — | `none` | Server terminal-state time. |
+| `checkpoint_position` | `bigint` | yes | — | `none` | Nonnegative monotonic numeric checkpoint, not arbitrary personal JSON. |
+| `extracted_count` | `bigint` | no | — | `0` | Extracted source-occurrence count. |
+| `accepted_count` | `bigint` | no | — | `0` | Accepted occurrence category, not a unique-child count or import permission. |
+| `quarantined_count` | `bigint` | no | — | `0` | Held occurrence category. |
+| `excluded_count` | `bigint` | no | — | `0` | Excluded occurrence category; issue flags may overlap and are separate. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+import_batches_accepted_count_check: CHECK ((accepted_count >= 0))
+import_batches_check: CHECK ((((accepted_count + quarantined_count) + excluded_count) <= extracted_count))
+import_batches_check1: CHECK (((state <> 'complete'::text) OR (((accepted_count + quarantined_count) + excluded_count) = extracted_count)))
+import_batches_checkpoint_position_check: CHECK ((checkpoint_position >= 0))
+import_batches_excluded_count_check: CHECK ((excluded_count >= 0))
+import_batches_extracted_count_check: CHECK ((extracted_count >= 0))
+import_batches_extractor_version_check: CHECK ((extractor_version ~ '^[A-Za-z0-9_.-]{1,64}$'::text))
+import_batches_mapping_version_check: CHECK ((mapping_version ~ '^[A-Za-z0-9_.-]{1,64}$'::text))
+import_batches_pkey: PRIMARY KEY (id)
+import_batches_quarantined_count_check: CHECK ((quarantined_count >= 0))
+import_batches_row_version_check: CHECK ((row_version > 0))
+import_batches_state_check: CHECK ((state = ANY (ARRAY['staged'::text, 'validated'::text, 'approved'::text, 'running'::text, 'complete'::text, 'failed'::text])))
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_foundation.import_exceptions
+
+Restricted, allowlisted issue/review metadata; no copied invalid values or free-text personal detail.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `batch_id` | `uuid` | no | FK, composite UK | `none` | Technical batch association; optional for non-import audit events. |
+| `source_row_id` | `uuid` | no | composite UK, FK | `none` | Frozen row occurrence FK, not raw record contents. |
+| `field_ordinal` | `integer` | yes | composite UK | `none` | Optional positive physical field ordinal; NULL-aware issue uniqueness applies. |
+| `reason_code` | `text` | no | composite UK | `none` | Allowlisted non-personal issue category. |
+| `review_state` | `text` | no | — | `'open'::text` | Technical open/resolved/rejected state; terminal closure is guarded. |
+| `resolution_code` | `text` | yes | — | `none` | Allowlisted resolution category; no free-text rationale. |
+| `resolved_by` | `name` | yes | — | `none` | Actual database principal (PostgreSQL name), not an asserted Auth user. |
+| `resolved_at` | `timestamp with time zone` | yes | — | `none` | Actual server review time. |
+| `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+import_exceptions_batch_id_fkey: FOREIGN KEY (batch_id) REFERENCES mass_foundation.import_batches(id) ON DELETE RESTRICT
+import_exceptions_batch_id_source_row_id_field_ordinal_reas_key: UNIQUE NULLS NOT DISTINCT (batch_id, source_row_id, field_ordinal, reason_code)
+import_exceptions_check: CHECK ((((review_state = 'open'::text) AND (resolution_code IS NULL) AND (resolved_by IS NULL) AND (resolved_at IS NULL)) OR ((review_state <> 'open'::text) AND (resolution_code IS NOT NULL) AND (resolved_by IS NOT NULL) AND (resolved_at IS NOT NULL))))
+import_exceptions_field_ordinal_check: CHECK ((field_ordinal > 0))
+import_exceptions_pkey: PRIMARY KEY (id)
+import_exceptions_reason_code_check: CHECK ((reason_code = ANY (ARRAY['missing_reference'::text, 'invalid_format'::text, 'conflicting_metadata'::text, 'duplicate_occurrence'::text, 'unverified_record'::text])))
+import_exceptions_resolution_code_check: CHECK ((resolution_code = ANY (ARRAY['verified_correction'::text, 'excluded'::text, 'not_an_issue'::text])))
+import_exceptions_review_state_check: CHECK ((review_state = ANY (ARRAY['open'::text, 'resolved'::text, 'rejected'::text])))
+import_exceptions_row_version_check: CHECK ((row_version > 0))
+import_exceptions_source_row_id_fkey: FOREIGN KEY (source_row_id) REFERENCES mass_foundation.source_rows(id) ON DELETE RESTRICT
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_foundation.source_files
+
+Immutable source snapshot fingerprint and opaque artifact reference; no filename or source contents.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `original_file_id` | `text` | yes | — | `none` | Known opaque original identifier only; no invented Drive ID. |
+| `sha256` | `text` | no | UK | `none` | Private immutable file fingerprint, not an identity key. |
+| `storage_ref` | `uuid` | no | UK | `none` | Opaque artifact UUID; no public/signed URL or embedded credential. |
+| `source_version` | `text` | yes | — | `none` | Known technical source version token. |
+| `exported_at` | `timestamp with time zone` | yes | — | `none` | Known source export time only. |
+| `received_at` | `timestamp with time zone` | no | — | `clock_timestamp()` | Actual server receipt time, not a fabricated source event. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+source_files_original_file_id_check: CHECK ((original_file_id ~ '^[A-Za-z0-9_-]{1,128}$'::text))
+source_files_pkey: PRIMARY KEY (id)
+source_files_sha256_check: CHECK ((sha256 ~ '^[0-9a-f]{64}$'::text))
+source_files_sha256_key: UNIQUE (sha256)
+source_files_source_version_check: CHECK ((source_version ~ '^[A-Za-z0-9_.-]{1,64}$'::text))
+source_files_storage_ref_key: UNIQUE (storage_ref)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_foundation.source_rows
+
+Immutable physical row occurrence and private fingerprint; not a person identity or raw payload.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `sheet_id` | `uuid` | no | FK, composite UK | `none` | Immutable source sheet occurrence FK. |
+| `first_batch_id` | `uuid` | no | FK | `none` | First extraction context, not rewritten on retries. |
+| `row_number` | `integer` | no | composite UK | `none` | Positive physical row number in frozen source sheet. |
+| `content_hash` | `text` | no | — | `none` | Private row fingerprint; equal hashes do not merge people/occurrences. |
+| `classification` | `text` | no | — | `'candidate'::text` | Technical source classification from the exact CHECK below. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+source_rows_classification_check: CHECK ((classification = ANY (ARRAY['candidate'::text, 'example'::text, 'scaffold'::text, 'summary'::text, 'rejected'::text])))
+source_rows_content_hash_check: CHECK ((content_hash ~ '^[0-9a-f]{64}$'::text))
+source_rows_first_batch_id_fkey: FOREIGN KEY (first_batch_id) REFERENCES mass_foundation.import_batches(id) ON DELETE RESTRICT
+source_rows_pkey: PRIMARY KEY (id)
+source_rows_row_number_check: CHECK ((row_number > 0))
+source_rows_sheet_id_fkey: FOREIGN KEY (sheet_id) REFERENCES mass_foundation.source_sheets(id) ON DELETE RESTRICT
+source_rows_sheet_id_row_number_key: UNIQUE (sheet_id, row_number)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_foundation.source_sheets
+
+Immutable sheet occurrence/ordinal and versioned header reference; no raw header JSON or sheet display name.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `file_id` | `uuid` | no | FK, composite UK | `none` | Immutable source snapshot FK. |
+| `native_sheet_id` | `text` | yes | composite UK | `none` | Known native sheet token, not automatically a Google ID. |
+| `ordinal` | `integer` | no | composite UK | `none` | Positive physical sheet ordinal. |
+| `classification` | `text` | no | — | `'unclassified'::text` | Technical source classification from the exact CHECK below. |
+| `header_version` | `integer` | no | — | `none` | Positive mapping/header definition version; no raw content. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+source_sheets_classification_check: CHECK ((classification = ANY (ARRAY['unclassified'::text, 'input'::text, 'master'::text, 'helper'::text, 'report'::text, 'template'::text])))
+source_sheets_file_id_fkey: FOREIGN KEY (file_id) REFERENCES mass_foundation.source_files(id) ON DELETE RESTRICT
+source_sheets_file_id_native_sheet_id_key: UNIQUE (file_id, native_sheet_id)
+source_sheets_file_id_ordinal_key: UNIQUE (file_id, ordinal)
+source_sheets_header_version_check: CHECK ((header_version > 0))
+source_sheets_native_sheet_id_check: CHECK ((native_sheet_id ~ '^[A-Za-z0-9_-]{1,64}$'::text))
+source_sheets_ordinal_check: CHECK ((ordinal > 0))
+source_sheets_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## Important implementation boundaries
+
+Current-process scalar corrections retain attributable revision metadata, not a recoverable business-value archive. Profile corrections, general clears/deletes, bulk/offline workflows, historical provenance promotion, friendly-ID aliases and deferred modules require follow-up contracts. Exit-date mapping, calendar authority/H, Q/F aliases, assessment precision and historical ambiguities remain unresolved to their recorded extent. See [Phase 3C deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No personal record, retention duration, real grant or historical source correction is approved by this catalog.

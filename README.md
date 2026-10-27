@@ -1,6 +1,32 @@
-# MASS CAC frontend — complete standalone source
+# MASS CAC Dashboard — frontend and local database
 
 This package preserves the current frontend implementation, design, logo, styling, chart references and interactions. The application is vanilla JavaScript with HTML and CSS, **not React**; there are no React components or React dependencies to omit. No framework migration has been performed.
+
+The repository also contains **15 SQL migrations implementing 23 local database relations** (six foundation and 17 core), isolated synthetic tests, and current schema/security documentation. The frontend is still a standalone prototype; it has not been connected to Supabase. No hosted database deployment is authorized or performed by the local commands below.
+
+## Database development and tests
+
+Prerequisites: a working Docker daemon, Bash and Python 3 available as `python`. Images are digest-pinned; the first run may download public development images. No new npm dependency or Supabase credentials are required.
+
+```sh
+bash tests/foundation/run-local.sh
+MASS_TEST_REST=1 bash tests/core/run-local.sh
+bash tests/schema/run-local.sh
+```
+
+The first suite applies the original six foundation migrations. The second applies all 15 and runs synthetic core SQL/concurrency tests plus a real PostgREST HTTP suite with ephemeral signed test JWTs. The third checks the complete dictionary, ERDs, policy/ACL inventory and migration checksums against an independently migrated local catalog. All runners create disposable databases, use temporary storage, accept no hosted database URL and remove their containers on exit. SQL-only core testing (`MASS_TEST_REST=0`) does not verify API behavior.
+
+The existing behavioral suite has **207 checks**: 87 foundation, 102 core SQL/concurrency/attribution and 18 signed-token API checks. Managed Supabase Auth is represented by a test-only stub; these results do **not** verify real signup/login/session refresh or the hosted project. Full local Supabase startup was blocked by an image-registry `Forbidden` response. See [compatibility evidence](docs/PHASE-3C-COMPATIBILITY.md).
+
+- [Implemented dictionary: columns, types, PKs/FKs and constraints](docs/DATABASE-DATA-DICTIONARY.md)
+- [Complete implemented ER diagrams](docs/DATABASE-ERD.md)
+- [Exact implemented security/RLS and grants](docs/DATABASE-SECURITY-IMPLEMENTED.md)
+- [Machine-readable schema and SQL checksums](docs/DATABASE-SCHEMA-INVENTORY.json)
+- [Deferred relations and preserved 43-relation proposal](docs/DATABASE-DEFERRED-RELATIONS.md)
+- [Core implementation handover](docs/PHASE-3B-CORE-HANDOVER.md)
+- [Deployment gates and the approval-dependent apply sequence](docs/PHASE-3C-DEPLOYMENT-READINESS.md)
+
+SQL under `supabase/migrations/` is authoritative and stays in filename order. Never run `tests/core/bootstrap.sql`, test fixtures or local role stubs on hosted Supabase. The frontend source-download ZIP is frontend-only; database migrations/tests are delivered through Git. Changes to SQL require reviewing schema documentation and running `bash tests/schema/run-local.sh --write` followed by the default check; this command still uses only a new local database.
 
 ## Deploy through the existing Vercel project
 
@@ -20,7 +46,7 @@ In that project's Settings, inspect its Git connection and deployment triggers b
 
 The included `vercel.json` specifies no framework, the build command, output directory, and clean URLs. Navigation is in-memory view switching, not browser pathname routing; no SPA fallback rewrite is needed for the existing behavior. Refresh returns to the initial view.
 
-After inspecting existing settings, push a non-production branch such as `migration/frontend` and validate its preview. Check all three role views, filters, charts, forms, browser-local persistence, downloads, mobile navigation, and browser errors. Vercel preview availability and production settings have not been verified from this environment; see [migration findings](docs/MIGRATION.md).
+Only after separately authorizing a preview deployment and inspecting existing settings, push a non-production frontend branch such as `migration/frontend` and validate its preview. During database-only publication phases that prohibit Vercel deployment, a verified skip rule must cover the branch and PR before pushing; branch naming alone does not suppress deployments. Check all three role views, filters, charts, forms, browser-local persistence, downloads, mobile navigation, and browser errors. Vercel preview availability and production settings have not been verified from this environment; see [migration findings](docs/MIGRATION.md).
 
 Use Node.js 24.x for a consistent runtime. The supplied package supports Node.js 20 or newer, with no third-party runtime or build dependencies. `npm ci` installs no packages. No environment variables or API keys are required, so no `.env.example` is needed. `PORT` optionally changes the local development server port only.
 
@@ -56,12 +82,12 @@ The outer ZIP also includes a ready-built `dist/` folder. You can serve it with 
 
 This is a frontend prototype. It uses fictional sample records generated in `src/data.js` and saves edits in this browser’s localStorage (`mass-cac-companion-v1`). It does not depend on ChatGPT hosting and contains no access tokens, server secrets or private MASS records. Records previously entered on a different website/origin are not carried into this archive or transferred to a new Vercel domain.
 
-The role selector is a preview, not authentication or a permission boundary. Live data, database integration, secure role/centre access, cross-device persistence, audit history and server pagination require a backend. Pagination in this version is client-side. No Supabase backend or credentials are included.
+The role selector is a preview, not authentication or a permission boundary. Live data, database integration, secure role/centre access, cross-device persistence, audit history and server pagination require a backend. Pagination in this version is client-side. Versioned local database migrations and tests are included, but the frontend has no live Supabase connection or credentials.
 
 The demo operating date remains fixed at 20 October 2026, as in the source; it has not been switched to today. Existing calculations and business-rule caveats are preserved. Deployment readiness here means the frontend can be built and hosted independently, not that it is ready to store real student data.
 
 ## Validation
 
-`npm run check` checks JavaScript syntax; it is not a type checker or linter. No type-check, lint, or automated test suite is configured in the supplied project. Migration verification additionally exercised the actual local server in Chromium; results and remaining deployment checks are recorded in [docs/MIGRATION.md](docs/MIGRATION.md).
+`npm run check` checks JavaScript syntax; it is not a type checker or linter. No frontend type-check or lint suite is configured. The separate automated database suites are described above. Migration verification additionally exercised the actual local server in Chromium; results and remaining deployment checks are recorded in [docs/MIGRATION.md](docs/MIGRATION.md).
 
 Keep `dist/`, `node_modules/`, `.vercel/`, and environment files out of Git. The build intentionally generates a publicly downloadable source archive to preserve the existing prototype feature. Never put credentials or private data in `src/`, `scripts/`, `docs/`, or other archive inputs.

@@ -1,0 +1,4272 @@
+{
+  "default_acls": [
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner}",
+      "role": "mass_core_owner",
+      "schema": null,
+      "type": "f"
+    }
+  ],
+  "functions": [
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_child uuid, p_centre uuid, p_grade text, p_shift text, p_start date, p_status text",
+      "name": "add_enrolment",
+      "returns": "uuid",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_enrolment uuid, p_cohort uuid",
+      "name": "add_morarji_member",
+      "returns": "uuid",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_from date, p_until date",
+      "name": "attendance_summary",
+      "returns": "TABLE(present_count bigint, absent_count bigint, leave_count bigint, excluded_count bigint, percentage numeric)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_id uuid, p_expected bigint, p_ends_before date, p_status text",
+      "name": "close_enrolment",
+      "returns": "bigint",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_id uuid, p_centre uuid, p_shift text, p_date date, p_name text",
+      "name": "create_activity",
+      "returns": "uuid",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_on date",
+      "name": "list_students",
+      "returns": "TABLE(child_id uuid, student_id text, enrolment_id uuid, grade_label text, shift_code text, full_name text, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_enrolment uuid, p_definition uuid, p_date date, p_score numeric, p_expected bigint",
+      "name": "record_assessment",
+      "returns": "uuid",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_enrolment uuid, p_date date, p_code text, p_expected bigint",
+      "name": "record_attendance",
+      "returns": "uuid",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_member uuid, p_applied boolean, p_attended boolean, p_passed boolean, p_school text, p_expected bigint",
+      "name": "record_morarji",
+      "returns": "uuid",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_enrolment uuid, p_event uuid, p_participated boolean, p_expected bigint",
+      "name": "record_participation",
+      "returns": "uuid",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_grade text, p_shift text, p_start date, p_name text, p_gender text",
+      "name": "register_student",
+      "returns": "TABLE(child_id uuid, student_id text, enrolment_id uuid)",
+      "schema": "mass_api",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "c uuid",
+      "name": "can_read",
+      "returns": "boolean",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "c uuid",
+      "name": "can_read_child",
+      "returns": "boolean",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "c uuid",
+      "name": "can_read_profile",
+      "returns": "boolean",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "c uuid",
+      "name": "can_write",
+      "returns": "boolean",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "c uuid",
+      "name": "can_write_child",
+      "returns": "boolean",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner}",
+      "arguments": "actual bigint, expected bigint",
+      "name": "expected_version",
+      "returns": "void",
+      "schema": "mass_core",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner}",
+      "arguments": "",
+      "name": "guard_record",
+      "returns": "trigger",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p uuid, d date",
+      "name": "period_contains",
+      "returns": "boolean",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner}",
+      "arguments": "",
+      "name": "record_audit",
+      "returns": "trigger",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner}",
+      "arguments": "e uuid",
+      "name": "writable_enrolment",
+      "returns": "mass_core.enrolments",
+      "schema": "mass_core",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=X/mass_foundation_owner}",
+      "arguments": "",
+      "name": "guard_batch",
+      "returns": "trigger",
+      "schema": "mass_foundation",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=X/mass_foundation_owner}",
+      "arguments": "",
+      "name": "guard_exception",
+      "returns": "trigger",
+      "schema": "mass_foundation",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=X/mass_foundation_owner}",
+      "arguments": "",
+      "name": "record_audit",
+      "returns": "trigger",
+      "schema": "mass_foundation",
+      "security_definer": true,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=X/mass_foundation_owner}",
+      "arguments": "",
+      "name": "reject_mutation",
+      "returns": "trigger",
+      "schema": "mass_foundation",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    }
+  ],
+  "migrations": [
+    {
+      "file": "supabase/migrations/202610270001_source_files.sql",
+      "sha256": "fd3d74ab1fcd556e41ab83326916a895eb874eedebbe4908e2cbfc90e73de977"
+    },
+    {
+      "file": "supabase/migrations/202610270002_source_sheets.sql",
+      "sha256": "297765933373fefd4e64d2fb8c5116815b6cd7c09913b6f7433b32adbb5dbb0c"
+    },
+    {
+      "file": "supabase/migrations/202610270003_import_batches.sql",
+      "sha256": "c674bda8085735568b55d065f498aba383947cdc055a74af1013503d097dc22d"
+    },
+    {
+      "file": "supabase/migrations/202610270004_source_rows.sql",
+      "sha256": "9be157dfe1c46c896f2521651d1b4fbaac023a95c9a50053f19a1bd63fdba2e7"
+    },
+    {
+      "file": "supabase/migrations/202610270005_import_exceptions.sql",
+      "sha256": "3d3f64d20208483ec430c7f599bb2df53468d944e8996016340f20e975a1c4ac"
+    },
+    {
+      "file": "supabase/migrations/202610270006_audit_events.sql",
+      "sha256": "4f0a1e64e551ef7dcc3d717af26c6389aa5911c50250e2c5e96fd5926aa17ff9"
+    },
+    {
+      "file": "supabase/migrations/202610270007_auth_scope.sql",
+      "sha256": "6ac5ed9288da9633237119e5f46678ef86faa35e5b24aef350e840c15b3a1f17"
+    },
+    {
+      "file": "supabase/migrations/202610270008_identity_history.sql",
+      "sha256": "bd4faa33b92f6221978d98900ebba9a70d32e5c3ec4ff20dc685b0395a24c8ae"
+    },
+    {
+      "file": "supabase/migrations/202610270009_academic_periods.sql",
+      "sha256": "a533b6712559832df123f443d62ae05263e9360075c1334ff8ca853e7acee8bd"
+    },
+    {
+      "file": "supabase/migrations/202610270010_attendance.sql",
+      "sha256": "51f4e95ee98ea6ff44ecd5e1fad574513c83d56c5d56afe757619995a73751ce"
+    },
+    {
+      "file": "supabase/migrations/202610270011_assessments.sql",
+      "sha256": "c5bf3dee2945800b98776c84317a4dbcc8b826958f996f61eabd87f8e24c06ce"
+    },
+    {
+      "file": "supabase/migrations/202610270012_named_activities.sql",
+      "sha256": "4253d9fa14cf547f0b1f04927f9482993e813331e2237c4768f1c4cb3f49f76b"
+    },
+    {
+      "file": "supabase/migrations/202610270013_morarji.sql",
+      "sha256": "669fff72ac688be634c457404562960a526a52ed43cb3202c2329f6d7deaf333"
+    },
+    {
+      "file": "supabase/migrations/202610270014_core_security_audit.sql",
+      "sha256": "577ae8fe557f0fe10ff0adc7eff09eb3ac120ac324282a1440484adbbfb8d69d"
+    },
+    {
+      "file": "supabase/migrations/202610270015_core_api.sql",
+      "sha256": "5a751e609b1972cdd6f5b78da215103e3924435f162bbe4317b50f2e3af1bac3"
+    }
+  ],
+  "roles": [
+    {
+      "bypass_rls": false,
+      "create_role": false,
+      "login": false,
+      "name": "mass_core_admin",
+      "superuser": false
+    },
+    {
+      "bypass_rls": false,
+      "create_role": false,
+      "login": false,
+      "name": "mass_core_owner",
+      "superuser": false
+    },
+    {
+      "bypass_rls": false,
+      "create_role": false,
+      "login": false,
+      "name": "mass_foundation_auditor",
+      "superuser": false
+    },
+    {
+      "bypass_rls": false,
+      "create_role": false,
+      "login": false,
+      "name": "mass_foundation_ingestor",
+      "superuser": false
+    },
+    {
+      "bypass_rls": false,
+      "create_role": false,
+      "login": false,
+      "name": "mass_foundation_owner",
+      "superuser": false
+    },
+    {
+      "bypass_rls": false,
+      "create_role": false,
+      "login": false,
+      "name": "mass_foundation_reviewer",
+      "superuser": false
+    }
+  ],
+  "server_version": "17.11 (Debian 17.11-1.pgdg13+2)",
+  "tables": [
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "starts_on",
+          "nullable": false,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": "((starts_on + '1 year'::interval))::date",
+          "generated": "s",
+          "name": "ends_before",
+          "nullable": true,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "academic_years_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "starts_on"
+          ],
+          "definition": "CHECK (((EXTRACT(month FROM starts_on) = (4)::numeric) AND (EXTRACT(day FROM starts_on) = (1)::numeric)))",
+          "name": "academic_years_starts_on_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "starts_on"
+          ],
+          "definition": "UNIQUE (starts_on)",
+          "name": "academic_years_starts_on_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX academic_years_pkey ON mass_core.academic_years USING btree (id)",
+        "CREATE UNIQUE INDEX academic_years_starts_on_key ON mass_core.academic_years USING btree (starts_on)"
+      ],
+      "name": "academic_years",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "admin_access",
+          "roles": [
+            "mass_core_admin"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() IS NOT NULL)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.academic_years FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.academic_years FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.academic_years FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "shift_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "activity_date",
+          "nullable": false,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "name",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "centre_id"
+          ],
+          "definition": "FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT",
+          "name": "activity_events_centre_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "centres",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "id",
+            "centre_id",
+            "shift_code"
+          ],
+          "definition": "UNIQUE (id, centre_id, shift_code)",
+          "name": "activity_events_id_centre_id_shift_code_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "name"
+          ],
+          "definition": "CHECK (((length(btrim(name)) >= 1) AND (length(btrim(name)) <= 160)))",
+          "name": "activity_events_name_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "activity_events_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "shift_code"
+          ],
+          "definition": "CHECK ((shift_code = ANY (ARRAY['Morning'::text, 'Evening'::text])))",
+          "name": "activity_events_shift_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX activity_events_id_centre_id_shift_code_key ON mass_core.activity_events USING btree (id, centre_id, shift_code)",
+        "CREATE UNIQUE INDEX activity_events_pkey ON mass_core.activity_events USING btree (id)"
+      ],
+      "name": "activity_events",
+      "policies": [
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.activity_events FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.activity_events FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.activity_events FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "event_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "child_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "shift_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "enrolment_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "participated",
+          "nullable": true,
+          "type": "boolean"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "enrolment_id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "definition": "FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT",
+          "name": "activity_participation_enrolment_id_child_id_centre_id_shi_fkey",
+          "ref_columns": [
+            "id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "enrolments",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "event_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "definition": "FOREIGN KEY (event_id, centre_id, shift_code) REFERENCES mass_core.activity_events(id, centre_id, shift_code) ON DELETE RESTRICT",
+          "name": "activity_participation_event_id_centre_id_shift_code_fkey",
+          "ref_columns": [
+            "id",
+            "centre_id",
+            "shift_code"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "activity_events",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "event_id",
+            "child_id"
+          ],
+          "definition": "UNIQUE (event_id, child_id)",
+          "name": "activity_participation_event_id_child_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "activity_participation_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE INDEX activity_participation_enrolment ON mass_core.activity_participation USING btree (enrolment_id)",
+        "CREATE UNIQUE INDEX activity_participation_event_id_child_id_key ON mass_core.activity_participation USING btree (event_id, child_id)",
+        "CREATE UNIQUE INDEX activity_participation_pkey ON mass_core.activity_participation USING btree (id)",
+        "CREATE INDEX activity_participation_scope ON mass_core.activity_participation USING btree (centre_id)"
+      ],
+      "name": "activity_participation",
+      "policies": [
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.activity_participation FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.activity_participation FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.activity_participation FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "period_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": "25",
+          "generated": "",
+          "name": "max_score",
+          "nullable": false,
+          "type": "numeric"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "max_score"
+          ],
+          "definition": "CHECK ((max_score = (25)::numeric))",
+          "name": "assessment_definitions_max_score_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "period_id"
+          ],
+          "definition": "FOREIGN KEY (period_id) REFERENCES mass_core.assessment_periods(id) ON DELETE RESTRICT",
+          "name": "assessment_definitions_period_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "assessment_periods",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "period_id"
+          ],
+          "definition": "UNIQUE (period_id)",
+          "name": "assessment_definitions_period_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "assessment_definitions_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX assessment_definitions_period_id_key ON mass_core.assessment_definitions USING btree (period_id)",
+        "CREATE UNIQUE INDEX assessment_definitions_pkey ON mass_core.assessment_definitions USING btree (id)"
+      ],
+      "name": "assessment_definitions",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "admin_access",
+          "roles": [
+            "mass_core_admin"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() IS NOT NULL)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.assessment_definitions FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.assessment_definitions FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.assessment_definitions FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "academic_year_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "quarter",
+          "nullable": false,
+          "type": "smallint"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "academic_year_id"
+          ],
+          "definition": "FOREIGN KEY (academic_year_id) REFERENCES mass_core.academic_years(id) ON DELETE RESTRICT",
+          "name": "assessment_periods_academic_year_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "academic_years",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "academic_year_id",
+            "quarter"
+          ],
+          "definition": "UNIQUE (academic_year_id, quarter)",
+          "name": "assessment_periods_academic_year_id_quarter_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "assessment_periods_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "quarter"
+          ],
+          "definition": "CHECK (((quarter >= 1) AND (quarter <= 4)))",
+          "name": "assessment_periods_quarter_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX assessment_periods_academic_year_id_quarter_key ON mass_core.assessment_periods USING btree (academic_year_id, quarter)",
+        "CREATE UNIQUE INDEX assessment_periods_pkey ON mass_core.assessment_periods USING btree (id)"
+      ],
+      "name": "assessment_periods",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "admin_access",
+          "roles": [
+            "mass_core_admin"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() IS NOT NULL)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.assessment_periods FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.assessment_periods FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.assessment_periods FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "child_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "shift_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "enrolment_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "definition_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "assessed_on",
+          "nullable": false,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "score",
+          "nullable": false,
+          "type": "numeric"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "child_id",
+            "definition_id"
+          ],
+          "definition": "UNIQUE (child_id, definition_id)",
+          "name": "assessment_results_child_id_definition_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "definition_id"
+          ],
+          "definition": "FOREIGN KEY (definition_id) REFERENCES mass_core.assessment_definitions(id) ON DELETE RESTRICT",
+          "name": "assessment_results_definition_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "assessment_definitions",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "enrolment_id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "definition": "FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT",
+          "name": "assessment_results_enrolment_id_child_id_centre_id_shift_c_fkey",
+          "ref_columns": [
+            "id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "enrolments",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "assessment_results_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "score"
+          ],
+          "definition": "CHECK (((score >= (0)::numeric) AND (score <= (25)::numeric)))",
+          "name": "assessment_results_score_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE INDEX assessment_result_definition ON mass_core.assessment_results USING btree (definition_id)",
+        "CREATE INDEX assessment_result_enrolment ON mass_core.assessment_results USING btree (enrolment_id)",
+        "CREATE INDEX assessment_result_scope ON mass_core.assessment_results USING btree (centre_id)",
+        "CREATE UNIQUE INDEX assessment_results_child_id_definition_id_key ON mass_core.assessment_results USING btree (child_id, definition_id)",
+        "CREATE UNIQUE INDEX assessment_results_pkey ON mass_core.assessment_results USING btree (id)"
+      ],
+      "name": "assessment_results",
+      "policies": [
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.assessment_results FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.assessment_results FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.assessment_results FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "meaning",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "code"
+          ],
+          "definition": "CHECK ((code = ANY (ARRAY['P'::text, 'A'::text, 'L'::text, 'WO'::text, 'MM'::text])))",
+          "name": "attendance_codes_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "code"
+          ],
+          "definition": "PRIMARY KEY (code)",
+          "name": "attendance_codes_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX attendance_codes_pkey ON mass_core.attendance_codes USING btree (code)"
+      ],
+      "name": "attendance_codes",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() IS NOT NULL)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.attendance_codes FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.attendance_codes FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "child_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "shift_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "enrolment_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "attendance_date",
+          "nullable": false,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "child_id",
+            "centre_id",
+            "shift_code",
+            "attendance_date"
+          ],
+          "definition": "UNIQUE (child_id, centre_id, shift_code, attendance_date)",
+          "name": "attendance_records_child_id_centre_id_shift_code_attendance_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "code"
+          ],
+          "definition": "FOREIGN KEY (code) REFERENCES mass_core.attendance_codes(code) ON DELETE RESTRICT",
+          "name": "attendance_records_code_fkey",
+          "ref_columns": [
+            "code"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "attendance_codes",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "enrolment_id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "definition": "FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT",
+          "name": "attendance_records_enrolment_id_child_id_centre_id_shift_c_fkey",
+          "ref_columns": [
+            "id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "enrolments",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "attendance_records_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE INDEX attendance_enrolment ON mass_core.attendance_records USING btree (enrolment_id)",
+        "CREATE UNIQUE INDEX attendance_records_child_id_centre_id_shift_code_attendance_key ON mass_core.attendance_records USING btree (child_id, centre_id, shift_code, attendance_date)",
+        "CREATE UNIQUE INDEX attendance_records_pkey ON mass_core.attendance_records USING btree (id)",
+        "CREATE INDEX attendance_scope_date ON mass_core.attendance_records USING btree (centre_id, attendance_date)"
+      ],
+      "name": "attendance_records",
+      "policies": [
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.attendance_records FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.attendance_records FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.attendance_records FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "shift_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "session_date",
+          "nullable": false,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "is_scheduled",
+          "nullable": false,
+          "type": "boolean"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "confirmation_ref",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "centre_id"
+          ],
+          "definition": "FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT",
+          "name": "cac_sessions_centre_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "centres",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "centre_id",
+            "shift_code",
+            "session_date"
+          ],
+          "definition": "UNIQUE (centre_id, shift_code, session_date)",
+          "name": "cac_sessions_centre_id_shift_code_session_date_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "cac_sessions_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "shift_code"
+          ],
+          "definition": "CHECK ((shift_code = ANY (ARRAY['Morning'::text, 'Evening'::text])))",
+          "name": "cac_sessions_shift_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX cac_sessions_centre_id_shift_code_session_date_key ON mass_core.cac_sessions USING btree (centre_id, shift_code, session_date)",
+        "CREATE UNIQUE INDEX cac_sessions_pkey ON mass_core.cac_sessions USING btree (id)"
+      ],
+      "name": "cac_sessions",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "admin_access",
+          "roles": [
+            "mass_core_admin"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.cac_sessions FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.cac_sessions FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.cac_sessions FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "label",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "label"
+          ],
+          "definition": "CHECK (((length(btrim(label)) >= 1) AND (length(btrim(label)) <= 120)))",
+          "name": "centres_label_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "centres_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX centres_pkey ON mass_core.centres USING btree (id)"
+      ],
+      "name": "centres",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "admin_access",
+          "roles": [
+            "mass_core_admin"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.centres FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.centres FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.centres FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": "upper((id)::text)",
+          "generated": "s",
+          "name": "student_id",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "children_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "student_id"
+          ],
+          "definition": "UNIQUE (student_id)",
+          "name": "children_student_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX children_pkey ON mass_core.children USING btree (id)",
+        "CREATE UNIQUE INDEX children_student_id_key ON mass_core.children USING btree (student_id)"
+      ],
+      "name": "children",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read_child(id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.children FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.children FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.children FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "cohort_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "child_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "shift_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "enrolment_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "cohort_id",
+            "child_id"
+          ],
+          "definition": "UNIQUE (cohort_id, child_id)",
+          "name": "cohort_memberships_cohort_id_child_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "cohort_id"
+          ],
+          "definition": "FOREIGN KEY (cohort_id) REFERENCES mass_core.programme_cohorts(id) ON DELETE RESTRICT",
+          "name": "cohort_memberships_cohort_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "programme_cohorts",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "enrolment_id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "definition": "FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT",
+          "name": "cohort_memberships_enrolment_id_child_id_centre_id_shift_c_fkey",
+          "ref_columns": [
+            "id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "enrolments",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "id",
+            "centre_id"
+          ],
+          "definition": "UNIQUE (id, centre_id)",
+          "name": "cohort_memberships_id_centre_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "cohort_memberships_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE INDEX cohort_membership_enrolment ON mass_core.cohort_memberships USING btree (enrolment_id)",
+        "CREATE UNIQUE INDEX cohort_memberships_cohort_id_child_id_key ON mass_core.cohort_memberships USING btree (cohort_id, child_id)",
+        "CREATE UNIQUE INDEX cohort_memberships_id_centre_id_key ON mass_core.cohort_memberships USING btree (id, centre_id)",
+        "CREATE UNIQUE INDEX cohort_memberships_pkey ON mass_core.cohort_memberships USING btree (id)"
+      ],
+      "name": "cohort_memberships",
+      "policies": [
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.cohort_memberships FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.cohort_memberships FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.cohort_memberships FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "child_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "grade_label",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "shift_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "starts_on",
+          "nullable": false,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "ends_before",
+          "nullable": true,
+          "type": "date"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "status_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "centre_id"
+          ],
+          "definition": "FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT",
+          "name": "enrolments_centre_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "centres",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "ends_before",
+            "starts_on"
+          ],
+          "definition": "CHECK ((ends_before > starts_on))",
+          "name": "enrolments_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "status_code",
+            "ends_before"
+          ],
+          "definition": "CHECK (((status_code = 'Active'::text) OR (ends_before IS NOT NULL)))",
+          "name": "enrolments_check1",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "child_id",
+            "centre_id",
+            "shift_code",
+            "starts_on"
+          ],
+          "definition": "UNIQUE (child_id, centre_id, shift_code, starts_on)",
+          "name": "enrolments_child_id_centre_id_shift_code_starts_on_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "child_id"
+          ],
+          "definition": "FOREIGN KEY (child_id) REFERENCES mass_core.children(id) ON DELETE RESTRICT",
+          "name": "enrolments_child_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "children",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "grade_label"
+          ],
+          "definition": "CHECK ((grade_label = ANY (ARRAY['1'::text, '2'::text, '3'::text, '4'::text, '5'::text, '6'::text, '7'::text, '8'::text, '9'::text, '10'::text])))",
+          "name": "enrolments_grade_label_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id",
+            "child_id",
+            "centre_id",
+            "shift_code"
+          ],
+          "definition": "UNIQUE (id, child_id, centre_id, shift_code)",
+          "name": "enrolments_id_child_id_centre_id_shift_code_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "enrolments_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "shift_code"
+          ],
+          "definition": "CHECK ((shift_code = ANY (ARRAY['Morning'::text, 'Evening'::text])))",
+          "name": "enrolments_shift_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "status_code"
+          ],
+          "definition": "CHECK ((status_code = ANY (ARRAY['Active'::text, 'CAC dropout'::text, 'Left programme'::text])))",
+          "name": "enrolments_status_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE INDEX enrolments_child ON mass_core.enrolments USING btree (child_id)",
+        "CREATE UNIQUE INDEX enrolments_child_id_centre_id_shift_code_starts_on_key ON mass_core.enrolments USING btree (child_id, centre_id, shift_code, starts_on)",
+        "CREATE UNIQUE INDEX enrolments_id_child_id_centre_id_shift_code_key ON mass_core.enrolments USING btree (id, child_id, centre_id, shift_code)",
+        "CREATE UNIQUE INDEX enrolments_pkey ON mass_core.enrolments USING btree (id)",
+        "CREATE INDEX enrolments_scope ON mass_core.enrolments USING btree (centre_id, child_id, starts_on, ends_before)"
+      ],
+      "name": "enrolments",
+      "policies": [
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.enrolments FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.enrolments FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.enrolments FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "membership_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "applied",
+          "nullable": true,
+          "type": "boolean"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "attended",
+          "nullable": true,
+          "type": "boolean"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "passed",
+          "nullable": true,
+          "type": "boolean"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "school_name",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "membership_id",
+            "centre_id"
+          ],
+          "definition": "FOREIGN KEY (membership_id, centre_id) REFERENCES mass_core.cohort_memberships(id, centre_id) ON DELETE RESTRICT",
+          "name": "morarji_outcomes_membership_id_centre_id_fkey",
+          "ref_columns": [
+            "id",
+            "centre_id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "cohort_memberships",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "membership_id"
+          ],
+          "definition": "UNIQUE (membership_id)",
+          "name": "morarji_outcomes_membership_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "morarji_outcomes_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "school_name"
+          ],
+          "definition": "CHECK ((length(school_name) <= 160))",
+          "name": "morarji_outcomes_school_name_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX morarji_outcomes_membership_id_key ON mass_core.morarji_outcomes USING btree (membership_id)",
+        "CREATE UNIQUE INDEX morarji_outcomes_pkey ON mass_core.morarji_outcomes USING btree (id)",
+        "CREATE INDEX morarji_scope ON mass_core.morarji_outcomes USING btree (centre_id)"
+      ],
+      "name": "morarji_outcomes",
+      "policies": [
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "a",
+          "name": "owner_insert",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "owner_read",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "mass_core.can_write(centre_id)",
+          "command": "w",
+          "name": "owner_update",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "mass_core.can_write(centre_id)"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read(centre_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.morarji_outcomes FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.morarji_outcomes FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.morarji_outcomes FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "child_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "full_name",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "gender_code",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "class10_board_passed",
+          "nullable": true,
+          "type": "boolean"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "child_id"
+          ],
+          "definition": "FOREIGN KEY (child_id) REFERENCES mass_core.children(id) ON DELETE RESTRICT",
+          "name": "private_child_profiles_child_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "children",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "child_id"
+          ],
+          "definition": "UNIQUE (child_id)",
+          "name": "private_child_profiles_child_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "full_name"
+          ],
+          "definition": "CHECK (((length(btrim(full_name)) >= 1) AND (length(btrim(full_name)) <= 160)))",
+          "name": "private_child_profiles_full_name_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "gender_code"
+          ],
+          "definition": "CHECK ((gender_code = ANY (ARRAY['Girl'::text, 'Boy'::text])))",
+          "name": "private_child_profiles_gender_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "private_child_profiles_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX private_child_profiles_child_id_key ON mass_core.private_child_profiles USING btree (child_id)",
+        "CREATE UNIQUE INDEX private_child_profiles_pkey ON mass_core.private_child_profiles USING btree (id)"
+      ],
+      "name": "private_child_profiles",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "mass_core.can_read_profile(child_id)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.private_child_profiles FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.private_child_profiles FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.private_child_profiles FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "label",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "academic_year_id",
+          "nullable": true,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "academic_year_id"
+          ],
+          "definition": "FOREIGN KEY (academic_year_id) REFERENCES mass_core.academic_years(id) ON DELETE RESTRICT",
+          "name": "programme_cohorts_academic_year_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "academic_years",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "label"
+          ],
+          "definition": "CHECK (((length(btrim(label)) >= 1) AND (length(btrim(label)) <= 120)))",
+          "name": "programme_cohorts_label_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "programme_cohorts_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX programme_cohorts_pkey ON mass_core.programme_cohorts USING btree (id)"
+      ],
+      "name": "programme_cohorts",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "admin_access",
+          "roles": [
+            "mass_core_admin"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "scoped_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() IS NOT NULL)"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.programme_cohorts FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.programme_cohorts FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.programme_cohorts FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "user_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "centre_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "role_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "starts_at",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": "{mass_core_admin=w/mass_core_owner}",
+          "default": null,
+          "generated": "",
+          "name": "ends_at",
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "verified_by",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "verified_at",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        },
+        {
+          "acl": null,
+          "default": "false",
+          "generated": "",
+          "name": "can_read_profiles",
+          "nullable": false,
+          "type": "boolean"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "centre_id"
+          ],
+          "definition": "FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT",
+          "name": "user_scope_grants_centre_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_core",
+          "ref_table": "centres",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "ends_at",
+            "starts_at"
+          ],
+          "definition": "CHECK ((ends_at > starts_at))",
+          "name": "user_scope_grants_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "user_scope_grants_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "role_code"
+          ],
+          "definition": "CHECK ((role_code = ANY (ARRAY['Leadership'::text, 'Teacher'::text, 'Cluster Officer'::text])))",
+          "name": "user_scope_grants_role_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "user_id",
+            "centre_id",
+            "role_code",
+            "starts_at"
+          ],
+          "definition": "UNIQUE (user_id, centre_id, role_code, starts_at)",
+          "name": "user_scope_grants_user_id_centre_id_role_code_starts_at_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "user_id"
+          ],
+          "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE RESTRICT",
+          "name": "user_scope_grants_user_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "auth",
+          "ref_table": "users",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "verified_by"
+          ],
+          "definition": "FOREIGN KEY (verified_by) REFERENCES auth.users(id) ON DELETE RESTRICT",
+          "name": "user_scope_grants_verified_by_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "auth",
+          "ref_table": "users",
+          "type": "f"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX user_scope_grants_pkey ON mass_core.user_scope_grants USING btree (id)",
+        "CREATE UNIQUE INDEX user_scope_grants_user_id_centre_id_role_code_starts_at_key ON mass_core.user_scope_grants USING btree (user_id, centre_id, role_code, starts_at)",
+        "CREATE INDEX user_scope_lookup ON mass_core.user_scope_grants USING btree (user_id, centre_id, starts_at, ends_at)"
+      ],
+      "name": "user_scope_grants",
+      "policies": [
+        {
+          "check": "true",
+          "command": "*",
+          "name": "admin_access",
+          "roles": [
+            "mass_core_admin"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "*",
+          "name": "owner_access",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": "true"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_core",
+      "triggers": [
+        "CREATE TRIGGER audit_write AFTER INSERT OR UPDATE ON mass_core.user_scope_grants FOR EACH ROW EXECUTE FUNCTION mass_core.record_audit()",
+        "CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.user_scope_grants FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record()",
+        "CREATE TRIGGER guard_write BEFORE INSERT OR DELETE OR UPDATE ON mass_core.user_scope_grants FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record()"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundation_auditor=r/mass_foundation_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_core_owner=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "actor_database_principal",
+          "nullable": false,
+          "type": "name"
+        },
+        {
+          "acl": "{mass_core_owner=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "actor_database_role",
+          "nullable": false,
+          "type": "name"
+        },
+        {
+          "acl": "{mass_core_owner=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "entity_type",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_core_owner=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "entity_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_core_owner=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "operation",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "clock_timestamp()",
+          "generated": "",
+          "name": "changed_at",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": "{mass_core_owner=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "change_metadata",
+          "nullable": false,
+          "type": "jsonb"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "batch_id",
+          "nullable": true,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_core_owner=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "actor_user_id",
+          "nullable": true,
+          "type": "uuid"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "actor_user_id"
+          ],
+          "definition": "FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE RESTRICT",
+          "name": "audit_events_actor_user_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "auth",
+          "ref_table": "users",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "batch_id"
+          ],
+          "definition": "FOREIGN KEY (batch_id) REFERENCES mass_foundation.import_batches(id) ON DELETE RESTRICT",
+          "name": "audit_events_batch_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_foundation",
+          "ref_table": "import_batches",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "change_metadata"
+          ],
+          "definition": "CHECK (((jsonb_typeof(change_metadata) = 'object'::text) AND (change_metadata ? 'revision'::text) AND ((change_metadata - 'revision'::text) = '{}'::jsonb) AND (jsonb_typeof((change_metadata -> 'revision'::text)) = 'number'::text) AND ((change_metadata ->> 'revision'::text) ~ '^[1-9][0-9]*$'::text)))",
+          "name": "audit_events_change_metadata_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "entity_type"
+          ],
+          "definition": "CHECK ((entity_type = ANY (ARRAY['source_files'::text, 'source_sheets'::text, 'import_batches'::text, 'source_rows'::text, 'import_exceptions'::text, 'core.centres'::text, 'core.user_scope_grants'::text, 'core.children'::text, 'core.private_child_profiles'::text, 'core.enrolments'::text, 'core.academic_years'::text, 'core.assessment_periods'::text, 'core.cac_sessions'::text, 'core.attendance_records'::text, 'core.assessment_definitions'::text, 'core.assessment_results'::text, 'core.activity_events'::text, 'core.activity_participation'::text, 'core.programme_cohorts'::text, 'core.cohort_memberships'::text, 'core.morarji_outcomes'::text])))",
+          "name": "audit_events_entity_type_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "operation"
+          ],
+          "definition": "CHECK ((operation = ANY (ARRAY['INSERT'::text, 'UPDATE'::text])))",
+          "name": "audit_events_operation_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "audit_events_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE INDEX audit_events_batch_idx ON mass_foundation.audit_events USING btree (batch_id)",
+        "CREATE INDEX audit_events_entity_idx ON mass_foundation.audit_events USING btree (entity_type, entity_id, changed_at)",
+        "CREATE UNIQUE INDEX audit_events_pkey ON mass_foundation.audit_events USING btree (id)"
+      ],
+      "name": "audit_events",
+      "policies": [
+        {
+          "check": "true",
+          "command": "a",
+          "name": "audit_events_append",
+          "roles": [
+            "mass_foundation_owner"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "audit_events_read",
+          "roles": [
+            "mass_foundation_auditor"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "a",
+          "name": "core_audit_append",
+          "roles": [
+            "mass_core_owner"
+          ],
+          "using": null
+        }
+      ],
+      "rls": true,
+      "schema": "mass_foundation",
+      "triggers": [
+        "CREATE TRIGGER audit_events_immutable BEFORE DELETE OR UPDATE ON mass_foundation.audit_events FOR EACH ROW EXECUTE FUNCTION mass_foundation.reject_mutation()",
+        "CREATE TRIGGER audit_events_no_truncate BEFORE TRUNCATE ON mass_foundation.audit_events FOR EACH STATEMENT EXECUTE FUNCTION mass_foundation.reject_mutation()"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundation_ingestor=r/mass_foundation_owner,mass_foundation_reviewer=r/mass_foundation_owner,mass_foundation_auditor=r/mass_foundation_owner}",
+      "columns": [
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "mapping_version",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "extractor_version",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=w/mass_foundation_owner}",
+          "default": "'staged'::text",
+          "generated": "",
+          "name": "state",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "clock_timestamp()",
+          "generated": "",
+          "name": "created_at",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "started_at",
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "completed_at",
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=w/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "checkpoint_position",
+          "nullable": true,
+          "type": "bigint"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=w/mass_foundation_owner}",
+          "default": "0",
+          "generated": "",
+          "name": "extracted_count",
+          "nullable": false,
+          "type": "bigint"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=w/mass_foundation_owner}",
+          "default": "0",
+          "generated": "",
+          "name": "accepted_count",
+          "nullable": false,
+          "type": "bigint"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=w/mass_foundation_owner}",
+          "default": "0",
+          "generated": "",
+          "name": "quarantined_count",
+          "nullable": false,
+          "type": "bigint"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=w/mass_foundation_owner}",
+          "default": "0",
+          "generated": "",
+          "name": "excluded_count",
+          "nullable": false,
+          "type": "bigint"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "accepted_count"
+          ],
+          "definition": "CHECK ((accepted_count >= 0))",
+          "name": "import_batches_accepted_count_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "accepted_count",
+            "quarantined_count",
+            "excluded_count",
+            "extracted_count"
+          ],
+          "definition": "CHECK ((((accepted_count + quarantined_count) + excluded_count) <= extracted_count))",
+          "name": "import_batches_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "state",
+            "accepted_count",
+            "quarantined_count",
+            "excluded_count",
+            "extracted_count"
+          ],
+          "definition": "CHECK (((state <> 'complete'::text) OR (((accepted_count + quarantined_count) + excluded_count) = extracted_count)))",
+          "name": "import_batches_check1",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "checkpoint_position"
+          ],
+          "definition": "CHECK ((checkpoint_position >= 0))",
+          "name": "import_batches_checkpoint_position_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "excluded_count"
+          ],
+          "definition": "CHECK ((excluded_count >= 0))",
+          "name": "import_batches_excluded_count_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "extracted_count"
+          ],
+          "definition": "CHECK ((extracted_count >= 0))",
+          "name": "import_batches_extracted_count_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "extractor_version"
+          ],
+          "definition": "CHECK ((extractor_version ~ '^[A-Za-z0-9_.-]{1,64}$'::text))",
+          "name": "import_batches_extractor_version_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "mapping_version"
+          ],
+          "definition": "CHECK ((mapping_version ~ '^[A-Za-z0-9_.-]{1,64}$'::text))",
+          "name": "import_batches_mapping_version_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "import_batches_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "quarantined_count"
+          ],
+          "definition": "CHECK ((quarantined_count >= 0))",
+          "name": "import_batches_quarantined_count_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "row_version"
+          ],
+          "definition": "CHECK ((row_version > 0))",
+          "name": "import_batches_row_version_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "state"
+          ],
+          "definition": "CHECK ((state = ANY (ARRAY['staged'::text, 'validated'::text, 'approved'::text, 'running'::text, 'complete'::text, 'failed'::text])))",
+          "name": "import_batches_state_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX import_batches_pkey ON mass_foundation.import_batches USING btree (id)"
+      ],
+      "name": "import_batches",
+      "policies": [
+        {
+          "check": "true",
+          "command": "a",
+          "name": "import_batches_insert",
+          "roles": [
+            "mass_foundation_ingestor"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "import_batches_read",
+          "roles": [
+            "mass_foundation_ingestor",
+            "mass_foundation_reviewer",
+            "mass_foundation_auditor"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "w",
+          "name": "import_batches_update",
+          "roles": [
+            "mass_foundation_ingestor"
+          ],
+          "using": "true"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_foundation",
+      "triggers": [
+        "CREATE TRIGGER import_batches_audit AFTER INSERT OR UPDATE ON mass_foundation.import_batches FOR EACH ROW EXECUTE FUNCTION mass_foundation.record_audit()",
+        "CREATE TRIGGER import_batches_guard BEFORE INSERT OR UPDATE ON mass_foundation.import_batches FOR EACH ROW EXECUTE FUNCTION mass_foundation.guard_batch()",
+        "CREATE TRIGGER import_batches_no_delete BEFORE DELETE ON mass_foundation.import_batches FOR EACH ROW EXECUTE FUNCTION mass_foundation.reject_mutation()",
+        "CREATE TRIGGER import_batches_no_truncate BEFORE TRUNCATE ON mass_foundation.import_batches FOR EACH STATEMENT EXECUTE FUNCTION mass_foundation.reject_mutation()"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundation_ingestor=r/mass_foundation_owner,mass_foundation_reviewer=r/mass_foundation_owner,mass_foundation_auditor=r/mass_foundation_owner}",
+      "columns": [
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "batch_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "source_row_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "field_ordinal",
+          "nullable": true,
+          "type": "integer"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "reason_code",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_foundation_reviewer=w/mass_foundation_owner}",
+          "default": "'open'::text",
+          "generated": "",
+          "name": "review_state",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_foundation_reviewer=w/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "resolution_code",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "resolved_by",
+          "nullable": true,
+          "type": "name"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "resolved_at",
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "default": "1",
+          "generated": "",
+          "name": "row_version",
+          "nullable": false,
+          "type": "bigint"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "batch_id"
+          ],
+          "definition": "FOREIGN KEY (batch_id) REFERENCES mass_foundation.import_batches(id) ON DELETE RESTRICT",
+          "name": "import_exceptions_batch_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_foundation",
+          "ref_table": "import_batches",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "batch_id",
+            "source_row_id",
+            "field_ordinal",
+            "reason_code"
+          ],
+          "definition": "UNIQUE NULLS NOT DISTINCT (batch_id, source_row_id, field_ordinal, reason_code)",
+          "name": "import_exceptions_batch_id_source_row_id_field_ordinal_reas_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "review_state",
+            "resolution_code",
+            "resolved_by",
+            "resolved_at"
+          ],
+          "definition": "CHECK ((((review_state = 'open'::text) AND (resolution_code IS NULL) AND (resolved_by IS NULL) AND (resolved_at IS NULL)) OR ((review_state <> 'open'::text) AND (resolution_code IS NOT NULL) AND (resolved_by IS NOT NULL) AND (resolved_at IS NOT NULL))))",
+          "name": "import_exceptions_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "field_ordinal"
+          ],
+          "definition": "CHECK ((field_ordinal > 0))",
+          "name": "import_exceptions_field_ordinal_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "import_exceptions_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "reason_code"
+          ],
+          "definition": "CHECK ((reason_code = ANY (ARRAY['missing_reference'::text, 'invalid_format'::text, 'conflicting_metadata'::text, 'duplicate_occurrence'::text, 'unverified_record'::text])))",
+          "name": "import_exceptions_reason_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "resolution_code"
+          ],
+          "definition": "CHECK ((resolution_code = ANY (ARRAY['verified_correction'::text, 'excluded'::text, 'not_an_issue'::text])))",
+          "name": "import_exceptions_resolution_code_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "review_state"
+          ],
+          "definition": "CHECK ((review_state = ANY (ARRAY['open'::text, 'resolved'::text, 'rejected'::text])))",
+          "name": "import_exceptions_review_state_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "row_version"
+          ],
+          "definition": "CHECK ((row_version > 0))",
+          "name": "import_exceptions_row_version_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "source_row_id"
+          ],
+          "definition": "FOREIGN KEY (source_row_id) REFERENCES mass_foundation.source_rows(id) ON DELETE RESTRICT",
+          "name": "import_exceptions_source_row_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_foundation",
+          "ref_table": "source_rows",
+          "type": "f"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX import_exceptions_batch_id_source_row_id_field_ordinal_reas_key ON mass_foundation.import_exceptions USING btree (batch_id, source_row_id, field_ordinal, reason_code) NULLS NOT DISTINCT",
+        "CREATE UNIQUE INDEX import_exceptions_pkey ON mass_foundation.import_exceptions USING btree (id)",
+        "CREATE INDEX import_exceptions_source_row_idx ON mass_foundation.import_exceptions USING btree (source_row_id)"
+      ],
+      "name": "import_exceptions",
+      "policies": [
+        {
+          "check": "true",
+          "command": "a",
+          "name": "import_exceptions_insert",
+          "roles": [
+            "mass_foundation_ingestor"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "import_exceptions_read",
+          "roles": [
+            "mass_foundation_ingestor",
+            "mass_foundation_reviewer",
+            "mass_foundation_auditor"
+          ],
+          "using": "true"
+        },
+        {
+          "check": "true",
+          "command": "w",
+          "name": "import_exceptions_review",
+          "roles": [
+            "mass_foundation_reviewer"
+          ],
+          "using": "true"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_foundation",
+      "triggers": [
+        "CREATE TRIGGER import_exceptions_audit AFTER INSERT OR UPDATE ON mass_foundation.import_exceptions FOR EACH ROW EXECUTE FUNCTION mass_foundation.record_audit()",
+        "CREATE TRIGGER import_exceptions_guard BEFORE INSERT OR UPDATE ON mass_foundation.import_exceptions FOR EACH ROW EXECUTE FUNCTION mass_foundation.guard_exception()",
+        "CREATE TRIGGER import_exceptions_no_delete BEFORE DELETE ON mass_foundation.import_exceptions FOR EACH ROW EXECUTE FUNCTION mass_foundation.reject_mutation()",
+        "CREATE TRIGGER import_exceptions_no_truncate BEFORE TRUNCATE ON mass_foundation.import_exceptions FOR EACH STATEMENT EXECUTE FUNCTION mass_foundation.reject_mutation()"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundation_ingestor=r/mass_foundation_owner,mass_foundation_reviewer=r/mass_foundation_owner,mass_foundation_auditor=r/mass_foundation_owner}",
+      "columns": [
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "original_file_id",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "sha256",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "storage_ref",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "source_version",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "acl": "{mass_foundation_ingestor=a/mass_foundation_owner}",
+          "default": null,
+          "generated": "",
+          "name": "exported_at",
+          "nullable": true,
+          "type": "timestamp with time zone"
+        },
+        {
+          "acl": null,
+          "default": "clock_timestamp()",
+          "generated": "",
+          "name": "received_at",
+          "nullable": false,
+          "type": "timestamp with time zone"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "original_file_id"
+          ],
+          "definition": "CHECK ((original_file_id ~ '^[A-Za-z0-9_-]{1,128}$'::text))",
+          "name": "source_files_original_file_id_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "source_files_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "sha256"
+          ],
+          "definition": "CHECK ((sha256 ~ '^[0-9a-f]{64}$'::text))",
+          "name": "source_files_sha256_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "sha256"
+          ],
+          "definition": "UNIQUE (sha256)",
+          "name": "source_files_sha256_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "source_version"
+          ],
+          "definition": "CHECK ((source_version ~ '^[A-Za-z0-9_.-]{1,64}$'::text))",
+          "name": "source_files_source_version_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "storage_ref"
+          ],
+          "definition": "UNIQUE (storage_ref)",
+          "name": "source_files_storage_ref_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX source_files_pkey ON mass_foundation.source_files USING btree (id)",
+        "CREATE UNIQUE INDEX source_files_sha256_key ON mass_foundation.source_files USING btree (sha256)",
+        "CREATE UNIQUE INDEX source_files_storage_ref_key ON mass_foundation.source_files USING btree (storage_ref)"
+      ],
+      "name": "source_files",
+      "policies": [
+        {
+          "check": "true",
+          "command": "a",
+          "name": "source_files_insert",
+          "roles": [
+            "mass_foundation_ingestor"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "source_files_read",
+          "roles": [
+            "mass_foundation_ingestor",
+            "mass_foundation_reviewer",
+            "mass_foundation_auditor"
+          ],
+          "using": "true"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_foundation",
+      "triggers": [
+        "CREATE TRIGGER source_files_audit AFTER INSERT ON mass_foundation.source_files FOR EACH ROW EXECUTE FUNCTION mass_foundation.record_audit()",
+        "CREATE TRIGGER source_files_immutable BEFORE DELETE OR UPDATE ON mass_foundation.source_files FOR EACH ROW EXECUTE FUNCTION mass_foundation.reject_mutation()",
+        "CREATE TRIGGER source_files_no_truncate BEFORE TRUNCATE ON mass_foundation.source_files FOR EACH STATEMENT EXECUTE FUNCTION mass_foundation.reject_mutation()"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundation_ingestor=ar/mass_foundation_owner,mass_foundation_reviewer=r/mass_foundation_owner,mass_foundation_auditor=r/mass_foundation_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "sheet_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "first_batch_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "row_number",
+          "nullable": false,
+          "type": "integer"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "content_hash",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": "'candidate'::text",
+          "generated": "",
+          "name": "classification",
+          "nullable": false,
+          "type": "text"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "classification"
+          ],
+          "definition": "CHECK ((classification = ANY (ARRAY['candidate'::text, 'example'::text, 'scaffold'::text, 'summary'::text, 'rejected'::text])))",
+          "name": "source_rows_classification_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "content_hash"
+          ],
+          "definition": "CHECK ((content_hash ~ '^[0-9a-f]{64}$'::text))",
+          "name": "source_rows_content_hash_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "first_batch_id"
+          ],
+          "definition": "FOREIGN KEY (first_batch_id) REFERENCES mass_foundation.import_batches(id) ON DELETE RESTRICT",
+          "name": "source_rows_first_batch_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_foundation",
+          "ref_table": "import_batches",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "source_rows_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        },
+        {
+          "columns": [
+            "row_number"
+          ],
+          "definition": "CHECK ((row_number > 0))",
+          "name": "source_rows_row_number_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "sheet_id"
+          ],
+          "definition": "FOREIGN KEY (sheet_id) REFERENCES mass_foundation.source_sheets(id) ON DELETE RESTRICT",
+          "name": "source_rows_sheet_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_foundation",
+          "ref_table": "source_sheets",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "sheet_id",
+            "row_number"
+          ],
+          "definition": "UNIQUE (sheet_id, row_number)",
+          "name": "source_rows_sheet_id_row_number_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE INDEX source_rows_batch_idx ON mass_foundation.source_rows USING btree (first_batch_id)",
+        "CREATE UNIQUE INDEX source_rows_pkey ON mass_foundation.source_rows USING btree (id)",
+        "CREATE UNIQUE INDEX source_rows_sheet_id_row_number_key ON mass_foundation.source_rows USING btree (sheet_id, row_number)"
+      ],
+      "name": "source_rows",
+      "policies": [
+        {
+          "check": "true",
+          "command": "a",
+          "name": "source_rows_insert",
+          "roles": [
+            "mass_foundation_ingestor"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "source_rows_read",
+          "roles": [
+            "mass_foundation_ingestor",
+            "mass_foundation_reviewer",
+            "mass_foundation_auditor"
+          ],
+          "using": "true"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_foundation",
+      "triggers": [
+        "CREATE TRIGGER source_rows_audit AFTER INSERT ON mass_foundation.source_rows FOR EACH ROW EXECUTE FUNCTION mass_foundation.record_audit()",
+        "CREATE TRIGGER source_rows_immutable BEFORE DELETE OR UPDATE ON mass_foundation.source_rows FOR EACH ROW EXECUTE FUNCTION mass_foundation.reject_mutation()",
+        "CREATE TRIGGER source_rows_no_truncate BEFORE TRUNCATE ON mass_foundation.source_rows FOR EACH STATEMENT EXECUTE FUNCTION mass_foundation.reject_mutation()"
+      ]
+    },
+    {
+      "acl": "{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundation_ingestor=ar/mass_foundation_owner,mass_foundation_reviewer=r/mass_foundation_owner,mass_foundation_auditor=r/mass_foundation_owner}",
+      "columns": [
+        {
+          "acl": null,
+          "default": "gen_random_uuid()",
+          "generated": "",
+          "name": "id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "file_id",
+          "nullable": false,
+          "type": "uuid"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "native_sheet_id",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "ordinal",
+          "nullable": false,
+          "type": "integer"
+        },
+        {
+          "acl": null,
+          "default": "'unclassified'::text",
+          "generated": "",
+          "name": "classification",
+          "nullable": false,
+          "type": "text"
+        },
+        {
+          "acl": null,
+          "default": null,
+          "generated": "",
+          "name": "header_version",
+          "nullable": false,
+          "type": "integer"
+        }
+      ],
+      "constraints": [
+        {
+          "columns": [
+            "classification"
+          ],
+          "definition": "CHECK ((classification = ANY (ARRAY['unclassified'::text, 'input'::text, 'master'::text, 'helper'::text, 'report'::text, 'template'::text])))",
+          "name": "source_sheets_classification_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "file_id"
+          ],
+          "definition": "FOREIGN KEY (file_id) REFERENCES mass_foundation.source_files(id) ON DELETE RESTRICT",
+          "name": "source_sheets_file_id_fkey",
+          "ref_columns": [
+            "id"
+          ],
+          "ref_schema": "mass_foundation",
+          "ref_table": "source_files",
+          "type": "f"
+        },
+        {
+          "columns": [
+            "file_id",
+            "native_sheet_id"
+          ],
+          "definition": "UNIQUE (file_id, native_sheet_id)",
+          "name": "source_sheets_file_id_native_sheet_id_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "file_id",
+            "ordinal"
+          ],
+          "definition": "UNIQUE (file_id, ordinal)",
+          "name": "source_sheets_file_id_ordinal_key",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "u"
+        },
+        {
+          "columns": [
+            "header_version"
+          ],
+          "definition": "CHECK ((header_version > 0))",
+          "name": "source_sheets_header_version_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "native_sheet_id"
+          ],
+          "definition": "CHECK ((native_sheet_id ~ '^[A-Za-z0-9_-]{1,64}$'::text))",
+          "name": "source_sheets_native_sheet_id_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "ordinal"
+          ],
+          "definition": "CHECK ((ordinal > 0))",
+          "name": "source_sheets_ordinal_check",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "c"
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "definition": "PRIMARY KEY (id)",
+          "name": "source_sheets_pkey",
+          "ref_columns": null,
+          "ref_schema": null,
+          "ref_table": null,
+          "type": "p"
+        }
+      ],
+      "force_rls": true,
+      "indexes": [
+        "CREATE UNIQUE INDEX source_sheets_file_id_native_sheet_id_key ON mass_foundation.source_sheets USING btree (file_id, native_sheet_id)",
+        "CREATE UNIQUE INDEX source_sheets_file_id_ordinal_key ON mass_foundation.source_sheets USING btree (file_id, ordinal)",
+        "CREATE UNIQUE INDEX source_sheets_pkey ON mass_foundation.source_sheets USING btree (id)"
+      ],
+      "name": "source_sheets",
+      "policies": [
+        {
+          "check": "true",
+          "command": "a",
+          "name": "source_sheets_insert",
+          "roles": [
+            "mass_foundation_ingestor"
+          ],
+          "using": null
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "source_sheets_read",
+          "roles": [
+            "mass_foundation_ingestor",
+            "mass_foundation_reviewer",
+            "mass_foundation_auditor"
+          ],
+          "using": "true"
+        }
+      ],
+      "rls": true,
+      "schema": "mass_foundation",
+      "triggers": [
+        "CREATE TRIGGER source_sheets_audit AFTER INSERT ON mass_foundation.source_sheets FOR EACH ROW EXECUTE FUNCTION mass_foundation.record_audit()",
+        "CREATE TRIGGER source_sheets_immutable BEFORE DELETE OR UPDATE ON mass_foundation.source_sheets FOR EACH ROW EXECUTE FUNCTION mass_foundation.reject_mutation()",
+        "CREATE TRIGGER source_sheets_no_truncate BEFORE TRUNCATE ON mass_foundation.source_sheets FOR EACH STATEMENT EXECUTE FUNCTION mass_foundation.reject_mutation()"
+      ]
+    }
+  ]
+}
