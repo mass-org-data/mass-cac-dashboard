@@ -1,10 +1,16 @@
 export function createSessionController(client, {onState, onReset, clearStoredSession = () => {}}) {
-  let generation = 0, stopped = false, subscription;
+  let generation = 0, stopped = false, subscription, pending = null, verifiedToken = null;
   async function verify(session) {
+    // Auth callbacks and the explicit sign-in path may verify the same session concurrently.
+    // Reuse the in-flight check rather than invalidating a valid verification.
+    const token = session?.access_token;
+    if (token && pending?.token === token) return pending.promise;
+    if (token && verifiedToken === token) return;
     const epoch = ++generation;
     onReset();
-    if (!session) { clearStoredSession(); onState({status: 'signed-out'}); return; }
+    if (!session) { verifiedToken = null; clearStoredSession(); onState({status: 'signed-out'}); return; }
     onState({status: 'checking'});
+    const work = (async () => {
     try {
       // getSession alone trusts browser storage. Verify the identity with Auth.
       const {data, error} = await client.auth.getUser();
@@ -15,6 +21,7 @@ export function createSessionController(client, {onState, onReset, clearStoredSe
         if (epoch === generation) onState({status: 'signed-out', message: 'Your session has ended. Sign in again.'});
         return;
       }
+      verifiedToken = token;
       onState({status: 'signed-in', user: {id: data.user.id}});
     } catch {
       if (epoch === generation && !stopped) {
@@ -22,6 +29,9 @@ export function createSessionController(client, {onState, onReset, clearStoredSe
         onState({status: 'signed-out', message: 'Unable to verify your session. Sign in again.'});
       }
     }
+    })();
+    pending = {token, promise: work};
+    try { return await work; } finally { if (pending?.promise === work) pending = null; }
   }
   return {
     async start() {
@@ -39,7 +49,7 @@ export function createSessionController(client, {onState, onReset, clearStoredSe
       await verify(data.session);
     },
     async signOut() {
-      ++generation; onReset(); onState({status: 'checking', message: 'Signing out…'});
+      ++generation; verifiedToken = null; pending = null; onReset(); onState({status: 'checking', message: 'Signing out…'});
       // Clear this shared-browser tab even if provider logout is unavailable.
       let error;
       try { ({error} = await client.auth.signOut({scope: 'local'})); }
