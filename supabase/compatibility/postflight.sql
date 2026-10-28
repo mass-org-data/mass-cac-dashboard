@@ -42,6 +42,11 @@ SELECT n.nspname,c.relname,pg_get_userbyid(c.relowner) AS owner
  ORDER BY n.nspname,c.relname;
 
 -- Full effective EXECUTE matrix, not just literal ACLs, for every definer.
+SELECT 'managed_auth_invoker_wrapper' AS check_name,
+ NOT p.prosecdef AND p.prosqlbody IS NOT NULL AND p.proconfig @> ARRAY['search_path=pg_catalog']
+ AND EXISTS(SELECT 1 FROM pg_depend d WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid
+  AND d.refclassid='pg_proc'::regclass AND d.refobjid='auth.uid()'::regprocedure) AS passed
+ FROM pg_proc p WHERE p.oid='mass_core.request_user_id()'::regprocedure;
 SELECT n.nspname,p.oid::regprocedure AS function_name,
  pg_get_userbyid(p.proowner) AS owner,r.rolname,
  has_function_privilege(r.oid,p.oid,'EXECUTE') AS effective_execute,

@@ -30,6 +30,8 @@ The other two `mass_api` functions (`attendance_summary`, `list_students`) are S
 
 28 October 2026 follow-up: migrations 01/07 now explicitly grant owner SET/INHERIT membership only to the deployment principal. Function bodies, owners, direct EXECUTE ACLs and RLS policies remain unchanged. Review the [correction handoff](POSTGRES17-ROLE-MEMBERSHIP-FIX.md); the baseline above identifies the original function review, not the corrected migration hashes.
 
+28 October Auth follow-up: runtime identity predicates/audit now call the private SQL SECURITY INVOKER wrapper request_user_id, which is bound to the existing managed auth.uid function. No new SECURITY DEFINER, owner/public grant or JWT parser is added. Existing 19 definer owners/EXECUTE ACLs are retained; policy/function identity expressions are updated in the generated inventory. See [the 007 resume handoff](MIGRATION-007-AUTH-RESUME.md).
+
 ## Effective-permission acceptance
 
 - Private schemas are not Data API exposed schemas. Schema USAGE granted to authenticated for SQL/RLS dependency resolution is not endpoint exposure.

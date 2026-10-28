@@ -66,6 +66,7 @@ rows=[line.split('|') for line in Path(sys.argv[1]).read_text().splitlines()]
 checks=[r for r in rows if len(r)==4 and r[1].isdigit() and r[2].isdigit() and r[3] in ('t','f')]
 assert len(checks)==15,checks
 assert all(r[3]=='t' for r in checks),checks
+assert ['managed_auth_invoker_wrapper','t'] in rows, 'Managed Auth invoker binding missing'
 assert not any(r[-1] in ('table_or_column_access','unexpected_function_execute','unexpected_schema_usage') for r in rows), 'Unexpected effective ACL'
 definers={(f['schema'],f['name']):f for f in json.loads(Path(sys.argv[2]).read_text())['functions'] if f['security_definer']}
 matrix=[r for r in rows if len(r)==6 and r[0] in ('mass_foundation','mass_core','mass_api')]

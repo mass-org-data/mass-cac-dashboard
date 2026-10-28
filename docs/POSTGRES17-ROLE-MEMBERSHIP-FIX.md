@@ -2,6 +2,8 @@
 
 28 October 2026 (India). Correction against `d3304f53edc2034decdc6ad5082e4f5827296c0d`, branch `feature/source-data-discovery`, [PR #1](https://github.com/mass-org-data/mass-cac-dashboard/pull/1). **No production connection or migration was executed by Codex for this correction.** No frontend, business rules, Vercel settings, hosted resources or staff accounts were changed.
 
+**Resume update:** the user subsequently reports 001–006 applied and 007 failed on Auth permissions. The fresh-install/001 restart instructions below are historical. Use [MIGRATION-007-AUTH-RESUME.md](MIGRATION-007-AUTH-RESUME.md) and preserve 001–006.
+
 ## Root cause and reported production state
 
 The user reports the first hosted apply, running as Supabase `postgres`, stopped with SQLSTATE 42501: must be able to SET ROLE mass_foundation_owner. Post-failure checks found zero recorded migration versions, zero MASS tables and no MASS schemas or roles. These are user-confirmed observations; they were not queried again here.

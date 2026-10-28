@@ -229,6 +229,17 @@
       ]
     },
     {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "",
+      "name": "request_user_id",
+      "returns": "uuid",
+      "schema": "mass_core",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
       "acl": "{mass_core_owner=X/mass_core_owner}",
       "arguments": "e uuid",
       "name": "writable_enrolment",
@@ -311,7 +322,7 @@
     },
     {
       "file": "supabase/migrations/202610270007_auth_scope.sql",
-      "sha256": "0203d490b5ac1771894eee4386d069e0ec698a26bacd7d57a0c3a676bbcc620b"
+      "sha256": "22520d0136bf786fbca8ecc78f483b10df16109d7eacc618250ac80752ea250e"
     },
     {
       "file": "supabase/migrations/202610270008_identity_history.sql",
@@ -339,7 +350,7 @@
     },
     {
       "file": "supabase/migrations/202610270014_core_security_audit.sql",
-      "sha256": "577ae8fe557f0fe10ff0adc7eff09eb3ac120ac324282a1440484adbbfb8d69d"
+      "sha256": "354b437e4dd83abf3cff4c04d30e760a1c736960bb63b77b387cef9ae46ccd84"
     },
     {
       "file": "supabase/migrations/202610270015_core_api.sql",
@@ -495,7 +506,7 @@
           "roles": [
             "authenticated"
           ],
-          "using": "(auth.uid() IS NOT NULL)"
+          "using": "(mass_core.request_user_id() IS NOT NULL)"
         }
       ],
       "rls": true,
@@ -970,7 +981,7 @@
           "roles": [
             "authenticated"
           ],
-          "using": "(auth.uid() IS NOT NULL)"
+          "using": "(mass_core.request_user_id() IS NOT NULL)"
         }
       ],
       "rls": true,
@@ -1098,7 +1109,7 @@
           "roles": [
             "authenticated"
           ],
-          "using": "(auth.uid() IS NOT NULL)"
+          "using": "(mass_core.request_user_id() IS NOT NULL)"
         }
       ],
       "rls": true,
@@ -1382,7 +1393,7 @@
           "roles": [
             "authenticated"
           ],
-          "using": "(auth.uid() IS NOT NULL)"
+          "using": "(mass_core.request_user_id() IS NOT NULL)"
         }
       ],
       "rls": true,
@@ -2782,7 +2793,7 @@
           "roles": [
             "authenticated"
           ],
-          "using": "(auth.uid() IS NOT NULL)"
+          "using": "(mass_core.request_user_id() IS NOT NULL)"
         }
       ],
       "rls": true,

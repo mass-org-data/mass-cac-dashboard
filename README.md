@@ -14,6 +14,7 @@ MASS_TEST_REST=1 bash tests/core/run-local.sh
 bash tests/schema/run-local.sh
 bash tests/deployment/run-local.sh
 bash tests/deployment/run-role-probe.sh
+bash tests/deployment/run-auth-probe.sh
 ```
 
 The first suite applies the original six foundation migrations. The second applies all 15 and runs synthetic core SQL/concurrency tests plus a real PostgREST HTTP suite with ephemeral signed test JWTs. The third checks the complete dictionary, ERDs, policy/ACL inventory and migration checksums against an independently migrated local catalog. All runners create disposable databases, use temporary storage, accept no hosted database URL and remove their containers on exit. SQL-only core testing (`MASS_TEST_REST=0`) does not verify API behavior.
@@ -25,6 +26,8 @@ The deployment suite additionally verifies the read-only preflight/postflight re
 The [final production preflight](docs/PRODUCTION-MIGRATION-PREFLIGHT.md) freezes all 15 [SQL hashes](supabase/compatibility/MIGRATIONS.sha256), reviews [all 19 SECURITY DEFINER functions](docs/PRODUCTION-DEFINER-REVIEW.md), and prepares a private Free-project backup/recovery procedure. The deployment suite also verifies all 22 non-reference tables are empty and restores a synthetic custom-format archive in isolation. These checks do not establish managed Supabase compatibility or authorize hosted execution.
 
 The separate role probe reproduces the original PostgreSQL 17 failure in temporary legacy copies, then applies all corrected files as an isolated non-superuser with delegated Auth privileges and default creator settings. Migrations 01 and 07 explicitly grant SET/INHERIT membership on their new owner roles only to the deployment principal. Rollback/retry and effective owner membership are tested without a createrole_self_grant override. See the [role-membership correction and deployment handoff](docs/POSTGRES17-ROLE-MEMBERSHIP-FIX.md); actual managed-provider permissions remain a separate gate.
+
+The [migration 007 Auth correction and resume handoff](docs/MIGRATION-007-AUTH-RESUME.md) supersedes fresh-install instructions for the reported production state with 001–006 already applied. The Auth-boundary probe uses direct Auth privileges without grant options, preserves committed foundation on failed 007 attempts, and resumes only 007–015. Managed Auth foreign keys are installed by the deployment principal; a private SQL SECURITY INVOKER wrapper preserves managed auth.uid() without delegating Auth-schema privileges or adding a definer.
 
 - [Implemented dictionary: columns, types, PKs/FKs and constraints](docs/DATABASE-DATA-DICTIONARY.md)
 - [Complete implemented ER diagrams](docs/DATABASE-ERD.md)

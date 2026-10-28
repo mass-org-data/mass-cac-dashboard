@@ -5,10 +5,10 @@ GRANT UPDATE(ends_at) ON mass_core.user_scope_grants TO mass_core_admin;
 CREATE FUNCTION mass_core.can_read_profile(c uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
  SELECT EXISTS(SELECT 1 FROM mass_core.enrolments e JOIN mass_core.user_scope_grants g ON g.centre_id=e.centre_id
- WHERE e.child_id=c AND g.user_id=auth.uid() AND g.can_read_profiles
+ WHERE e.child_id=c AND g.user_id=mass_core.request_user_id() AND g.can_read_profiles
  AND g.role_code IN ('Teacher','Cluster Officer') AND g.starts_at<=statement_timestamp()
  AND (g.ends_at IS NULL OR statement_timestamp()<g.ends_at))
- AND NOT EXISTS(SELECT 1 FROM mass_core.user_scope_grants g WHERE g.user_id=auth.uid() AND g.role_code='Leadership'
+ AND NOT EXISTS(SELECT 1 FROM mass_core.user_scope_grants g WHERE g.user_id=mass_core.request_user_id() AND g.role_code='Leadership'
  AND g.starts_at<=statement_timestamp() AND (g.ends_at IS NULL OR statement_timestamp()<g.ends_at))
 $$;
 GRANT EXECUTE ON FUNCTION mass_core.can_read_profile(uuid) TO authenticated;
@@ -147,7 +147,7 @@ CREATE TRIGGER guard_write BEFORE INSERT OR UPDATE OR DELETE ON mass_core.academ
  FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record();
 CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.academic_years
  FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record();
-CREATE POLICY scoped_read ON mass_core.academic_years FOR SELECT TO authenticated USING(auth.uid() IS NOT NULL);
+CREATE POLICY scoped_read ON mass_core.academic_years FOR SELECT TO authenticated USING(mass_core.request_user_id() IS NOT NULL);
 GRANT SELECT ON mass_core.academic_years TO authenticated;
 CREATE POLICY admin_access ON mass_core.academic_years TO mass_core_admin USING(true) WITH CHECK(true);
 ALTER TABLE mass_core.assessment_periods ENABLE ROW LEVEL SECURITY;
@@ -157,7 +157,7 @@ CREATE TRIGGER guard_write BEFORE INSERT OR UPDATE OR DELETE ON mass_core.assess
  FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record();
 CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.assessment_periods
  FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record();
-CREATE POLICY scoped_read ON mass_core.assessment_periods FOR SELECT TO authenticated USING(auth.uid() IS NOT NULL);
+CREATE POLICY scoped_read ON mass_core.assessment_periods FOR SELECT TO authenticated USING(mass_core.request_user_id() IS NOT NULL);
 GRANT SELECT ON mass_core.assessment_periods TO authenticated;
 CREATE POLICY admin_access ON mass_core.assessment_periods TO mass_core_admin USING(true) WITH CHECK(true);
 ALTER TABLE mass_core.attendance_codes ENABLE ROW LEVEL SECURITY;
@@ -167,7 +167,7 @@ CREATE TRIGGER guard_write BEFORE INSERT OR UPDATE OR DELETE ON mass_core.attend
  FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record();
 CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.attendance_codes
  FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record();
-CREATE POLICY scoped_read ON mass_core.attendance_codes FOR SELECT TO authenticated USING(auth.uid() IS NOT NULL);
+CREATE POLICY scoped_read ON mass_core.attendance_codes FOR SELECT TO authenticated USING(mass_core.request_user_id() IS NOT NULL);
 GRANT SELECT ON mass_core.attendance_codes TO authenticated;
 ALTER TABLE mass_core.cac_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mass_core.cac_sessions FORCE ROW LEVEL SECURITY;
@@ -199,7 +199,7 @@ CREATE TRIGGER guard_write BEFORE INSERT OR UPDATE OR DELETE ON mass_core.assess
  FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record();
 CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.assessment_definitions
  FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record();
-CREATE POLICY scoped_read ON mass_core.assessment_definitions FOR SELECT TO authenticated USING(auth.uid() IS NOT NULL);
+CREATE POLICY scoped_read ON mass_core.assessment_definitions FOR SELECT TO authenticated USING(mass_core.request_user_id() IS NOT NULL);
 GRANT SELECT ON mass_core.assessment_definitions TO authenticated;
 CREATE POLICY admin_access ON mass_core.assessment_definitions TO mass_core_admin USING(true) WITH CHECK(true);
 ALTER TABLE mass_core.assessment_results ENABLE ROW LEVEL SECURITY;
@@ -242,7 +242,7 @@ CREATE TRIGGER guard_write BEFORE INSERT OR UPDATE OR DELETE ON mass_core.progra
  FOR EACH ROW EXECUTE FUNCTION mass_core.guard_record();
 CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.programme_cohorts
  FOR EACH STATEMENT EXECUTE FUNCTION mass_core.guard_record();
-CREATE POLICY scoped_read ON mass_core.programme_cohorts FOR SELECT TO authenticated USING(auth.uid() IS NOT NULL);
+CREATE POLICY scoped_read ON mass_core.programme_cohorts FOR SELECT TO authenticated USING(mass_core.request_user_id() IS NOT NULL);
 GRANT SELECT ON mass_core.programme_cohorts TO authenticated;
 CREATE POLICY admin_access ON mass_core.programme_cohorts TO mass_core_admin USING(true) WITH CHECK(true);
 ALTER TABLE mass_core.cohort_memberships ENABLE ROW LEVEL SECURITY;
@@ -268,10 +268,12 @@ CREATE TRIGGER guard_truncate BEFORE TRUNCATE ON mass_core.morarji_outcomes
 CREATE POLICY scoped_read ON mass_core.morarji_outcomes FOR SELECT TO authenticated USING(mass_core.can_read(centre_id));
 GRANT SELECT ON mass_core.morarji_outcomes TO authenticated;
 RESET ROLE;
-GRANT USAGE ON SCHEMA auth TO mass_foundation_owner;
-GRANT REFERENCES(id) ON auth.users TO mass_foundation_owner;
+-- The deployment principal inherits foundation ownership and uses its own
+-- direct REFERENCES privilege. No managed Auth privilege is delegated.
+ALTER TABLE mass_foundation.audit_events ADD COLUMN actor_user_id uuid;
+ALTER TABLE mass_foundation.audit_events ADD CONSTRAINT audit_events_actor_user_id_fkey
+ FOREIGN KEY(actor_user_id) REFERENCES auth.users(id) ON DELETE RESTRICT;
 SET LOCAL ROLE mass_foundation_owner;
-ALTER TABLE mass_foundation.audit_events ADD COLUMN actor_user_id uuid REFERENCES auth.users(id) ON DELETE RESTRICT;
 ALTER TABLE mass_foundation.audit_events DROP CONSTRAINT audit_events_entity_type_check;
 ALTER TABLE mass_foundation.audit_events ADD CONSTRAINT audit_events_entity_type_check CHECK(entity_type IN ('source_files','source_sheets','import_batches','source_rows','import_exceptions','core.centres','core.user_scope_grants','core.children','core.private_child_profiles','core.enrolments','core.academic_years','core.assessment_periods','core.cac_sessions','core.attendance_records','core.assessment_definitions','core.assessment_results','core.activity_events','core.activity_participation','core.programme_cohorts','core.cohort_memberships','core.morarji_outcomes'));
 GRANT USAGE ON SCHEMA mass_foundation TO mass_core_owner;
@@ -287,7 +289,7 @@ BEGIN
  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='unsupported core audit target'; END IF;
  dbrole:=current_setting('role'); IF dbrole='none' THEN dbrole:=session_user; END IF;
  INSERT INTO mass_foundation.audit_events(actor_database_principal,actor_database_role,actor_user_id,entity_type,entity_id,operation,change_metadata)
- VALUES(session_user,dbrole,auth.uid(),'core.'||TG_TABLE_NAME,NEW.id,TG_OP,jsonb_build_object('revision',NEW.row_version));
+ VALUES(session_user,dbrole,mass_core.request_user_id(),'core.'||TG_TABLE_NAME,NEW.id,TG_OP,jsonb_build_object('revision',NEW.row_version));
  RETURN NEW;
 END;
 $$;
