@@ -73,7 +73,7 @@ export async function startOriginalReview(config) {
           const key=id+'|'+c.session_date+'|'+c.shift_code;
           if(seenSessions.has(key))continue;
           seenSessions.add(key);
-          db.sessions.push({centre:id,date:c.session_date,shift:c.shift_code,status:c.is_scheduled?'Held':'Cancelled'});
+          db.sessions.push({centre:id,date:c.session_date,shift:c.shift_code,status:c.is_scheduled?'Planned':'Not Scheduled'});
         }
         completed++;
         const status=document.querySelector('#mass-load-status');
