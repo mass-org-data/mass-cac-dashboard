@@ -1,0 +1,7 @@
+.auth-page{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--paper,#f4f6f2)}
+.auth-card{width:min(100%,460px);padding:32px}.auth-card img{display:block;margin:0 auto 24px}.auth-card h1{margin:12px 0}.auth-card form{display:grid;gap:18px;margin-top:24px}.auth-card .field input{width:100%;box-sizing:border-box}
+.integration-notice{border-left:3px solid var(--brand,#1f3534);padding:12px 16px;background:#f0f5f3;margin-bottom:22px;font-size:14px;line-height:1.6}
+.centre-filter{min-width:min(100%,300px)}.record-id{overflow-wrap:anywhere;max-width:320px}.topbar .mass-logo.header-logo{vertical-align:middle}
+.filters input,.filters select{max-width:100%}.auth-card .field-error{margin:0}.btn:disabled{cursor:not-allowed;opacity:.55}
+.topbar>div:first-child{display:flex;align-items:center;gap:14px}
+@media(max-width:600px){.auth-card{padding:24px}.filters .centre-filter{width:100%;min-width:0}.integration-notice{font-size:13px}.table-footer{flex-wrap:wrap;gap:8px}}

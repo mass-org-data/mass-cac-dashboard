@@ -2,11 +2,31 @@
 
 This package preserves the current frontend implementation, design, logo, styling, chart references and interactions. The application is vanilla JavaScript with HTML and CSS, **not React**; there are no React components or React dependencies to omit. No framework migration has been performed.
 
-The repository also contains **15 SQL migrations implementing 23 local database relations** (six foundation and 17 core), isolated synthetic tests, and current schema/security documentation. The frontend is still a standalone prototype; it has not been connected to Supabase. No hosted database deployment is authorized or performed by the local commands below.
+The repository contains the **15 production-baseline SQL migrations implementing 23 relations** (six foundation and 17 core), isolated synthetic tests, and schema/security documentation. Phase 4 adds authenticated Supabase adapters and a live workspace, preserving the manager-approved sample frontend from `migration/frontend @ 0b57ea1`. The separately reviewed read-API proposal 016 remains under `supabase/proposals`, outside automatic deployment. No hosted change or Vercel release is performed by local commands below. See the [Phase 4 integration handoff](docs/PHASE-4-INTEGRATION-HANDOFF.md), [34-workflow mapping](docs/PHASE-4-FRONTEND-API-MAPPING.csv), [read API contract](docs/PHASE-4-READ-API-CONTRACTS.md) and [separate donor proposal](docs/PHASE-4-DONOR-REPORTING-PROPOSAL.md).
+
+## Frontend modes and configuration
+
+Use Node 24.x (the SDK requires Node 22+). `npm ci` installs the official Supabase JS SDK and build-time esbuild dependency. Browser configuration is injected at build time from environment variables; `.env.example` is a reference, not an automatically loaded dotenv file.
+
+- `MASS_APP_MODE=live` (default): authenticated workspace, no sample fallback. Set `MASS_SUPABASE_URL=https://pbkwpfdpdtelmvbkzgvx.supabase.co` and `MASS_SUPABASE_PUBLISHABLE_KEY` outside Git. Only publishable keys are accepted; secret/service-role/legacy JWT keys are rejected.
+- `MASS_READ_API=baseline` (default): uses the existing 11 RPC baseline for read-only lists/attendance totals; live editing is gated because no scope/history discovery is available.
+- `MASS_READ_API=frontend-reads-v1`: full supported core flows, only after read proposal 016 is separately reviewed, applied and verified. It uses server-derived roles/centres, private-field RLS, real revisions and bounded reads. Removal/undo and other unsupported contracts remain disabled.
+- `MASS_APP_MODE=demo npm run build`: original manager-approved sample app and its browser-local removal/undo/reset behavior. It never initializes Supabase or uploads local records.
+
+An unconfigured live build shows a configuration screen without network calls or demo data. No real key is committed. No programme records are persisted to browser storage; Auth session material uses sessionStorage. Current Vercel production and the backend baseline remain unchanged.
+
+```sh
+npm run check
+npm test
+npm run test:api
+npm run test:browser
+```
+
+The API tests use synthetic PostgreSQL/PostgREST/JWT fixtures in an internal Docker network; browser tests require Python Playwright and Chromium and intercept all Auth/REST requests. Managed Supabase Auth remains a separate validation gate. The original 15 migration manifest is unchanged; the proposal has its own checksum and must not be included in an unattended production push.
 
 ## Database development and tests
 
-Prerequisites: a working Docker daemon, Bash and Python 3 available as `python`. Images are digest-pinned; the first run may download public development images. No new npm dependency or Supabase credentials are required.
+Database-test prerequisites: Docker, Bash and Python 3 as `python`. Images are digest-pinned; first runs may download public development images. Baseline SQL tests need no Supabase credentials. The frontend API test also needs the installed npm dependencies and its pinned Node client image.
 
 ```sh
 bash tests/foundation/run-local.sh
@@ -50,16 +70,16 @@ In that project's Settings, inspect its Git connection and deployment triggers b
 | Framework preset | Other |
 | Root directory | Repository root (`.`); files are not nested under `MASS-Frontend/` |
 | Node.js | 24.x (local validation: 24.19.0) |
-| Install command | `npm ci` |
+| Install command | `npm ci` with build-time dev dependencies included |
 | Build command | `npm run build` |
 | Output directory | `dist` |
-| Environment variables | None required for this prototype |
+| Environment variables | `MASS_APP_MODE`, `MASS_READ_API`, `MASS_SUPABASE_URL`, `MASS_SUPABASE_PUBLISHABLE_KEY`; see Phase 4 handoff |
 
 The included `vercel.json` specifies no framework, the build command, output directory, and clean URLs. Navigation is in-memory view switching, not browser pathname routing; no SPA fallback rewrite is needed for the existing behavior. Refresh returns to the initial view.
 
 Only after separately authorizing a preview deployment and inspecting existing settings, push a non-production frontend branch such as `migration/frontend` and validate its preview. During database-only publication phases that prohibit Vercel deployment, a verified skip rule must cover the branch and PR before pushing; branch naming alone does not suppress deployments. Check all three role views, filters, charts, forms, browser-local persistence, downloads, mobile navigation, and browser errors. Vercel preview availability and production settings have not been verified from this environment; see [migration findings](docs/MIGRATION.md).
 
-Use Node.js 24.x for a consistent runtime. The supplied package supports Node.js 20 or newer, with no third-party runtime or build dependencies. `npm ci` installs no packages. No environment variables or API keys are required, so no `.env.example` is needed. `PORT` optionally changes the local development server port only.
+Use Node.js 24.x for a consistent runtime; Node 22+ is required by the official SDK. The app remains static vanilla JavaScript, bundled with esbuild. Live mode needs the public configuration above; demo mode needs no backend/key. `PORT` or `--port` changes the local development-server port only. Do not push this new feature branch until Vercel suppression or a later Preview is separately approved: the existing skip rule for `feature/source-data-discovery` does not automatically cover `feature/supabase-frontend`.
 
 ## Run locally
 
@@ -70,32 +90,32 @@ npm run build
 npm run dev
 ```
 
-Open `http://localhost:3000`. Set `PORT` if a different port is required. The local server serves the built `dist/` directory. Serve over HTTP rather than double-clicking index.html: browser ES modules require HTTP.
+With no live configuration, the default build displays the configuration gate. To inspect the preserved sample UI, build with `MASS_APP_MODE=demo npm run build`. Open `http://localhost:3000`. Set `PORT` if a different port is required. The local server serves the built `dist/` directory. Serve over HTTP rather than double-clicking index.html: browser ES modules require HTTP.
 
 ## Files
 
 - `src/index.html`: HTML entry point.
-- `src/app.js`: complete page rendering, navigation, charts, role previews, forms and browser-local persistence.
+- `src/entry.js`: validated live/demo entry point.
+- `src/live/`: Auth/session handling, scoped API adapters and authenticated workspace.
+- `src/app.js`: preserved manager-approved demo rendering, navigation, charts, role previews, forms and browser-local persistence.
 - `src/data.js`: fictional sample data, programme helpers and bands.
 - `src/dropout.js`: derived CAC dropout classification.
 - `src/style.css`: full responsive styles and print styles.
 - `src/mass-logo.jpg`: locally bundled MASS logo. Other bundled JPEGs are preview assets.
-- `scripts/build.mjs`: copies the unchanged frontend into `dist/` and generates the source-download ZIP used by the prototype.
+- `scripts/build.mjs`: bundles the selected frontend and validated public environment configuration into `dist/`, and generates the source-download ZIP.
 - `scripts/zip.mjs`: dependency-free ZIP writer for that download.
 - `scripts/serve.mjs`: dependency-free local static server.
 - `vercel.json`, `package.json`, `package-lock.json`: deployment/build configuration.
 - `docs/PROJECT-NOTES-HISTORY.md`: original accumulated project notes; older entries can describe superseded versions. Source files are authoritative for current behaviour.
 - `docs/EXPORT.md`: scope and verification of this export.
 
-The outer ZIP also includes a ready-built `dist/` folder. You can serve it with any static HTTP host. The app’s existing “Download Vercel-ready source” action is preserved: the build produces its downloadable archive from the source files, without recursively embedding previous ZIP files.
+The Git checkout excludes generated `dist/`. The app’s existing “Download Vercel-ready source” action is preserved: the build produces a code-only archive from source inputs, without runtime configuration or recursively embedded ZIP files. Rebuild the archive with approved environment configuration before serving it.
 
 ## Data and integration boundaries
 
-This is a frontend prototype. It uses fictional sample records generated in `src/data.js` and saves edits in this browser’s localStorage (`mass-cac-companion-v1`). It does not depend on ChatGPT hosting and contains no access tokens, server secrets or private MASS records. Records previously entered on a different website/origin are not carried into this archive or transferred to a new Vercel domain.
+Explicit **demo mode** uses fictional sample records from `src/data.js` and browser-local edits (`mass-cac-companion-v1`). Its role selector and fixed operating date remain unchanged. It never initializes Supabase or uploads sample rows. Records from other websites/origins are not transferred.
 
-The role selector is a preview, not authentication or a permission boundary. Live data, database integration, secure role/centre access, cross-device persistence, audit history and server pagination require a backend. Pagination in this version is client-side. Versioned local database migrations and tests are included, but the frontend has no live Supabase connection or credentials.
-
-The demo operating date remains fixed at 20 October 2026, as in the source; it has not been switched to today. Existing calculations and business-rule caveats are preserved. Deployment readiness here means the frontend can be built and hosted independently, not that it is ready to store real student data.
+**Live mode** uses verified Supabase Auth identity and server-enforced scope. Programme data stays in memory; only the tab's Auth session uses sessionStorage. No role selector, sample fallback, imported browser snapshots or private-schema API calls are used. Baseline mode supports the existing read-only RPCs; the complete scoped workspace requires separate approval and deployment of proposed read API 016. Real Auth/provider behavior, staff scope provisioning and production activation remain release gates documented in the handoff.
 
 ## Validation
 
