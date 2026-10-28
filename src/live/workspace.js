@@ -339,7 +339,7 @@ export async function startLiveApp(config) {
     if(form.id==='workspace-login'){
       const button=form.querySelector('button');button.disabled=true;
       const f=Object.fromEntries(new FormData(form));form.querySelector('[name=password]').value='';
-      try{await session.signIn(f.email,f.password);}catch(error){const target=root.querySelector('[role=alert]');if(target)target.textContent=error.message;}
+      try{await session.signIn(f.email,f.password);if(new URLSearchParams(window.location.search).get('view')!=='workspace')window.location.reload();}catch(error){const target=root.querySelector('[role=alert]');if(target)target.textContent=error.message;}
       finally{if(button.isConnected)button.disabled=false;}
     }else if(form.id==='workspace-filters'){
       const f=Object.fromEntries(new FormData(form));Object.assign(state,f);
