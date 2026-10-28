@@ -122,4 +122,15 @@ document.addEventListener('input',e=>{if(e.target.name?.startsWith('score_')&&e.
 document.addEventListener('submit',e=>{if(e.target.id!=='dialog-form')return;e.preventDefault();try{const values=Object.fromEntries(new FormData(e.target));if(modalCallback?.(values)===false)return;close();render();}catch(err){$('#form-error').textContent=err.message;}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){close();if(state.menu){state.menu=false;render();}}if(e.key==='Tab'&&$('#overlay').children.length){const nodes=[...$('#overlay').querySelectorAll('button,a,input,select,textarea')].filter(n=>!n.disabled);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
 document.addEventListener('click',e=>{if(e.target.classList.contains('modal-backdrop'))close();});
+if(liveReview)document.addEventListener('click',event=>{
+  const el=event.target.closest('button');
+  if(!el)return;
+  const operation=el.dataset.action||'';
+  const writes=/^(new-|enter-|open-daily|mark-|session-entry|activity-entry|save-|manage-records|reset-demo|undo-remove|default-present|edit-)/.test(operation)||
+    el.hasAttribute('data-mark')||el.hasAttribute('data-participation')||
+    el.hasAttribute('data-participation-all')||el.hasAttribute('data-record-edit')||
+    el.hasAttribute('data-record-remove')||el.hasAttribute('data-edit-child')||
+    el.hasAttribute('data-edit-marks')||el.hasAttribute('data-followup');
+  if(writes){event.preventDefault();event.stopImmediatePropagation();window.location.assign('?view=workspace');}
+},true);
 render();
