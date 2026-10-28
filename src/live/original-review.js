@@ -25,6 +25,8 @@ export async function startOriginalReview(config) {
       const d=dictionary.get(c.id);
       return {id:c.id,name:c.label,officer:'',donor:d?.donor_label||''};
     }));
+    const periods=new Map((refs.assessment_periods||[]).map(p=>[p.id,p]));
+    const definitions=new Map((refs.assessment_definitions||[]).map(d=>[d.id,d]));
     const db={version:1,students:[],attendance:{},scores:{},participation:{},events:[],visits:[],
       morarji:{},guidance:[],sessions:[],morarjiHistory:[],assessmentDetails:{},
       assessmentBatches:{},followups:{},lastSaved:null};
@@ -46,6 +48,15 @@ export async function startOriginalReview(config) {
             centre:id,shift:s.shift_code,grade:s.grade_label,gender:s.gender_code||'',
             enrolled:s.starts_on,active:!s.ends_before||s.ends_before>'2026-10-29',exitDate:s.ends_before||'',note:''});
           db.scores[s.child_id]={F1:null,F2:null,F3:null,F4:null};
+        }
+        for(const assessment of rows.assessments) {
+          const def=definitions.get(assessment.definition_id),quarter=periods.get(def?.period_id)?.quarter;
+          if(!Number.isInteger(quarter)||quarter<1||quarter>4||Number(def.max_score)!==25)continue;
+          const key='F'+quarter,id=assessment.child_id;
+          if(!db.scores[id])continue;
+          if(db.scores[id][key]!==null)continue; // Never fabricate an average across conflicting assessments.
+          db.scores[id][key]=assessment.score===null?null:Number(assessment.score);
+          db.assessmentDetails[id+'|'+key]={maxMarks:25,date:assessment.assessed_on||'',status:assessment.score===null?'Not entered':'Recorded'};
         }
         for(const a of rows.attendance){
           db.attendance[a.child_id+'|'+a.attendance_date]=a.code;
