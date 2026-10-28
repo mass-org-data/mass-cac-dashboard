@@ -31,7 +31,7 @@ export async function startOriginalReview(config) {
       morarji:{},guidance:[],sessions:[],morarjiHistory:[],assessmentDetails:{},
       assessmentBatches:{},followups:{},lastSaved:null};
     const seenStudents=new Set(),seenEvents=new Set(),seenSessions=new Set();
-    const observedDates={};
+    const observedDates={},observedDatesByCentre={};
     const from='2026-07-01',until='2026-11-01';
     // All results are read through the existing centre-scoped and RLS-protected RPCs.
     // Limit concurrency to avoid overwhelming the database.
@@ -61,6 +61,8 @@ export async function startOriginalReview(config) {
         for(const a of rows.attendance){
           db.attendance[a.child_id+'|'+a.attendance_date]=a.code;
           (observedDates[a.attendance_date.slice(0,7)]??=new Set()).add(a.attendance_date);
+          (observedDatesByCentre[id]??={});
+          (observedDatesByCentre[id][a.attendance_date.slice(0,7)]??=new Set()).add(a.attendance_date);
         }
         for(const e of rows.activities)if(!seenEvents.has(e.id)){
           seenEvents.add(e.id);
@@ -79,6 +81,7 @@ export async function startOriginalReview(config) {
       }
     }
     await Promise.all(Array.from({length:6},worker));
+    globalThis.__massReviewObservedDatesByCentre=Object.fromEntries(Object.entries(observedDatesByCentre).map(([id,months])=>[id,Object.fromEntries(Object.entries(months).map(([month,dates])=>[month,[...dates].sort()]))]));
     globalThis.__massReviewObservedDates=Object.fromEntries(Object.entries(observedDates).map(([k,v])=>[k,[...v].sort()]));
     globalThis.__massReviewToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     globalThis.__massLiveReviewData=db;
