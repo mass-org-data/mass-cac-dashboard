@@ -14,7 +14,8 @@
     "check": "node scripts/check.mjs",
     "test": "node --test tests/frontend/*.test.mjs && node tests/entry-workflows.mjs",
     "test:api": "bash tests/frontend/run-database.sh",
-    "test:browser": "python tests/frontend/browser.py"
+    "test:browser": "python tests/frontend/browser.py",
+    "test:directory": "python tests/directory/reconcile_test.py && bash tests/directory/run-local.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0"

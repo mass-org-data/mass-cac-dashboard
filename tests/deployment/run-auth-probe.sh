@@ -97,6 +97,8 @@ foundation_state > "$auth_work/foundation-after.txt"
 cmp "$auth_work/foundation-before.txt" "$auth_work/foundation-after.txt"
 [[ "$(sql -Atqc "SELECT to_regnamespace('mass_core') IS NULL AND to_regnamespace('mass_api') IS NULL AND NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname IN ('mass_core_owner','mass_core_admin'))")" == t ]]
 for migration in "$repo_root"/supabase/migrations/*.sql;do
+ # Historical 001–016 acceptance; 017 has tests/directory/run-local.sh.
+ [[ "$(basename "$migration")" > 202610280016_frontend_reads.sql ]] && continue
  [[ "$(basename "$migration")" < 202610270007_auth_scope.sql ]] && continue
  migrate < "$migration"
 done

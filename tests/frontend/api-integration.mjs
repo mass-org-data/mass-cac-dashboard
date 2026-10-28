@@ -3,6 +3,7 @@ import {createHmac,randomUUID} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import {createApi,BackendError} from '../../src/live/api.js';
 import {createReadApi} from '../../src/live/reads.js';
+import {createDirectoryApi} from '../../src/live/directory.js';
 
 const address=process.env.MASS_FRONTEND_TEST_API;
 assert(/^http:\/\/mass-frontend-read-test-[0-9]+-[0-9]+-api:3000$/.test(address),'Only the generated isolated test API is accepted');
@@ -21,7 +22,7 @@ function clients(subject,role) {
       return fetch(url,init);
     }},
   });
-  return {api:createApi(client),reads:createReadApi(client)};
+  return {api:createApi(client),reads:createReadApi(client),directory:createDirectoryApi(client)};
 }
 let checks=0;function check(value,label){assert(value,label);++checks;console.log('PASS SDK:',label);}
 const a='10000000-0000-4000-8000-000000000001',b='10000000-0000-4000-8000-000000000002';
@@ -70,3 +71,14 @@ state=await read(teacher);check(state.students.filter(r=>r.child_id===student.ch
 const baseline=await teacher.api.listStudents({centre:a,on:'2026-04-15'});check(baseline.rows.some(r=>r.child_id===student.child_id),'original list_students adapter remains usable');
 const totals=await teacher.api.attendanceSummary({centre:a,from:'2026-04-01',until:'2026-05-01'});check(Number(totals.present_count)>0,'original attendance_summary remains usable');
 console.log(`PASS: ${checks} real SDK/PostgREST checks; Auth issuance is synthetic, not managed Supabase verification.`);
+
+if(process.env.MASS_DIRECTORY_TEST==='1') {
+ const centres=await teacher.directory.centres();
+ check(centres.length===1&&centres[0].donor_label==='Synthetic donor A','directory SDK returns assigned donor/centre only');
+ const staff=await teacher.directory.staff({centre:a});
+ check(staff.length===3&&staff.some(s=>s.role_code==='Cluster Officer'&&s.shift_code===null),'directory SDK preserves role and unknown shift');
+ check((await teacher.directory.staff({centre:a,shift:'Evening'})).length===1,'directory SDK supports explicit shift filtering');
+ await assert.rejects(teacher.directory.staff({centre:b}),e=>e.status===403);check(true,'directory SDK rejects cross-centre staff read');
+ check((await teacher.directory.centres({donor:'55000000-0000-4000-8000-000000000002'})).length===0,'directory donor filter cannot reveal another centre');
+ console.log('PASS: 5 additional directory SDK/PostgREST checks.');
+}

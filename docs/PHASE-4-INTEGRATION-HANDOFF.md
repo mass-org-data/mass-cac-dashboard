@@ -1,5 +1,7 @@
 # Phase 4 — frontend integration and finalized read APIs
 
+> Current directory addition: [migration 017 handoff](MIGRATION-017-DEPLOYMENT-HANDOFF.md) adds donor associations, donor/centre filtering and scoped staff/shift display with MASS_DIRECTORY_API=directory-v1 after separate deployment approval. The user now reports 001–016 applied. Financial reporting, exports and Auth provisioning remain unsupported. The real five-sheet source audit is blocked by workbook access; no mapping is fabricated.
+
 ## Source and production boundaries
 
 Working branch: **feature/supabase-frontend**, based on database release `15cbc3f2a417c13201aa60ee053d7b92a0bd8444`. Manager-approved frontend source: **migration/frontend @ 0b57ea193e5dd8decb9a451d0b1cea44e22322fb**. Its app.js, style.css, data/dropout helpers and assets are preserved; the original entry-workflow test and review document are included. Files were adopted explicitly without merging branches. Live modules reuse the approved layout, CSS, logo/icons, cards, tables, modal patterns and navigation; old sample logic remains isolated in explicit demo mode.
@@ -30,7 +32,7 @@ Unsupported live workflows are clearly unavailable, never replaced with a client
 - Atomic bulk attendance/participation/results, grouped comments, Absent/clear assessment statuses, assessment date/context retagging, routine repeat attempts, F aliases and unapproved comparison/band rules.
 - Activity category/catalogue/delivery status, Both-shifts auto-splitting, immutable event detail editing/removal; CAC Planned/Held/Cancelled delivery writes and H/calendar authority.
 - Follow-up/private notes, visits and guidance modules, richer Morarji training/selection/admission/scholarship fields, automated dropout/engagement rules and school-result reporting.
-- Student/donor exports or print reports without independent entitlement/disclosure/audit approval. [Donor reporting](PHASE-4-DONOR-REPORTING-PROPOSAL.md) is a separate unimplemented addition requiring donors and centre_funding; sample funding assumptions are never used live.
+- Student/donor exports or print reports without independent entitlement/disclosure/audit approval. [Donor reporting](PHASE-4-DONOR-REPORTING-PROPOSAL.md) is a earlier proposal superseded by the approved directory-only donors/centres.donor_id model; no centre_funding or financial assumptions are implemented.
 
 All original sample features, including managed removal/undo, remain in the preserved demo app. They cannot reach Supabase. No historical workbook/source discovery was repeated.
 

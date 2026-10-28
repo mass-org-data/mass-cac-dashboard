@@ -13,3 +13,6 @@ supabase/.branches/
 backups/
 .pgpass
 .pg_service.conf
+
+__pycache__/
+*.pyc

@@ -1,12 +1,12 @@
 # Implemented database data dictionary
 
-Phase 4 migration 016, 28 October 2026. **23 locally implemented relations: six foundation and 17 core; 16 migrations. Locally verified; 016 not applied to hosted Supabase.**
+Directory migration 017, 28 October 2026. **26 locally implemented relations: six foundation and 20 core; 17 migrations. Locally verified; 017 not applied to hosted Supabase.**
 
-This dictionary is generated from PostgreSQL catalog metadata after all 16 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.
+This dictionary is generated from PostgreSQL catalog metadata after all 17 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.
 
 The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E dictionary snapshot](DATABASE-PROPOSED-DATA-DICTIONARY-PHASE-2E.md); see [deferred relations](DATABASE-DEFERRED-RELATIONS.md). Historical decision documents retain their original context. This current dictionary makes no claim that every proposal is implemented.
 
-`auth.users` is an existing managed dependency, not a 24th relation created by these migrations. All 23 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; generated student_id/year-end values are nevertheless non-null under the current strict expressions over required inputs. No generic shared timestamp/origin columns are implied.
+`auth.users` is an existing managed dependency, not a 27th relation created by these migrations. All 26 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; generated student_id/year-end values are nevertheless non-null under the current strict expressions over required inputs. No generic shared timestamp/origin columns are implied.
 
 ## Inventory
 
@@ -21,13 +21,16 @@ The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E
 | `mass_core.attendance_codes` | 3 | `code` | `202610270010_attendance.sql` |
 | `mass_core.attendance_records` | 8 | `id` | `202610270010_attendance.sql` |
 | `mass_core.cac_sessions` | 7 | `id` | `202610270010_attendance.sql` |
-| `mass_core.centres` | 3 | `id` | `202610270007_auth_scope.sql` |
+| `mass_core.centre_staff_assignments` | 7 | `id` | `202610280017_donor_staff_directory.sql` |
+| `mass_core.centres` | 5 | `id` | `202610270007_auth_scope.sql` |
 | `mass_core.children` | 3 | `id` | `202610270008_identity_history.sql` |
 | `mass_core.cohort_memberships` | 7 | `id` | `202610270013_morarji.sql` |
+| `mass_core.donors` | 5 | `id` | `202610280017_donor_staff_directory.sql` |
 | `mass_core.enrolments` | 9 | `id` | `202610270008_identity_history.sql` |
 | `mass_core.morarji_outcomes` | 8 | `id` | `202610270013_morarji.sql` |
 | `mass_core.private_child_profiles` | 6 | `id` | `202610270008_identity_history.sql` |
 | `mass_core.programme_cohorts` | 4 | `id` | `202610270013_morarji.sql` |
+| `mass_core.staff_members` | 5 | `id` | `202610280017_donor_staff_directory.sql` |
 | `mass_core.user_scope_grants` | 10 | `id` | `202610270007_auth_scope.sql` |
 | `mass_foundation.audit_events` | 10 | `id` | `202610270006_audit_events.sql` |
 | `mass_foundation.import_batches` | 13 | `id` | `202610270003_import_batches.sql` |
@@ -250,6 +253,36 @@ cac_sessions_shift_code_check: CHECK ((shift_code = ANY (ARRAY['Morning'::text, 
 
 RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
 
+## mass_core.centre_staff_assignments
+
+Verified centre/person/role/nullable shift association; no fabricated validity dates or appointments.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `centre_id` | `uuid` | no | FK, composite UK | `none` | Verified centre scope; not inferred residence. |
+| `staff_member_id` | `uuid` | no | composite UK, FK | `none` | Explicit reviewed directory identity FK, distinct from Supabase Auth. |
+| `role_code` | `text` | no | composite UK | `none` | Leadership/Teacher/Cluster Officer; server-controlled grant only. |
+| `shift_code` | `text` | yes | composite UK | `none` | Morning/Evening controlled applicability. |
+| `source_row_id` | `uuid` | no | FK, composite UK | `none` | Restricted physical source-row reference, not raw payload or a person identity key. |
+| `source_slot` | `integer` | no | composite UK | `none` | Positive physical source field/slot occurrence used with source row for retry identity. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+centre_staff_assignments_centre_id_fkey: FOREIGN KEY (centre_id) REFERENCES mass_core.centres(id) ON DELETE RESTRICT
+centre_staff_assignments_centre_id_staff_member_id_role_cod_key: UNIQUE NULLS NOT DISTINCT (centre_id, staff_member_id, role_code, shift_code)
+centre_staff_assignments_pkey: PRIMARY KEY (id)
+centre_staff_assignments_role_code_check: CHECK ((role_code = ANY (ARRAY['Teacher'::text, 'Cluster Officer'::text])))
+centre_staff_assignments_shift_code_check: CHECK ((shift_code = ANY (ARRAY['Morning'::text, 'Evening'::text])))
+centre_staff_assignments_source_row_id_fkey: FOREIGN KEY (source_row_id) REFERENCES mass_foundation.source_rows(id) ON DELETE RESTRICT
+centre_staff_assignments_source_row_id_source_slot_role_cod_key: UNIQUE NULLS NOT DISTINCT (source_row_id, source_slot, role_code, shift_code)
+centre_staff_assignments_source_slot_check: CHECK ((source_slot > 0))
+centre_staff_assignments_staff_member_id_fkey: FOREIGN KEY (staff_member_id) REFERENCES mass_core.staff_members(id) ON DELETE RESTRICT
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
 ## mass_core.centres
 
 Confirmed centre identity/reference; labels are not automatically merged or globally unique.
@@ -259,10 +292,15 @@ Confirmed centre identity/reference; labels are not automatically merged or glob
 | `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
 | `label` | `text` | no | — | `none` | Explicit supplied non-personal reference label; no automatic fuzzy identity. |
 | `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
+| `donor_id` | `uuid` | yes | FK | `none` | Nullable single verified donor association; conflicting or multi-donor centres require review, not overwrite. |
+| `donor_source_row_id` | `uuid` | yes | FK | `none` | Restricted source-row provenance for the first donor association. |
 
 Exact final constraints (including composite FK columns/actions and CHECKs):
 
 ```sql
+centre_donor_provenance: CHECK (((donor_id IS NULL) = (donor_source_row_id IS NULL)))
+centres_donor_id_fkey: FOREIGN KEY (donor_id) REFERENCES mass_core.donors(id) ON DELETE RESTRICT
+centres_donor_source_row_id_fkey: FOREIGN KEY (donor_source_row_id) REFERENCES mass_foundation.source_rows(id) ON DELETE RESTRICT
 centres_label_check: CHECK (((length(btrim(label)) >= 1) AND (length(btrim(label)) <= 120)))
 centres_pkey: PRIMARY KEY (id)
 ```
@@ -310,6 +348,31 @@ cohort_memberships_cohort_id_fkey: FOREIGN KEY (cohort_id) REFERENCES mass_core.
 cohort_memberships_enrolment_id_child_id_centre_id_shift_c_fkey: FOREIGN KEY (enrolment_id, child_id, centre_id, shift_code) REFERENCES mass_core.enrolments(id, child_id, centre_id, shift_code) ON DELETE RESTRICT
 cohort_memberships_id_centre_id_key: UNIQUE (id, centre_id)
 cohort_memberships_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.donors
+
+Verified donor association directory, not financial funding. Original source label and row/slot provenance are owner-only.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `label` | `text` | no | — | `none` | Explicit supplied non-personal reference label; no automatic fuzzy identity. |
+| `source_label` | `text` | no | — | `none` | Preserved original donor source spelling; owner-only. |
+| `source_row_id` | `uuid` | no | FK, composite UK | `none` | Restricted physical source-row reference, not raw payload or a person identity key. |
+| `source_slot` | `integer` | no | composite UK | `none` | Positive physical source field/slot occurrence used with source row for retry identity. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+donors_label_check: CHECK (((length(btrim(label)) >= 1) AND (length(btrim(label)) <= 160)))
+donors_pkey: PRIMARY KEY (id)
+donors_source_label_check: CHECK (((length(btrim(source_label)) >= 1) AND (length(btrim(source_label)) <= 200)))
+donors_source_row_id_fkey: FOREIGN KEY (source_row_id) REFERENCES mass_foundation.source_rows(id) ON DELETE RESTRICT
+donors_source_row_id_source_slot_key: UNIQUE (source_row_id, source_slot)
+donors_source_slot_check: CHECK ((source_slot > 0))
 ```
 
 RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
@@ -415,6 +478,31 @@ Exact final constraints (including composite FK columns/actions and CHECKs):
 programme_cohorts_academic_year_id_fkey: FOREIGN KEY (academic_year_id) REFERENCES mass_core.academic_years(id) ON DELETE RESTRICT
 programme_cohorts_label_check: CHECK (((length(btrim(label)) >= 1) AND (length(btrim(label)) <= 120)))
 programme_cohorts_pkey: PRIMARY KEY (id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
+## mass_core.staff_members
+
+Source-backed directory identity only; names are not unique and never establish Auth identity or permissions.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
+| `display_name` | `text` | no | — | `none` | Reviewed display spelling; no inferred staff merge or Auth account. |
+| `source_name` | `text` | no | — | `none` | Preserved original staff name spelling; owner-only. |
+| `source_row_id` | `uuid` | no | FK, composite UK | `none` | Restricted physical source-row reference, not raw payload or a person identity key. |
+| `source_slot` | `integer` | no | composite UK | `none` | Positive physical source field/slot occurrence used with source row for retry identity. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+staff_members_display_name_check: CHECK (((length(btrim(display_name)) >= 1) AND (length(btrim(display_name)) <= 160)))
+staff_members_pkey: PRIMARY KEY (id)
+staff_members_source_name_check: CHECK (((length(btrim(source_name)) >= 1) AND (length(btrim(source_name)) <= 200)))
+staff_members_source_row_id_fkey: FOREIGN KEY (source_row_id) REFERENCES mass_foundation.source_rows(id) ON DELETE RESTRICT
+staff_members_source_row_id_source_slot_key: UNIQUE (source_row_id, source_slot)
+staff_members_source_slot_check: CHECK ((source_slot > 0))
 ```
 
 RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
@@ -527,7 +615,7 @@ Restricted, allowlisted issue/review metadata; no copied invalid values or free-
 | --- | --- | --- | --- | --- | --- |
 | `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
 | `batch_id` | `uuid` | no | FK, composite UK | `none` | Technical batch association; optional for non-import audit events. |
-| `source_row_id` | `uuid` | no | composite UK, FK | `none` | Frozen row occurrence FK, not raw record contents. |
+| `source_row_id` | `uuid` | no | composite UK, FK | `none` | Restricted physical source-row reference, not raw payload or a person identity key. |
 | `field_ordinal` | `integer` | yes | composite UK | `none` | Optional positive physical field ordinal; NULL-aware issue uniqueness applies. |
 | `reason_code` | `text` | no | composite UK | `none` | Allowlisted non-personal issue category. |
 | `review_state` | `text` | no | — | `'open'::text` | Technical open/resolved/rejected state; terminal closure is guarded. |

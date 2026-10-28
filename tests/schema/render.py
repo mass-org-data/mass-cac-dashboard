@@ -8,16 +8,19 @@ ROOT=Path(__file__).resolve().parents[2]
 p=argparse.ArgumentParser();p.add_argument('catalog',type=Path);p.add_argument('--check',action='store_true');args=p.parse_args()
 snapshot=json.loads(args.catalog.read_text())
 snapshot['migrations']=[{'file':str(f.relative_to(ROOT)),'sha256':hashlib.sha256(f.read_bytes()).hexdigest()} for f in sorted((ROOT/'supabase/migrations').glob('*.sql'))]
-assert len(snapshot['migrations'])==16
-assert len(snapshot['tables'])==23
+assert len(snapshot['migrations'])==17
+assert len(snapshot['tables'])==26
 assert sum(t['schema']=='mass_foundation' for t in snapshot['tables'])==6
-assert sum(t['schema']=='mass_core' for t in snapshot['tables'])==17
+assert sum(t['schema']=='mass_core' for t in snapshot['tables'])==20
 assert all(t['rls'] and t['force_rls'] for t in snapshot['tables'])
 def qualified(t):return t['schema']+'.'+t['name']
 byname={qualified(t):t for t in snapshot['tables']}
 def esc(s):return str(s).replace('|','\\|').replace('\n',' ')
 def code(s):return '`'+esc(s)+'`'
 purposes={
+'donors':'Verified donor association directory, not financial funding. Original source label and row/slot provenance are owner-only.',
+'staff_members':'Source-backed directory identity only; names are not unique and never establish Auth identity or permissions.',
+'centre_staff_assignments':'Verified centre/person/role/nullable shift association; no fabricated validity dates or appointments.',
 'source_files':'Immutable source snapshot fingerprint and opaque artifact reference; no filename or source contents.',
 'source_sheets':'Immutable sheet occurrence/ordinal and versioned header reference; no raw header JSON or sheet display name.',
 'import_batches':'Technical execution state, progress, counts and optimistic revision; not a business-data approval.',
@@ -42,6 +45,14 @@ purposes={
 'cohort_memberships':'Unique cohort/child membership with verified centre/shift/episode linkage.',
 'morarji_outcomes':'Nullable applied/attended/passed and supplied school text only; no additional outcomes inferred.'}
 common={
+'donor_id':'Nullable single verified donor association; conflicting or multi-donor centres require review, not overwrite.',
+'donor_source_row_id':'Restricted source-row provenance for the first donor association.',
+'source_row_id':'Restricted physical source-row FK; no raw record payload or person identity inference.',
+'source_slot':'Positive physical source field/slot occurrence used with source row for retry identity.',
+'source_label':'Preserved original donor source spelling; owner-only.',
+'source_name':'Preserved original staff name spelling; owner-only.',
+'display_name':'Reviewed display spelling; no inferred staff merge or Auth account.',
+'staff_member_id':'Explicit reviewed directory identity FK, distinct from Supabase Auth.',
 'id':'Stable technical UUID.', 'row_version':'Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409.',
 'child_id':'Registered child reference; never a name-derived identity.', 'centre_id':'Verified centre scope; not inferred residence.',
 'shift_code':'Morning/Evening controlled applicability.', 'enrolment_id':'Verified historical episode; composite FK preserves child/centre/shift context.',
@@ -57,7 +68,7 @@ common={
 'quarantined_count':'Held occurrence category.', 'excluded_count':'Excluded occurrence category; issue flags may overlap and are separate.',
 'sheet_id':'Immutable source sheet occurrence FK.', 'first_batch_id':'First extraction context, not rewritten on retries.',
 'row_number':'Positive physical row number in frozen source sheet.', 'content_hash':'Private row fingerprint; equal hashes do not merge people/occurrences.',
-'batch_id':'Technical batch association; optional for non-import audit events.', 'source_row_id':'Frozen row occurrence FK, not raw record contents.',
+'batch_id':'Technical batch association; optional for non-import audit events.', 'source_row_id':'Restricted physical source-row reference, not raw payload or a person identity key.',
 'field_ordinal':'Optional positive physical field ordinal; NULL-aware issue uniqueness applies.',
 'reason_code':'Allowlisted non-personal issue category.', 'review_state':'Technical open/resolved/rejected state; terminal closure is guarded.',
 'resolution_code':'Allowlisted resolution category; no free-text rationale.', 'resolved_by':'Actual database principal (PostgreSQL name), not an asserted Auth user.',
@@ -91,10 +102,10 @@ common={
 'applied':'Nullable supplied indicator; NULL remains unknown.', 'attended':'Nullable supplied indicator; training/exam context is not inferred.',
 'passed':'Nullable supplied indicator; no extra outcome/status inferred.', 'school_name':'Supplied school observation only; not inferred admission or award.'}
 lines=['# Implemented database data dictionary', '',
-'Phase 4 migration 016, 28 October 2026. **23 locally implemented relations: six foundation and 17 core; 16 migrations. Locally verified; 016 not applied to hosted Supabase.**', '',
-'This dictionary is generated from PostgreSQL catalog metadata after all 16 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.', '',
+'Directory migration 017, 28 October 2026. **26 locally implemented relations: six foundation and 20 core; 17 migrations. Locally verified; 017 not applied to hosted Supabase.**', '',
+'This dictionary is generated from PostgreSQL catalog metadata after all 17 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.', '',
 'The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E dictionary snapshot](DATABASE-PROPOSED-DATA-DICTIONARY-PHASE-2E.md); see [deferred relations](DATABASE-DEFERRED-RELATIONS.md). Historical decision documents retain their original context. This current dictionary makes no claim that every proposal is implemented.', '',
-'`auth.users` is an existing managed dependency, not a 24th relation created by these migrations. All 23 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; generated student_id/year-end values are nevertheless non-null under the current strict expressions over required inputs. No generic shared timestamp/origin columns are implied.', '',
+'`auth.users` is an existing managed dependency, not a 27th relation created by these migrations. All 26 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; generated student_id/year-end values are nevertheless non-null under the current strict expressions over required inputs. No generic shared timestamp/origin columns are implied.', '',
 '## Inventory','', '| Relation | Columns | PK | Creation migration |','| --- | --- | --- | --- |']
 creation={}
 for f in sorted((ROOT/'supabase/migrations').glob('*.sql')):
@@ -126,7 +137,7 @@ groups=[('Foundation and managed Auth',[t for t in snapshot['tables'] if t['sche
  ('Attendance, assessments, activities and Morarji',[t for t in snapshot['tables'] if t['schema']=='mass_core' and t['name'] not in ['centres','user_scope_grants','children','private_child_profiles','enrolments','academic_years','assessment_periods']])]
 def eid(name):return name.replace('.','_')
 erd=['# Implemented entity–relationship diagrams','',
-'Phase 4 migration 016, 28 October 2026. **23 local relations, 16 migrations, 016 not hosted-applied.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).','',
+'Directory migration 017, 28 October 2026. **26 local relations, 17 migrations, 017 not hosted-applied.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).','',
 'Entity IDs use `mass_core_` / `mass_foundation_` instead of schema dots for Mermaid compatibility. Every column of each owning-domain relation is shown once; referenced parents repeat as key-only stubs. `auth_users` is the existing managed `auth.users` dependency, not a created table. Optional parent associations reflect FK nullability; child zero-or-one reflects FK columns containing a UNIQUE/PK. Composite keys/NULL behavior and runtime temporal checks are specified by the dictionary and migrations.','']
 for title,tables in groups:
  own={qualified(t) for t in tables};stubs={};edges=[]
@@ -157,12 +168,12 @@ for title,tables in groups:
   erd+=['    '+eid(name)+' {']+['        '+typ.replace(' ','_')+' '+col for col,typ in cols.items()]+['    }']
  erd+=edges+['```','']
 erd+=['## Relationships that are deliberately absent','',
-'No person/name join, polymorphic audit business FK, historical source-slot/event bridge, automatic year/quarter alias or derived staff/funder relationship is implied. Audit entity_id is a durable locator, while actor_user_id and batch_id are real FKs. No unimplemented proposed relation is drawn as deployed. All actual FK edges, including Auth and composite contextual keys, appear above.','']
+'No person/name join, polymorphic audit business FK, historical source-slot/event bridge, automatic year/quarter alias or derived staff/funder relationship is implied. Audit entity_id is a durable locator, while actor_user_id and batch_id are real FKs. New directory relations are locally implemented, not asserted deployed. No unimplemented proposed relation is drawn as deployed. All actual FK edges, including Auth and composite contextual keys, appear above.','']
 # Full effective policy expressions and grants: evidence, not invented role permissions.
 security=['# Implemented database security and RLS','',
-'Phase 4 migration 016, 28 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.','',
+'Directory migration 017, 28 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.','',
 '## Access boundary','',
-'- All 23 relations enable and force RLS. Private schemas are mass_foundation and mass_core; mass_api contains curated functions and no tables. The local API exposes only mass_api; actual hosted exposure must be reviewed before any apply/enablement.',
+'- All 26 relations enable and force RLS. Private schemas are mass_foundation and mass_core; mass_api contains curated functions and no tables. The local API exposes only mass_api; actual hosted exposure must be reviewed before any apply/enablement.',
 '- Leadership has programme reads only within explicit valid grants and no business writes. Teachers and Cluster Officers need verified centre scopes; explicit can_read_profiles is additional and still excludes Leadership. No null/global centre or browser role claim grants access.',
 '- Authenticated direct mutations are not granted. Typed definer RPCs enforce scope and optimistic revisions; centred owner write policies add scope enforcement. Scoped invoker read projections preserve RLS and private-field filtering.',
 '- Technical foundation roles and core admin/owner are NOLOGIN and NOBYPASSRLS. Only the trusted deployment principal receives explicit SET/INHERIT owner memberships; no application-role owner memberships or actual staff scope rows are installed. Actor UID is trusted only behind a real validated Auth issuer/gateway; test stubs do not certify managed Auth.',
@@ -181,7 +192,7 @@ for t in snapshot['tables']:
 security+=['## Function boundary','', '| Function / identity arguments | Returns | Definer | Settings | ACL |','| --- | --- | --- | --- | --- |']
 for f in snapshot['functions']:security.append('| '+' | '.join([code(f['schema']+'.'+f['name']+'('+f['arguments']+')'),code(f['returns']),str(f['security_definer']),code(', '.join(f['settings'] or [])),code(f['acl'] or 'PostgreSQL defaults')])+' |')
 security+=['','ACL notation: r SELECT, a INSERT, w UPDATE, d DELETE, D TRUNCATE, x REFERENCES, t TRIGGER, X EXECUTE. PostgreSQL owner rights and role inheritance must also be reviewed; NULL ACL text is not proof of no rights. Foundation helpers use explicit PUBLIC EXECUTE revokes (a schema-local default revoke alone does not remove global function defaults). Core-owner global function defaults revoke PUBLIC EXECUTE. Check effective privileges on the real target, including service_role inheritance and grant options.','',
-'Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 16 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.','']
+'Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 17 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.','']
 outputs={ROOT/'docs/DATABASE-DATA-DICTIONARY.md':dictionary,ROOT/'docs/DATABASE-ERD.md':'\n'.join(erd),ROOT/'docs/DATABASE-SECURITY-IMPLEMENTED.md':'\n'.join(security),ROOT/'docs/DATABASE-SCHEMA-INVENTORY.json':json.dumps(snapshot,indent=2,sort_keys=True)+'\n'}
 for path,text in outputs.items():
  if args.check:
@@ -189,4 +200,4 @@ for path,text in outputs.items():
    old=json.loads(path.read_text());current=json.loads(text);old.pop('server_version',None);current.pop('server_version',None);assert old==current,path
   else:assert path.read_text()==text,path
  else:path.write_text(text)
-print(('Verified' if args.check else 'Rendered')+': 23 tables, every column/key/constraint/FK, all policies, ERDs and 16 migration checksums against isolated catalog.')
+print(('Verified' if args.check else 'Rendered')+': 26 tables, every column/key/constraint/FK, all policies, ERDs and 17 migration checksums against isolated catalog.')

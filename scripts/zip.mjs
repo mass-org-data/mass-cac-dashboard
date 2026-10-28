@@ -13,7 +13,7 @@ function crc32(bytes) {
 async function walk(root, relative) {
   const entries=await readdir(path.join(root,relative),{withFileTypes:true});
   const files=[];
-  for (const entry of entries.sort((a,b)=>a.name.localeCompare(b.name))) {
+  for (const entry of entries.filter(e=>e.name!=='__pycache__'&&!e.name.endsWith('.pyc')).sort((a,b)=>a.name.localeCompare(b.name))) {
     const next=path.posix.join(relative,entry.name);
     if(entry.isDirectory()) files.push(...await walk(root,next));
     else if(entry.isFile()) files.push(next);

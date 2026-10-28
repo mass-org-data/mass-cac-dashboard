@@ -2,6 +2,7 @@ import {icon} from './icons.js';
 import {createBackendClient,clearStoredSession} from './client.js';
 import {createApi} from './api.js';
 import {createReadApi} from './reads.js';
+import {createDirectoryApi,directoryCentres} from './directory.js';
 import {createSessionController} from './session.js';
 import {liveToday,monthWindow,roster,matches,filteredFacts,attendanceTotals,quarterLabel,quarterWindow,emptyCentre,eligibleEpisode,activeOn,combineCentres} from './model.js';
 
@@ -18,10 +19,12 @@ const triValue=value=>value===null||value===undefined?'null':String(value);
 const booleanValue=value=>{if(!['null','true','false'].includes(value))throw new Error('Choose Yes, No or Unknown.');return value==='null'?null:value==='true';};
 
 export async function startLiveApp(config) {
-  const client=createBackendClient(config),api=createApi(client),reads=createReadApi(client);
+  const client=createBackendClient(config),api=createApi(client),reads=createReadApi(client),directory=createDirectoryApi(client);
+  const directoryEnabled=config.directoryApi==='directory-v1';
   const root=document.querySelector('#app'),overlay=document.querySelector('#overlay');
-  const state={auth:{status:'checking'},context:null,refs:null,data:null,page:'overview',centre:'',month:liveToday().slice(0,7),on:liveToday(),year:'',shift:'',grade:'',gender:'',query:'',definition:'',cohort:'',history:false,busy:false,saving:false,error:'',notice:'',menu:false,collapsed:false};
+  const state={auth:{status:'checking'},context:null,refs:null,directory:[],staff:[],donor:'',data:null,page:'overview',centre:'',month:liveToday().slice(0,7),on:liveToday(),year:'',shift:'',grade:'',gender:'',query:'',definition:'',cohort:'',history:false,busy:false,saving:false,error:'',notice:'',menu:false,collapsed:false};
   let epoch=0,controller,modalSave=null,lastFocus=null;
+  const targetsForDonor=()=>directoryEnabled?directoryCentres(state.context?.centres||[],state.directory,state.donor==='unassociated'?'':state.donor).filter(c=>state.donor!=='unassociated'||c.donor_id===null):state.context?.centres.map(c=>({centre_id:c.id}))||[];
   const centre=()=>state.context?.centres.find(c=>c.id===state.centre);
   const canWrite=()=>Boolean(centre()?.can_write && state.auth.status==='signed-in' && !state.busy && !state.saving);
   const isLeadership=()=>Boolean(state.context?.centres.some(c=>c.roles.includes('Leadership')));
@@ -34,10 +37,10 @@ export async function startLiveApp(config) {
     overlay.replaceChildren();document.body.style.overflow='';modalSave=null;lastFocus?.focus();
   }
   function clearData() {
-    ++epoch;controller?.abort();state.data=null;state.error='';state.busy=false;
+    ++epoch;controller?.abort();state.data=null;state.staff=[];state.error='';state.busy=false;
     closeModal(true);state.saving=false;
   }
-  function clearIdentity() { clearData();state.context=null;state.refs=null;state.centre='';state.shift='';state.grade='';state.gender='';state.query=''; }
+  function clearIdentity() { clearData();state.context=null;state.refs=null;state.directory=[];state.donor='';state.centre='';state.shift='';state.grade='';state.gender='';state.query=''; }
   function notify(message) { state.notice=message;render(); }
   const session=createSessionController(client,{
     onReset:clearData,clearStoredSession:()=>clearStoredSession(config),
@@ -48,7 +51,7 @@ export async function startLiveApp(config) {
     },
   });
   async function initialize(userId) {
-    clearData();state.context=null;state.refs=null;const own=epoch;state.busy=true;render();controller=new AbortController();
+    clearData();state.context=null;state.refs=null;state.directory=[];const own=epoch;state.busy=true;render();controller=new AbortController();
     try {
       const context=await reads.context(controller.signal);
       if(own!==epoch)return;
@@ -58,6 +61,14 @@ export async function startLiveApp(config) {
       const leadership=context.centres.some(c=>c.roles.includes('Leadership'));
       if(state.centre!=='all'&&!context.centres.some(c=>c.id===state.centre))state.centre=leadership?'all':context.centres[0].id;
       state.refs=await reads.references(controller.signal);
+      if(directoryEnabled){
+        const rows=await directory.centres({signal:controller.signal});
+        if(own!==epoch)return;
+        const allowed=new Set(context.centres.map(c=>c.id));
+        if(new Set(rows.map(c=>c.centre_id)).size!==rows.length||rows.some(c=>!allowed.has(c.centre_id)))throw new Error('Directory scope response could not be verified.');
+        state.directory=rows;
+        if(state.donor&&state.donor!=='unassociated'&&!rows.some(c=>c.donor_id===state.donor))state.donor='';
+      }
       if(own!==epoch)return;
       const current=state.refs.academic_years.find(y=>y.starts_on<=state.on&&state.on<y.ends_before);
       if(!state.refs.academic_years.some(y=>y.id===state.year))state.year=current?.id||state.refs.academic_years[0]?.id||'';
@@ -69,7 +80,7 @@ export async function startLiveApp(config) {
   function handleError(error) {
     controller?.abort();state.busy=false;state.error=error.message;
     if(error.sessionExpired) { void session.signOut();return; }
-    if(error.status===403) { state.data=null;state.context=null;state.refs=null; }
+    if(error.status===403) { state.data=null;state.context=null;state.refs=null;state.directory=[];state.donor=''; }
     render();
   }
   async function load() {
@@ -77,14 +88,19 @@ export async function startLiveApp(config) {
     clearData();const own=epoch;state.busy=true;render();controller=new AbortController();
     try {
       const window=monthWindow(state.month),year=state.refs.academic_years.find(y=>y.id===state.year);
-      const targets=state.centre==='all'?state.context.centres:[centre()];
+      const allowed=new Set(targetsForDonor().map(c=>c.centre_id));
+      const targets=(state.centre==='all'?state.context.centres:[centre()]).filter(c=>c&&allowed.has(c.id));
+      if(!targets.length){state.data=emptyCentre(state.centre);state.staff=[];state.busy=false;render();return;}
       if(!targets[0]||targets.length>10)throw new Error('Choose one assigned centre. Combined reads are limited to ten centres per selection.');
       if(!targets.every(c=>c.can_read_profiles))state.gender='';
       if(!definitions().some(d=>d.id===state.definition))state.definition=definitions()[0]?.id||'';
       const results=[];
       for(const target of targets){if(own!==epoch)return;results.push(await reads.centre({centre:target.id,...window,yearFrom:year?.starts_on||window.from,yearUntil:year?.ends_before||window.until,signal:controller.signal}));}
       if(own!==epoch)return;
-      state.data=combineCentres(results);state.busy=false;render();
+      let staff=[];
+      if(directoryEnabled&&state.centre!=='all')staff=await directory.staff({centre:state.centre,signal:controller.signal});
+      if(own!==epoch)return;
+      state.data=combineCentres(results);state.staff=staff;state.busy=false;render();
     } catch(error) { if(own===epoch)handleError(error); }
   }
   async function save(operation,message) {
@@ -210,7 +226,19 @@ export async function startLiveApp(config) {
       '<p class="form-help full">Unknown remains unknown. Training days, selection, admission and scholarship outcomes are not part of the approved backend.</p>',f=>save(()=>api.recordMorarji({member:id,applied:booleanValue(f.applied),attended:booleanValue(f.attended),passed:booleanValue(f.passed),school:f.school.trim()||null,expected:row.outcome_id?Number(row.row_version):0}),'Morarji outcomes saved.'));
   }
   function filters() {
-    return `<form class="filters" id="workspace-filters">${choice('Centre','centre',[['all','All assigned centres'],...state.context.centres.map(c=>[c.id,c.label])],state.centre)}${field('Reporting month','month',state.month,'month','required')}${field('Enrolment / attendance date','on',state.on,'date','required')}${choice('Shift','shift',[['','Both shifts'],'Morning','Evening'],state.shift)}${choice('Grade','grade',[['','All grades'],...Array.from({length:10},(_,i)=>String(i+1))],state.grade)}${centre()?.can_read_profiles?choice('Gender','gender',[['','All permitted genders'],'Girl','Boy'],state.gender):''}${field('Search student or ID','query',state.query,'search','maxlength="100" autocomplete="off"')}${state.page==='learning'?choice('Academic year','year',state.refs.academic_years.map(y=>[y.id,`${y.starts_on} to ${y.ends_before} (exclusive)`]),state.year):''}<button type="submit" class="btn primary" ${state.busy?'disabled':''}>Apply filters</button><button type="button" class="reset-filter" data-work-action="reset-filters">Reset filters</button></form>`;
+    return `<form class="filters" id="workspace-filters">${directoryEnabled?choice('Donor','donor',[['','All associated donors'],['unassociated','No verified association'],...[...new Map(state.directory.filter(c=>c.donor_id).map(c=>[c.donor_id,c.donor_label])).entries()]],state.donor):''}${choice('Centre','centre',[['all','All assigned centres'],...state.context.centres.filter(c=>targetsForDonor().some(d=>d.centre_id===c.id)).map(c=>[c.id,c.label])],state.centre)}${field('Reporting month','month',state.month,'month','required')}${field('Enrolment / attendance date','on',state.on,'date','required')}${choice('Shift','shift',[['','Both shifts'],'Morning','Evening'],state.shift)}${choice('Grade','grade',[['','All grades'],...Array.from({length:10},(_,i)=>String(i+1))],state.grade)}${centre()?.can_read_profiles?choice('Gender','gender',[['','All permitted genders'],'Girl','Boy'],state.gender):''}${field('Search student or ID','query',state.query,'search','maxlength="100" autocomplete="off"')}${state.page==='learning'?choice('Academic year','year',state.refs.academic_years.map(y=>[y.id,`${y.starts_on} to ${y.ends_before} (exclusive)`]),state.year):''}<button type="submit" class="btn primary" ${state.busy?'disabled':''}>Apply filters</button><button type="button" class="reset-filter" data-work-action="reset-filters">Reset filters</button></form>`;
+  }
+  function directoryPanel() {
+    if(state.centre==='all')return '';
+    const row=state.directory.find(c=>c.centre_id===state.centre);
+    const staff=state.staff.filter(s=>!state.shift||s.shift_code===state.shift||s.shift_code===null);
+    return section('Centre directory',esc(`${row?.centre_label||'Selected centre'} · Donor association: ${row?.donor_label||'Not verified'}`),
+      `<div class="table-scroll"><table><thead><tr><th>Staff</th><th>Role</th><th>Source-reported shift</th></tr></thead><tbody>${staff.map(s=>`<tr><td>${esc(s.display_name)}</td><td>${esc(s.role_code)}</td><td>${esc(s.shift_code||'Not documented')}</td></tr>`).join('')}</tbody></table></div>${!staff.length?empty('No verified staff assignments returned.'):''}<p class="chart-note">Directory entries do not establish login access or appointment dates. Unknown shifts are shown separately.</p>`);
+  }
+  function donorPage() {
+    const rows=targetsForDonor();
+    return section('Donor-to-centre directory','Verified associations within your authorized centres. No amounts, funding periods or financial attribution.',
+      `<div class="table-scroll"><table><thead><tr><th>Donor association</th><th>CAC centre</th><th>Programme</th></tr></thead><tbody>${rows.map(c=>`<tr><td>${esc(c.donor_label||'Not verified')}</td><td>${esc(c.centre_label)}</td><td>${action('View centre','directory-centre',`data-id="${esc(c.centre_id)}"`)}</td></tr>`).join('')}</tbody></table></div>${!rows.length?empty('No authorized centres match this donor selection.'):''}<button class="btn" disabled>Financial reporting unavailable</button>`);
   }
   function profileRows(history=false) {
     const rows=history?data().students.filter(s=>matches(s,state)):visible();
@@ -265,15 +293,15 @@ export async function startLiveApp(config) {
     const roles=centre()?.roles||[...new Set((state.context?.centres||[]).flatMap(c=>c.roles))],leader=isLeadership(),officer=roles.includes('Cluster Officer');
     const nav=leader?[['overview','Overview'],['attendance','Attendance'],['learning','Learning'],['activities','Activities & Engagement'],['morarji','Morarji scholarship prep'],['visits','Officer Visits']]:[['overview',officer?'My Centres':'Overview'],...(officer?[['attendance','Attendance']]:[['daily','Daily Attendance']]),['children','Student Profile'],['learning','Learning'],['activities','Activities'],['morarji','Morarji scholarship prep'],...(officer?[['visits','Visits']]:[])];
     if(leader&&['children','daily','manage'].includes(state.page))state.page='overview';
-    const title=nav.find(([id])=>id===state.page)?.[1]||({attendance:'Attendance',manage:'Correct / remove entries'}[state.page])||'Programme overview';
+    const title=nav.find(([id])=>id===state.page)?.[1]||({attendance:'Attendance',manage:'Correct / remove entries',directory:'Donor centres'}[state.page])||'Programme overview';
     let content='';
     if(state.busy)content='<section class="card"><div class="empty" role="status" aria-live="polite">Loading authorized records…</div></section>';
     else if(state.error)content=`<section class="card"><div class="empty" role="alert">${esc(state.error)} ${action('Retry','retry')}</div></section>`;
     else if(!state.context?.centres.length)content=empty('No verified centre assignments are available for this account. Contact the administrator; no sample or unrestricted records will be shown.');
     else if(!state.data)content=empty('No records loaded.');
     else if(state.page==='visits')content=empty('Officer Visits is not available in the live workspace yet.');
-    else content=filters()+({overview,daily,children:()=>section('Student Profile','Permanent IDs and historical assignments; private fields follow server permissions.',profileRows(state.history),action(state.history?'Show as-of roster':'Show historical assignments','history')+(canWrite()?action('Add student','new-student','','primary'):'')),attendance:attendancePage,learning,activities,morarji,manage:management}[state.page]||overview)();
-    root.innerHTML=`<div class="app ${state.menu?'menu-open':''} ${state.collapsed?'sidebar-collapsed':''}"><aside class="sidebar"><a class="brand" href="#" data-work-action="home"><span class="mass-logo"><img src="mass-logo.jpg" alt="MASS NGO logo" width="201" height="160"></span></a><div class="workspace"><span class="eyebrow">Programme workspace</span><strong>Children’s Activity Centres</strong></div>${action('Collapse menu','collapse','aria-label="Toggle sidebar"')}<div class="nav-label">${esc(roles.join(' / ')||'Authenticated account')}</div><nav class="nav">${nav.map(([id,label])=>`<button data-work-page="${id}" class="${state.page===id?'active':''}">${icon({overview:'home',daily:'calendar',children:'people',attendance:'calendar',learning:'book',activities:'activity',morarji:'chart',visits:'visit'}[id])}<span class="nav-text">${label}</span></button>`).join('')}</nav><div class="sidebar-bottom"><a class="text-button" href="MASS-CAC-Vercel-Source.zip" download>Application source</a></div></aside><main class="shell"><header class="topbar"><div><button class="mobile-menu" data-work-action="menu" aria-label="Open navigation">☰</button><span class="mass-logo header-logo"><img src="mass-logo.jpg" alt="MASS NGO" width="201" height="160"></span></div><div class="top-actions"><span class="demo-chip">Authorized programme records</span>${canWrite()?action('Correct / remove','manage') : ''}${action('Sign out','sign-out')}</div></header><div class="content"><div class="page-head"><div><div class="eyebrow">Children’s Activity Centres</div><h1>${esc(title)}</h1><p>${esc(centre()?.label||(state.centre==='all'?'All assigned centres':'Verified account access'))}</p></div><div class="head-actions">${leader?action('Donor summary','donor','disabled title="Donor and centre-funding reporting require separate approval."'):''}</div></div>${state.notice?`<div class="integration-notice" role="status">${esc(state.notice)} ${action('Dismiss','dismiss')}</div>`:''}${content}</div></main><nav class="bottom-nav" aria-label="Mobile navigation">${nav.slice(0,4).map(([id,label])=>`<button data-work-page="${id}" class="${state.page===id?'active':''}">${label}</button>`).join('')}<button data-work-action="menu">More</button></nav></div>`;
+    else content=filters()+(directoryEnabled?directoryPanel():'')+({overview,daily,children:()=>section('Student Profile','Permanent IDs and historical assignments; private fields follow server permissions.',profileRows(state.history),action(state.history?'Show as-of roster':'Show historical assignments','history')+(canWrite()?action('Add student','new-student','','primary'):'')),attendance:attendancePage,learning,activities,morarji,manage:management,directory:donorPage}[state.page]||overview)();
+    root.innerHTML=`<div class="app ${state.menu?'menu-open':''} ${state.collapsed?'sidebar-collapsed':''}"><aside class="sidebar"><a class="brand" href="#" data-work-action="home"><span class="mass-logo"><img src="mass-logo.jpg" alt="MASS NGO logo" width="201" height="160"></span></a><div class="workspace"><span class="eyebrow">Programme workspace</span><strong>Children’s Activity Centres</strong></div>${action('Collapse menu','collapse','aria-label="Toggle sidebar"')}<div class="nav-label">${esc(roles.join(' / ')||'Authenticated account')}</div><nav class="nav">${nav.map(([id,label])=>`<button data-work-page="${id}" class="${state.page===id?'active':''}">${icon({overview:'home',daily:'calendar',children:'people',attendance:'calendar',learning:'book',activities:'activity',morarji:'chart',visits:'visit'}[id])}<span class="nav-text">${label}</span></button>`).join('')}</nav><div class="sidebar-bottom"><a class="text-button" href="MASS-CAC-Vercel-Source.zip" download>Application source</a></div></aside><main class="shell"><header class="topbar"><div><button class="mobile-menu" data-work-action="menu" aria-label="Open navigation">☰</button><span class="mass-logo header-logo"><img src="mass-logo.jpg" alt="MASS NGO" width="201" height="160"></span></div><div class="top-actions"><span class="demo-chip">Authorized programme records</span>${canWrite()?action('Correct / remove','manage') : ''}${action('Sign out','sign-out')}</div></header><div class="content"><div class="page-head"><div><div class="eyebrow">Children’s Activity Centres</div><h1>${esc(title)}</h1><p>${esc(centre()?.label||(state.centre==='all'?'All assigned centres':'Verified account access'))}</p></div><div class="head-actions">${directoryEnabled?action('Donor centres','donor'):leader?action('Donor summary','donor','disabled title="Directory API not enabled."'):''}</div></div>${state.notice?`<div class="integration-notice" role="status">${esc(state.notice)} ${action('Dismiss','dismiss')}</div>`:''}${content}</div></main><nav class="bottom-nav" aria-label="Mobile navigation">${nav.slice(0,4).map(([id,label])=>`<button data-work-page="${id}" class="${state.page===id?'active':''}">${label}</button>`).join('')}<button data-work-action="menu">More</button></nav></div>`;
   }
   root.addEventListener('submit',async event=>{
     event.preventDefault();const form=event.target;
@@ -285,6 +313,7 @@ export async function startLiveApp(config) {
       finally{if(button.isConnected)button.disabled=false;}
     }else if(form.id==='workspace-filters'){
       const f=Object.fromEntries(new FormData(form));Object.assign(state,f);
+      if(!targetsForDonor().some(c=>c.centre_id===state.centre))state.centre='all';
       if(state.page==='daily')state.month=state.on.slice(0,7);
       await load();
     }else if(form.id==='definition-filter'){state.definition=new FormData(form).get('definition');render();}
@@ -302,7 +331,9 @@ export async function startLiveApp(config) {
       else if(command==='menu'){state.menu=!state.menu;render();}
       else if(command==='collapse'){state.collapsed=!state.collapsed;render();}
       else if(command==='dismiss'){state.notice='';render();}
-      else if(command==='reset-filters'){state.shift='';state.grade='';state.gender='';state.query='';await load();}
+      else if(command==='reset-filters'){state.donor='';state.shift='';state.grade='';state.gender='';state.query='';await load();}
+      else if(command==='donor'){state.page='directory';render();}
+      else if(command==='directory-centre'){if(!targetsForDonor().some(c=>c.centre_id===button.dataset.id))return;state.centre=button.dataset.id;state.page='overview';await load();}
       else if(command==='history'){state.history=!state.history;render();}
       else if(command==='manage'){state.page='manage';render();}
       else if(command==='daily'){state.page='daily';state.month=state.on.slice(0,7);await load();}

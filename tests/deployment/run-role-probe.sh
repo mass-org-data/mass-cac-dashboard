@@ -75,6 +75,8 @@ assert '22012' in failure,failure
 FAILURE
 [[ "$(sql -Atqc "SELECT to_regnamespace('mass_core') IS NULL AND NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname LIKE 'mass\_core\_%' ESCAPE '\') AND to_regclass('mass_foundation.source_files') IS NOT NULL")" == t ]]
 for migration in "$repo_root"/supabase/migrations/*.sql;do
+ # Historical 001–016 acceptance; 017 has tests/directory/run-local.sh.
+ [[ "$(basename "$migration")" > 202610280016_frontend_reads.sql ]] && continue
  [[ "$(basename "$migration")" < 202610270007_auth_scope.sql ]] && continue
  docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U mass_test_migrator -d postgres < "$migration"
 done

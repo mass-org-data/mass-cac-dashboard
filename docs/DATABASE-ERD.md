@@ -1,6 +1,6 @@
 # Implemented entity–relationship diagrams
 
-Phase 4 migration 016, 28 October 2026. **23 local relations, 16 migrations, 016 not hosted-applied.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).
+Directory migration 017, 28 October 2026. **26 local relations, 17 migrations, 017 not hosted-applied.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).
 
 Entity IDs use `mass_core_` / `mass_foundation_` instead of schema dots for Mermaid compatibility. Every column of each owning-domain relation is shown once; referenced parents repeat as key-only stubs. `auth_users` is the existing managed `auth.users` dependency, not a created table. Optional parent associations reflect FK nullability; child zero-or-one reflects FK columns containing a UNIQUE/PK. Composite keys/NULL behavior and runtime temporal checks are specified by the dictionary and migrations.
 
@@ -92,6 +92,8 @@ erDiagram
         uuid id PK
         text label
         bigint row_version
+        uuid donor_id FK
+        uuid donor_source_row_id FK
     }
     mass_core_user_scope_grants {
         uuid id PK
@@ -144,6 +146,14 @@ erDiagram
     auth_users {
         uuid id
     }
+    mass_core_donors {
+        uuid id
+    }
+    mass_foundation_source_rows {
+        uuid id
+    }
+    mass_core_donors |o--o{ mass_core_centres : "donor_id"
+    mass_foundation_source_rows |o--o{ mass_core_centres : "donor_source_row_id"
     mass_core_centres ||--o{ mass_core_user_scope_grants : "centre_id"
     auth_users ||--o{ mass_core_user_scope_grants : "user_id"
     auth_users ||--o{ mass_core_user_scope_grants : "verified_by"
@@ -216,6 +226,15 @@ erDiagram
         uuid confirmation_ref
         bigint row_version
     }
+    mass_core_centre_staff_assignments {
+        uuid id PK
+        uuid centre_id FK
+        uuid staff_member_id FK
+        text role_code
+        text shift_code
+        uuid source_row_id FK
+        integer source_slot
+    }
     mass_core_cohort_memberships {
         uuid id PK
         uuid cohort_id FK
@@ -224,6 +243,13 @@ erDiagram
         text shift_code FK
         uuid enrolment_id FK
         bigint row_version
+    }
+    mass_core_donors {
+        uuid id PK
+        text label
+        text source_label
+        uuid source_row_id FK
+        integer source_slot
     }
     mass_core_morarji_outcomes {
         uuid id PK
@@ -241,6 +267,13 @@ erDiagram
         uuid academic_year_id FK
         bigint row_version
     }
+    mass_core_staff_members {
+        uuid id PK
+        text display_name
+        text source_name
+        uuid source_row_id FK
+        integer source_slot
+    }
     mass_core_academic_years {
         uuid id
     }
@@ -256,6 +289,9 @@ erDiagram
         uuid centre_id
         text shift_code
     }
+    mass_foundation_source_rows {
+        uuid id
+    }
     mass_core_centres ||--o{ mass_core_activity_events : "centre_id"
     mass_core_enrolments ||--o{ mass_core_activity_participation : "enrolment_id, child_id, centre_id, shift_code"
     mass_core_activity_events ||--o{ mass_core_activity_participation : "event_id, centre_id, shift_code"
@@ -265,12 +301,17 @@ erDiagram
     mass_core_attendance_codes ||--o{ mass_core_attendance_records : "code"
     mass_core_enrolments ||--o{ mass_core_attendance_records : "enrolment_id, child_id, centre_id, shift_code"
     mass_core_centres ||--o{ mass_core_cac_sessions : "centre_id"
+    mass_core_centres ||--o{ mass_core_centre_staff_assignments : "centre_id"
+    mass_foundation_source_rows ||--o{ mass_core_centre_staff_assignments : "source_row_id"
+    mass_core_staff_members ||--o{ mass_core_centre_staff_assignments : "staff_member_id"
     mass_core_programme_cohorts ||--o{ mass_core_cohort_memberships : "cohort_id"
     mass_core_enrolments ||--o{ mass_core_cohort_memberships : "enrolment_id, child_id, centre_id, shift_code"
+    mass_foundation_source_rows ||--o{ mass_core_donors : "source_row_id"
     mass_core_cohort_memberships ||--o| mass_core_morarji_outcomes : "membership_id, centre_id"
     mass_core_academic_years |o--o{ mass_core_programme_cohorts : "academic_year_id"
+    mass_foundation_source_rows ||--o{ mass_core_staff_members : "source_row_id"
 ```
 
 ## Relationships that are deliberately absent
 
-No person/name join, polymorphic audit business FK, historical source-slot/event bridge, automatic year/quarter alias or derived staff/funder relationship is implied. Audit entity_id is a durable locator, while actor_user_id and batch_id are real FKs. No unimplemented proposed relation is drawn as deployed. All actual FK edges, including Auth and composite contextual keys, appear above.
+No person/name join, polymorphic audit business FK, historical source-slot/event bridge, automatic year/quarter alias or derived staff/funder relationship is implied. Audit entity_id is a durable locator, while actor_user_id and batch_id are real FKs. New directory relations are locally implemented, not asserted deployed. No unimplemented proposed relation is drawn as deployed. All actual FK edges, including Auth and composite contextual keys, appear above.

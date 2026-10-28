@@ -23,16 +23,16 @@ def check(ok,label):
     assert ok,label
     checks+=1
     print('PASS UI:',label)
-def build(mode='live',read_api='frontend-reads-v1'):
+def build(mode='live',read_api='frontend-reads-v1',directory='off'):
     env={**os.environ,'MASS_APP_MODE':mode,'MASS_SUPABASE_URL':'https://'+HOST,
-         'MASS_SUPABASE_PUBLISHABLE_KEY':'sb_publishable_'+'x'*32,'MASS_READ_API':read_api}
+         'MASS_SUPABASE_PUBLISHABLE_KEY':'sb_publishable_'+'x'*32,'MASS_READ_API':read_api,'MASS_DIRECTORY_API':directory}
     subprocess.run(['npm','run','build'],cwd=ROOT,env=env,check=True,capture_output=True)
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(ROOT/'dist'),**kwargs)
     def log_message(self,*args):pass
 class Backend:
     def __init__(self):
-        self.kind='teacher';self.calls=[];self.conflict=False;self.uncertain=False;self.forbidden=False;self.revoked=False;self.logout_fail=False;self.expired=False
+        self.directory=False;self.directory_fail=False;self.kind='teacher';self.calls=[];self.conflict=False;self.uncertain=False;self.forbidden=False;self.revoked=False;self.logout_fail=False;self.expired=False
         self.students=[dict(child_id=C,student_id=C.upper(),enrolment_id=E,grade_label='5',shift_code='Morning',starts_on='2026-04-01',ends_before=None,status_code='Active',row_version=1,full_name='Synthetic learner',gender_code='Girl',class10_board_passed=None)]
         self.attendance=[];self.assessments=[];self.activities=[];self.participation=[];self.morarji=[]
     def subject(self):return '00000000-0000-4000-8000-'+{'teacher':'000000000001','leader':'000000000004','unassigned':'000000000005'}[self.kind]
@@ -64,8 +64,14 @@ class Backend:
         rpc=url.path.rsplit('/',1)[-1]
         if rpc=='get_context':
             centres=[] if self.kind=='unassigned' or self.revoked else [dict(id=A,label='Synthetic centre A',roles=['Leadership' if self.kind=='leader' else 'Teacher'],can_write=self.kind!='leader',can_read_profiles=self.kind!='leader')]
+            if self.directory and centres:centres.append(dict(id=B,label='Synthetic centre B',roles=['Teacher'],can_write=True,can_read_profiles=True))
             send(dict(api_version='frontend-reads-v1',user_id=self.subject(),centres=centres));return
         if self.forbidden or self.revoked:send({'code':'42501','message':'private provider detail'},403);return
+        if rpc in ('get_centre_directory','get_centre_staff'):
+            if self.directory_fail:send({'code':'PGRST202','message':'unavailable'},404);return
+            if rpc=='get_centre_directory':send([dict(centre_id=A,centre_label='Synthetic centre A',donor_id='55000000-0000-4000-8000-000000000001',donor_label='Synthetic donor A'),dict(centre_id=B,centre_label='Synthetic centre B',donor_id='55000000-0000-4000-8000-000000000002',donor_label='Synthetic donor B')]);return
+            rows=[dict(assignment_id='57000000-0000-4000-8000-000000000001',staff_member_id='56000000-0000-4000-8000-000000000001',display_name='<img src=x onerror=alert(1)>',role_code='Teacher',shift_code='Morning'),dict(assignment_id='57000000-0000-4000-8000-000000000002',staff_member_id='56000000-0000-4000-8000-000000000002',display_name='Synthetic officer',role_code='Cluster Officer',shift_code=None)] if body['p_centre']==A else []
+            send(rows);return
         if rpc=='get_references':
             send(dict(academic_years=[dict(id=YEAR,starts_on='2026-04-01',ends_before='2027-04-01')],assessment_periods=[dict(id=PERIOD,academic_year_id=YEAR,quarter=1)],assessment_definitions=[dict(id=DEFINITION,period_id=PERIOD,max_score=25)],programme_cohorts=[dict(id=COHORT,label='Synthetic cohort',academic_year_id=YEAR)],attendance_codes=[dict(code=c,meaning=c) for c in ['P','A','L','WO','MM']]))
             return
@@ -233,6 +239,24 @@ with sync_playwright() as p:
             check(not any(path.endswith('/read_students') for path,method,body,headers in fixture.calls),'forged user_metadata role cannot discover or read programme records')
         context.close()
     check(not errors,'no uncaught browser errors')
+    build(directory='directory-v1')
+    context=browser.new_context(viewport={'width':1440,'height':1000},service_workers='block');directory=Backend();directory.directory=True;context.route('**/*',directory.route);view=context.new_page()
+    sign_in(view,base);expect(view.locator('#workspace-filters [name=donor]')).to_be_visible()
+    expect(view.locator('.content')).to_contain_text('Synthetic donor A')
+    check(view.get_by_role('heading',name='Centre directory',exact=True).count()==1,'selected-centre directory uses authenticated APIs')
+    check(view.locator('.content img[src=x]').count()==0,'staff directory escapes source names')
+    check('Not documented' in view.locator('.content').inner_text(),'unknown officer shift remains visibly undocumented')
+    view.locator('[data-work-action=donor]').click();expect(view.get_by_role('heading',name='Donor-to-centre directory',exact=True)).to_be_visible()
+    check('Synthetic donor B' in view.locator('.content').inner_text(),'donor drilldown lists only server-authorized centre associations')
+    directory.calls.clear();view.locator('#workspace-filters [name=donor]').select_option('55000000-0000-4000-8000-000000000002');view.get_by_role('button',name='Apply filters',exact=True).click()
+    expect(view.locator('[data-work-action=directory-centre]')).to_have_count(1)
+    check(not any(body.get('p_centre')==A for path,method,body,headers in directory.calls if path.endswith('/read_students')),'donor selection scopes programme queries before loading')
+    view.locator('[data-work-action=directory-centre]').click();expect(view.locator('#workspace-filters [name=centre]')).to_have_value(B)
+    check('No verified staff assignments returned.' in view.locator('.content').inner_text(),'centre drilldown handles honest empty staff state')
+    directory.directory_fail=True;view.locator('[data-work-action=sign-out]').click();expect(view.get_by_role('heading',name='Sign in',exact=True)).to_be_visible();sign_in(view,base)
+    expect(view.locator('[role=alert]')).to_be_visible()
+    check(view.locator('#workspace-filters').count()==0,'missing directory API fails visibly without demo or old records')
+    context.close()
     build('demo')
     context=browser.new_context(viewport={'width':1440,'height':1000},service_workers='block');demo=Backend();context.route('**/*',demo.route);view=context.new_page()
     view.goto(base);view.locator('#role').select_option('Teacher')
@@ -246,7 +270,7 @@ with sync_playwright() as p:
     check(view.evaluate("JSON.parse(localStorage.getItem('mass-cac-companion-v1')).students.length")==before,'approved demo undo remains functional')
     check(not demo.calls,'demo never initializes Auth or sends programme RPCs')
     context.close()
-    env={key:value for key,value in os.environ.items() if key not in ('MASS_APP_MODE','MASS_READ_API','MASS_SUPABASE_URL','MASS_SUPABASE_PUBLISHABLE_KEY')}
+    env={key:value for key,value in os.environ.items() if key not in ('MASS_APP_MODE','MASS_READ_API','MASS_DIRECTORY_API','MASS_SUPABASE_URL','MASS_SUPABASE_PUBLISHABLE_KEY')}
     subprocess.run(['npm','run','build'],cwd=ROOT,env=env,check=True,capture_output=True)
     context=browser.new_context(service_workers='block');missing=Backend();context.route('**/*',missing.route);view=context.new_page();view.goto(base)
     expect(view.get_by_role('heading',name='Workspace configuration required',exact=True)).to_be_visible()

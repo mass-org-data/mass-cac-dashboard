@@ -1,10 +1,10 @@
 # Implemented database security and RLS
 
-Phase 4 migration 016, 28 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.
+Directory migration 017, 28 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.
 
 ## Access boundary
 
-- All 23 relations enable and force RLS. Private schemas are mass_foundation and mass_core; mass_api contains curated functions and no tables. The local API exposes only mass_api; actual hosted exposure must be reviewed before any apply/enablement.
+- All 26 relations enable and force RLS. Private schemas are mass_foundation and mass_core; mass_api contains curated functions and no tables. The local API exposes only mass_api; actual hosted exposure must be reviewed before any apply/enablement.
 - Leadership has programme reads only within explicit valid grants and no business writes. Teachers and Cluster Officers need verified centre scopes; explicit can_read_profiles is additional and still excludes Leadership. No null/global centre or browser role claim grants access.
 - Authenticated direct mutations are not granted. Typed definer RPCs enforce scope and optimistic revisions; centred owner write policies add scope enforcement. Scoped invoker read projections preserve RLS and private-field filtering.
 - Technical foundation roles and core admin/owner are NOLOGIN and NOBYPASSRLS. Only the trusted deployment principal receives explicit SET/INHERIT owner memberships; no application-role owner memberships or actual staff scope rows are installed. Actor UID is trusted only behind a real validated Auth issuer/gateway; test stubs do not certify managed Auth.
@@ -121,6 +121,25 @@ Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_
 
 Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}`.
 
+### mass_core.centre_staff_assignments
+
+| Policy | Command | Roles | USING | WITH CHECK |
+| --- | --- | --- | --- | --- |
+| `owner_access` | * | `mass_core_owner` | `true` | `true` |
+| `scoped_read` | r | `authenticated` | `mass_core.can_read(centre_id)` | `none` |
+
+Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner}`.
+
+Column ACL `id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `centre_id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `staff_member_id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `role_code`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `shift_code`: `{authenticated=r/mass_core_owner}`.
+
 ### mass_core.centres
 
 | Policy | Command | Roles | USING | WITH CHECK |
@@ -129,7 +148,15 @@ Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_co
 | `owner_access` | * | `mass_core_owner` | `true` | `true` |
 | `scoped_read` | r | `authenticated` | `mass_core.can_read(id)` | `none` |
 
-Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}`.
+Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner}`.
+
+Column ACL `id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `label`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `row_version`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `donor_id`: `{authenticated=r/mass_core_owner}`.
 
 ### mass_core.children
 
@@ -150,6 +177,19 @@ Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_
 | `scoped_read` | r | `authenticated` | `mass_core.can_read(centre_id)` | `none` |
 
 Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_owner}`.
+
+### mass_core.donors
+
+| Policy | Command | Roles | USING | WITH CHECK |
+| --- | --- | --- | --- | --- |
+| `owner_access` | * | `mass_core_owner` | `true` | `true` |
+| `scoped_read` | r | `authenticated` | `(EXISTS ( SELECT 1    FROM mass_core.centres c   WHERE ((c.donor_id = donors.id) AND mass_core.can_read(c.id))))` | `none` |
+
+Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner}`.
+
+Column ACL `id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `label`: `{authenticated=r/mass_core_owner}`.
 
 ### mass_core.enrolments
 
@@ -191,6 +231,19 @@ Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,authenticated=r/mass_core_
 | `scoped_read` | r | `authenticated` | `(mass_core.request_user_id() IS NOT NULL)` | `none` |
 
 Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner,authenticated=r/mass_core_owner}`.
+
+### mass_core.staff_members
+
+| Policy | Command | Roles | USING | WITH CHECK |
+| --- | --- | --- | --- | --- |
+| `owner_access` | * | `mass_core_owner` | `true` | `true` |
+| `scoped_read` | r | `authenticated` | `(EXISTS ( SELECT 1    FROM mass_core.centre_staff_assignments a   WHERE ((a.staff_member_id = staff_members.id) AND mass_core.can_read(a.centre_id))))` | `none` |
+
+Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner}`.
+
+Column ACL `id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `display_name`: `{authenticated=r/mass_core_owner}`.
 
 ### mass_core.user_scope_grants
 
@@ -320,6 +373,8 @@ Column ACL `exported_at`: `{mass_foundation_ingestor=a/mass_foundation_owner}`.
 
 Table ACL: `{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundation_ingestor=ar/mass_foundation_owner,mass_foundation_reviewer=r/mass_foundation_owner,mass_foundation_auditor=r/mass_foundation_owner}`.
 
+Column ACL `id`: `{mass_core_owner=x/mass_foundation_owner}`.
+
 ### mass_foundation.source_sheets
 
 | Policy | Command | Roles | USING | WITH CHECK |
@@ -338,6 +393,8 @@ Table ACL: `{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundatio
 | `mass_api.attendance_summary(p_centre uuid, p_from date, p_until date)` | `TABLE(present_count bigint, absent_count bigint, leave_count bigint, excluded_count bigint, percentage numeric)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.close_enrolment(p_id uuid, p_expected bigint, p_ends_before date, p_status text)` | `bigint` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.create_activity(p_id uuid, p_centre uuid, p_shift text, p_date date, p_name text)` | `uuid` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.get_centre_directory(p_centre uuid, p_donor uuid, p_limit integer, p_offset integer)` | `TABLE(centre_id uuid, centre_label text, donor_id uuid, donor_label text)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.get_centre_staff(p_centre uuid, p_shift text, p_limit integer, p_offset integer)` | `TABLE(assignment_id uuid, staff_member_id uuid, display_name text, role_code text, shift_code text)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.get_context()` | `jsonb` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.get_references()` | `jsonb` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.list_students(p_centre uuid, p_on date)` | `TABLE(child_id uuid, student_id text, enrolment_id uuid, grade_label text, shift_code text, full_name text, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
@@ -359,6 +416,8 @@ Table ACL: `{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundatio
 | `mass_core.can_write(c uuid)` | `boolean` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_core.can_write_child(c uuid)` | `boolean` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_core.expected_version(actual bigint, expected bigint)` | `void` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner}` |
+| `mass_core.guard_centre_directory()` | `trigger` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,mass_core_admin=X/mass_core_owner}` |
+| `mass_core.guard_directory_immutable()` | `trigger` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner}` |
 | `mass_core.guard_record()` | `trigger` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner}` |
 | `mass_core.period_contains(p uuid, d date)` | `boolean` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_core.record_audit()` | `trigger` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner}` |
@@ -372,4 +431,4 @@ Table ACL: `{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundatio
 
 ACL notation: r SELECT, a INSERT, w UPDATE, d DELETE, D TRUNCATE, x REFERENCES, t TRIGGER, X EXECUTE. PostgreSQL owner rights and role inheritance must also be reviewed; NULL ACL text is not proof of no rights. Foundation helpers use explicit PUBLIC EXECUTE revokes (a schema-local default revoke alone does not remove global function defaults). Core-owner global function defaults revoke PUBLIC EXECUTE. Check effective privileges on the real target, including service_role inheritance and grant options.
 
-Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 16 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.
+Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 17 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.

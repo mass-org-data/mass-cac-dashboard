@@ -1,4 +1,6 @@
-# Donor reporting — separate unimplemented addition
+# Donor reporting — preserved earlier proposal
+
+> Superseded for directory associations by the current MASS request: migration 017 implements donors plus centres.donor_id, staff_members and centre_staff_assignments. **Do not create centre_funding.** No funding amounts/periods/financial attribution are approved. The original proposal below is retained as history, not the current implementation contract. See [017 handoff](MIGRATION-017-DEPLOYMENT-HANDOFF.md).
 
 The manager-approved sample frontend has donor labels, filters, aggregates, print and export. Those sample centre-to-donor mappings are not verified funding evidence. No donor fields or attribution are supplied by the 23-table production schema/read proposal, so the live donor controls are unavailable rather than displaying fabricated funding summaries.
 

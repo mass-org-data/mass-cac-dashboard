@@ -14,5 +14,8 @@ export function validateConfig(input = {}) {
   }
   const readApi = input.readApi || 'baseline';
   if (!['baseline','frontend-reads-v1'].includes(readApi)) throw new Error('Unsupported MASS_READ_API.');
-  return Object.freeze({mode, url, publishableKey: key, project: PROJECT, readApi});
+  const directoryApi=input.directoryApi||'off';
+  if(!['off','directory-v1'].includes(directoryApi))throw new Error('Unsupported MASS_DIRECTORY_API.');
+  if(directoryApi==='directory-v1'&&readApi!=='frontend-reads-v1')throw new Error('Directory requires frontend-reads-v1.');
+  return Object.freeze({mode, url, publishableKey: key, project: PROJECT, readApi,directoryApi});
 }

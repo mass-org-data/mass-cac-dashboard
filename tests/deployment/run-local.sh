@@ -23,6 +23,8 @@ docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$container" \
  psql -X -qAt -v ON_ERROR_STOP=1 -U postgres \
  < "$repo_root/supabase/compatibility/production-preflight.sql" > "$validation_work/before.txt"
 for migration in "$repo_root"/supabase/migrations/*.sql;do
+ # Historical 001–016 acceptance; 017 has tests/directory/run-local.sh.
+ [[ "$(basename "$migration")" > 202610280016_frontend_reads.sql ]] && continue
  if [[ "$(basename "$migration")" == 202610270008_identity_history.sql ]];then
   # Fail only a temporary copy inside the file's transaction. Earlier files stay
   # committed; this failed file's objects disappear on session termination.

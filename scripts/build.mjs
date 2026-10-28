@@ -7,7 +7,7 @@ import {validateConfig} from '../src/live/config.js';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const output=path.join(root,'dist');
-const input={mode:process.env.MASS_APP_MODE || 'live',url:process.env.MASS_SUPABASE_URL,publishableKey:process.env.MASS_SUPABASE_PUBLISHABLE_KEY,readApi:process.env.MASS_READ_API || 'baseline'};
+const input={mode:process.env.MASS_APP_MODE || 'live',url:process.env.MASS_SUPABASE_URL,publishableKey:process.env.MASS_SUPABASE_PUBLISHABLE_KEY,readApi:process.env.MASS_READ_API || 'baseline',directoryApi:process.env.MASS_DIRECTORY_API || 'off'};
 // Missing config builds a fail-closed configuration screen. Partial/unsafe config
 // fails the build before any browser bundle or download archive is produced.
 const configured=Boolean(input.url || input.publishableKey);
