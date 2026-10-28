@@ -31,7 +31,7 @@ from pathlib import Path
 sys.path.insert(0,str(Path(sys.argv[1])/'tests/imports'))
 from test_pipeline import fixture
 from render import render
-p,layout,plan,mapping,approval=fixture(sys.argv[2])
+p,layout,plan,mapping,approval=fixture(sys.argv[2],optional_shift=True,missing_teacher=True)
 sql=render(plan,mapping,approval());(Path(sys.argv[2])/'import.sql').write_text(sql)
 # Same valid source/mapping; a fault inside its transaction must undo all writes.
 (Path(sys.argv[2])/'failure.sql').write_text(sql.replace('\nCOMMIT;','\nSELECT 1/0;\nCOMMIT;'))
@@ -67,8 +67,9 @@ SELECT core_test.assert_true((SELECT count(*)=5 FROM mass_foundation.source_shee
 SELECT core_test.assert_true((SELECT count(*)=10 FROM mass_foundation.source_rows),'headers and candidate rows retain exact row provenance');
 SELECT core_test.assert_true((SELECT count(*)=4 FROM mass_core.donors),'four approved donors; quarantined row not imported');
 SELECT core_test.assert_true((SELECT count(*)=4 FROM mass_core.centres),'four explicit centre identities');
-SELECT core_test.assert_true((SELECT count(*)=8 FROM mass_core.staff_members),'eight reviewed staff directory identities');
-SELECT core_test.assert_true((SELECT count(*)=8 FROM mass_core.centre_staff_assignments),'eight source-backed role/shift assignments');
+SELECT core_test.assert_true((SELECT count(*)=7 FROM mass_core.staff_members),'seven reviewed staff; missing teacher creates no fabricated person');
+SELECT core_test.assert_true((SELECT count(*)=7 FROM mass_core.centre_staff_assignments),'seven source-backed assignments; missing teacher has no assignment');
+SELECT core_test.assert_true((SELECT count(*)=1 FROM mass_core.centre_staff_assignments WHERE shift_code IS NULL),'absent worksheet shift persists as SQL NULL');
 SELECT core_test.assert_true((SELECT count(*)=0 FROM auth.users),'no Auth accounts provisioned');
 SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.children),'no children implicitly imported from directory observations');
 SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.user_scope_grants),'directory identities create no access grants');

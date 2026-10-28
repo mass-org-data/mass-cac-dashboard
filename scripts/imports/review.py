@@ -10,10 +10,10 @@ FIELDS={
  'centre_staff_assignments':{'id','centre_id','staff_member_id','role_code','shift_code','source_row_id','source_slot'},
 }
 def scaffold(plan):
- return {'format':'mass-canonical-review-v1','plan_digest':digest(plan),'entities':{k:[] for k in KINDS},'dispositions':{},'row_identities':{},'resolutions':{}}
+ return {'format':'mass-canonical-review-v1','plan_digest':digest(plan),'entities':{k:[] for k in KINDS},'dispositions':{},'row_identities':{},'deferred_staff':{},'resolutions':{}}
 def preview(plan,mapping=None):
  observations=plan['observations'];allrows=[r for s in plan['sheets'] for r in s['rows']]
- return {'plan_digest':digest(plan),'mapping_digest':digest(mapping) if mapping else None,'populated_student_rows':sum(bool(o.get('values',{}).get('student_name')) for o in observations),'distinct_normalized_centre_labels':len({o.get('values',{}).get('centre','').casefold() for o in observations if o.get('values',{}).get('centre')}),'per_sheet':[{'ordinal':s['ordinal'],'observations':sum(o['worksheet_ordinal']==s['ordinal'] for o in observations),'populated_student_rows':sum(o['worksheet_ordinal']==s['ordinal'] and bool(o.get('values',{}).get('student_name')) for o in observations)} for s in plan['sheets']],'source_available':True,'kind':plan['kind'],'sheets':len(plan['sheets']),'registered_source_rows':len(allrows),'candidate_source_rows':sum(r['classification']=='candidate' for r in allrows),'observations':len(observations),'flagged_observations':sum(bool(o['issues']) for o in observations),'issue_counts':dict(Counter(i for o in observations for i in o['issues'])),'proposed_entities':{k:len((mapping or {}).get('entities',{}).get(k,[])) for k in KINDS},'approved_for_execution':False}
+ return {'missing_teacher_rows':sum(o.get('values',{}).get('teacher') is None for o in observations),'null_shift_rows':sum(o.get('values',{}).get('shift') is None for o in observations),'absent_shift_column_rows':sum('shift' not in o.get('source_columns',{}) for o in observations),'plan_digest':digest(plan),'mapping_digest':digest(mapping) if mapping else None,'populated_student_rows':sum(bool(o.get('values',{}).get('student_name')) for o in observations),'distinct_normalized_centre_labels':len({o.get('values',{}).get('centre','').casefold() for o in observations if o.get('values',{}).get('centre')}),'per_sheet':[{'ordinal':s['ordinal'],'observations':sum(o['worksheet_ordinal']==s['ordinal'] for o in observations),'populated_student_rows':sum(o['worksheet_ordinal']==s['ordinal'] and bool(o.get('values',{}).get('student_name')) for o in observations)} for s in plan['sheets']],'source_available':True,'kind':plan['kind'],'sheets':len(plan['sheets']),'registered_source_rows':len(allrows),'candidate_source_rows':sum(r['classification']=='candidate' for r in allrows),'observations':len(observations),'flagged_observations':sum(bool(o['issues']) for o in observations),'issue_counts':dict(Counter(i for o in observations for i in o['issues'])),'proposed_entities':{k:len((mapping or {}).get('entities',{}).get(k,[])) for k in KINDS},'approved_for_execution':False}
 def validate(plan,mapping,approval):
  if plan.get('format')!='mass-import-plan-v1' or plan.get('kind')!='directory':raise Invalid('Historical observations are review-only; operational adapter approval is still required.')
  source=plan['source'];uid(source['id']);uid(source['storage_ref'])
@@ -59,6 +59,8 @@ def validate(plan,mapping,approval):
     if role not in ('Teacher','Cluster Officer') or shift not in (None,'Morning','Evening'):raise Invalid('Only verified directory role/shift options are allowed.')
     field='teacher' if role=='Teacher' else 'officer'
     if slot!=o['source_columns'].get(field) or not o['raw'].get(field):raise Invalid('Assignment role/source cell mismatch.')
+    # Missing column and blank source cell both mean SQL NULL; no inference.
+    if 'shift' not in o['source_columns'] and shift is not None:raise Invalid('A worksheet without shift evidence cannot acquire a shift assignment.')
     if shift!= (o['values'].get('shift') or None):raise Invalid('Source shift is unknown/inconsistent; do not infer Both or dates.')
     uid(entity['centre_id']);uid(entity['staff_member_id'])
    lookup[kind][key]=entity
@@ -72,8 +74,17 @@ def validate(plan,mapping,approval):
   if lookup['centres'][ids['centre_id']]['donor_id']!=ids['donor_id']:raise Invalid('Source row disagrees with the reviewed single-donor centre relationship.')
   for role,field in [('teacher','teacher_id'),('officer','officer_id')]:
    if obs[row]['values'].get(role):
-    if ids[field] not in lookup['staff_members']:raise Invalid('Missing reviewed source staff identity.')
+    if ids[field] is None:
+     hold=mapping.get('deferred_staff',{}).get(row,{}).get(role,{})
+     if set(hold)!={'reason_code','decision_ref'} or hold.get('reason_code')!='unverified_record':raise Invalid('Unknown staff identity requires an explicit restricted deferral.')
+     token(hold.get('decision_ref'))
+    elif ids[field] not in lookup['staff_members']:raise Invalid('Missing reviewed source staff identity.')
+    elif role in mapping.get('deferred_staff',{}).get(row,{}):raise Invalid('Verified and deferred staff identity cannot coexist.')
    elif ids[field] is not None:raise Invalid('Do not create a staff identity from an empty source cell.')
+ for row,holds in mapping.get('deferred_staff',{}).items():
+  if row not in identities or not set(holds)<={'teacher','officer'}:raise Invalid('Invalid deferred staff source reference.')
+  for field in holds:
+   if not obs[row]['values'].get(field) or identities[row][field+'_id'] is not None:raise Invalid('Deferred staff must retain an unknown canonical identity.')
  for a in entities['centre_staff_assignments']:
   row_ids=identities[a['source_row_id']]
   if a['centre_id']!=row_ids['centre_id'] or a['staff_member_id']!=row_ids['teacher_id' if a['role_code']=='Teacher' else 'officer_id']:raise Invalid('Staff relationship disagrees with reviewed source row identities.')
@@ -81,7 +92,10 @@ def validate(plan,mapping,approval):
  for row,o in obs.items():
   if dispositions[row]=='accepted' and o['issues']:
    resolution=mapping.get('resolutions',{}).get(row,{})
-   if set(resolution.get('resolved_issues',[]))!=set(o['issues']):raise Invalid('Accepted source row still has unresolved identity/region/quality exceptions.')
+   resolved=set(resolution.get('resolved_issues',[]));deferred=set(resolution.get('deferred_issues',[]))
+   if resolved & deferred or resolved|deferred!=set(o['issues']):raise Invalid('Every accepted issue needs an explicit resolution or restricted deferral.')
+   if deferred-{'staff_identity_review','student_name_identity_review','duplicate_source_observation','missing_teacher','missing_officer','contact_detail_in_staff_cell','possible_multiple_staff_in_cell'}:raise Invalid('Donor/centre/shift conflicts cannot be deferred into an operational mapping.')
+   if 'staff_identity_review' in deferred and not mapping.get('deferred_staff',{}).get(row):raise Invalid('Staff issue deferral requires field-level identity holds.')
    token(resolution.get('decision_ref'))
  # Same physical origin or NULL-aware assignment key must not imply two identities.
  for kind,items in entities.items():

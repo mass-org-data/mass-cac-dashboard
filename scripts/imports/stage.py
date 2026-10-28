@@ -19,15 +19,15 @@ def stage(workbook,layout,key):
  book=load_workbook(path,read_only=True,data_only=False)
  configured=layout.get('sheets',{})
  if not configured or not set(configured)<=set(book.sheetnames):raise Invalid('Exact reviewed worksheets are required.')
- if kind=='directory' and set(configured)!={'Mpokket','Fanuc','McAfee','Janashkati Foundation','Dasar UK'}:raise Invalid('Verify all five exact donor worksheets.')
+ if kind=='directory' and (len(configured)!=5 or {name.strip() for name in configured}!={'Mpokket','Fanuc','McAfee','Janashkati Foundation','Dasar UK'}):raise Invalid('Verify all five exact donor worksheets.')
  for ordinal,sheet in enumerate(book.worksheets,1):
   cfg=configured.get(sheet.title);sheet_id=ident('sheet',file_id,ordinal);rows=[]
   header=cfg.get('header_row') if cfg else None
   if cfg:
    if not isinstance(header,int) or header<1:raise Invalid('Explicit header row required.')
-   fields=cfg.get('columns',{})
+   fields={k:v for k,v in cfg.get('columns',{}).items() if not(k=='shift' and v is None)}
    if not fields or not set(fields)<=(DIRECTORY if kind=='directory' else FIELDS[kind]):raise Invalid('Unsupported or sensitive column selection.')
-   if kind=='directory' and not {'centre','teacher','officer','shift'}<=set(fields):raise Invalid('Required directory fields missing.')
+   if kind=='directory' and not {'centre','teacher','officer'}<=set(fields):raise Invalid('Required directory fields missing.')
    columns={k:column_index_from_string(v) for k,v in fields.items()}
    if len(set(columns.values()))!=len(columns):raise Invalid('Field columns overlap.')
    for field,col in columns.items():
@@ -53,7 +53,11 @@ def stage(workbook,layout,key):
    if kind=='directory':
     # Preserve selected original strings; normalization is comparison-only.
     raw={k:json_value(v) for k,v in raw.items()}
+    # An absent field has no source column/slot. Never invent a dummy column.
+    raw.setdefault('shift',None)
     normalized={k:re.sub(r'\s+',' ',unicodedata.normalize('NFKC',str(v or ''))).strip() for k,v in raw.items()};issues=[]
+    for nullable in ('shift','teacher','officer'):
+     if not normalized.get(nullable):normalized[nullable]=None
     if not normalized.get('donor'):
      if not cfg.get('verified_donor_label'):issues.append('missing_verified_donor')
      else:normalized['donor']=cfg['verified_donor_label']
@@ -62,7 +66,7 @@ def stage(workbook,layout,key):
      if not normalized.get(field):issues.append('missing_'+field)
      if re.search(r'[,;/&\n]',str(raw.get(field) or '')):issues.append('possible_multiple_staff_in_cell')
      if re.search(r'@|(?:\+?\d[\s().-]*){7,}',str(raw.get(field) or '')):issues.append('contact_detail_in_staff_cell')
-    if normalized.get('shift') not in ('','Morning','Evening'):issues.append('unverified_shift')
+    if normalized.get('shift') not in (None,'Morning','Evening'):issues.append('unverified_shift')
     if any(str(v or '').startswith('=') for v in raw.values()):issues.append('formula_value_unverified')
     observations.append({**reference,'raw':raw,'values':normalized,'issues':issues,'operational_import_ready':False})
    elif kind=='attendance':

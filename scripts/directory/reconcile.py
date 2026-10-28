@@ -12,15 +12,15 @@ def normalized(value):
     return re.sub(r'\s+',' ',unicodedata.normalize('NFKC',str(value or ''))).strip()
 def reconcile(workbook,mapping):
     book=load_workbook(workbook,read_only=True,data_only=False)
-    missing=[s for s in SHEETS if s not in book.sheetnames]
+    missing=[s for s in SHEETS if s not in {name.strip() for name in book.sheetnames}]
     if missing:raise ValueError('Required worksheets unavailable; do not substitute another sheet.')
-    if set(mapping)!=set(SHEETS):raise ValueError('Explicit verified header mappings are required for all five sheets.')
+    if len(mapping)!=5 or {name.strip() for name in mapping}!=set(SHEETS):raise ValueError('Explicit verified header mappings are required for all five sheets.')
     digest=hashlib.sha256(Path(workbook).read_bytes()).hexdigest()
     rows=[]
     for ordinal,sheet in enumerate(book.worksheets,1):
-        if sheet.title not in SHEETS:continue
-        cfg=mapping[sheet.title];columns=cfg['columns'];header=int(cfg['header_row'])
-        if not {'centre','teacher','officer','shift'}<=set(columns) or not set(columns)<=FIELDS:raise ValueError('Missing or unsupported column mapping.')
+        if sheet.title not in mapping:continue
+        cfg=mapping[sheet.title];columns={k:v for k,v in cfg['columns'].items() if not(k=='shift' and v is None)};header=int(cfg['header_row'])
+        if not {'centre','teacher','officer'}<=set(columns) or not set(columns)<=FIELDS:raise ValueError('Missing or unsupported column mapping.')
         if header<1 or not cfg.get('verified_headers'):raise ValueError('Header row/values must be explicitly verified.')
         from openpyxl.utils.cell import column_index_from_string
         indices={k:column_index_from_string(v) for k,v in columns.items()}
@@ -32,18 +32,21 @@ def reconcile(workbook,mapping):
             raw={k:cells[i-1] if i<=len(cells) else None for k,i in indices.items()}
             raw={k:None if v is None else str(v) for k,v in raw.items()}
             if not any(normalized(x) for x in raw.values()):continue
+            raw.setdefault('shift',None)
             values={k:normalized(v) for k,v in raw.items()};values.setdefault('donor',cfg.get('verified_donor_label',''))
+            for field in ('shift','teacher','officer'):
+                if not values.get(field):values[field]=None
             issues=[]
             if not values.get('centre'):issues.append('missing_centre')
             if not values.get('donor'):issues.append('missing_donor')
-            if values.get('shift') not in ('Morning','Evening',''):issues.append('unverified_shift_value')
+            if values.get('shift') not in ('Morning','Evening',None):issues.append('unverified_shift_value')
             if any(str(v or '').startswith('=') for v in raw.values()):issues.append('formula_value_unverified')
             if any(re.search(r'[,;/&\n]',raw.get(k) or '') for k in ('teacher','officer')):issues.append('possible_multiple_staff_in_cell')
             rows.append(dict(source_sha256=digest,worksheet=sheet.title,worksheet_ordinal=ordinal,row_number=n,source_columns=columns,raw=raw,normalized=values,issues=issues))
     grouped=collections.defaultdict(list);duplicates=collections.defaultdict(list);staff=collections.defaultdict(list)
     for row in rows:
         v=row['normalized'];grouped[v.get('centre','').casefold()].append(row)
-        duplicates[(row['worksheet'],tuple(sorted((k,x.casefold()) for k,x in v.items())))].append(row)
+        duplicates[(row['worksheet'],tuple(sorted((k,str(x or '').casefold()) for k,x in v.items())))].append(row)
         for role in ('teacher','officer'):
             if v.get(role):staff[(role,v[role].casefold())].append(row)
     for group in duplicates.values():
@@ -62,7 +65,7 @@ def reconcile(workbook,mapping):
             for r in group:r['issues'].append('staff_identity_review_required')
     for r in rows:r['issues']=sorted(set(r['issues']))
     # Even unflagged rows need explicit approved canonical IDs before an import.
-    summary={'status':'review_required_no_import','source_sha256':digest,'worksheets':{s:sum(r['worksheet']==s for r in rows) for s in SHEETS},'row_count':len(rows),'flagged_rows':sum(bool(r['issues']) for r in rows),'issue_counts':dict(collections.Counter(i for r in rows for i in r['issues']))}
+    summary={'status':'review_required_no_import','source_sha256':digest,'worksheets':{s:sum(r['worksheet']==s for r in rows) for s in mapping},'row_count':len(rows),'flagged_rows':sum(bool(r['issues']) for r in rows),'issue_counts':dict(collections.Counter(i for r in rows for i in r['issues']))}
     book.close();return {'summary':summary,'rows':rows}
 def main():
     p=argparse.ArgumentParser();p.add_argument('--workbook',type=Path,required=True);p.add_argument('--mapping',type=Path,required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args()

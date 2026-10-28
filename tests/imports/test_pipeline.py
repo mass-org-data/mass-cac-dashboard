@@ -9,12 +9,14 @@ from review import scaffold,validate,preview
 from render import render
 from adapters import observation
 SHEETS=('Mpokket','Fanuc','McAfee','Janashkati Foundation','Dasar UK')
-def fixture(folder):
+def fixture(folder,optional_shift=False,missing_teacher=False):
  path=Path(folder)/'synthetic-directory.xlsx';book=Workbook();book.remove(book.active);layout={'format':'mass-source-layout-v1','kind':'directory','mapping_version':'synthetic-v1','sheets':{}}
  fields=['donor','centre','region','teacher','officer','shift','student_name']
  for n,sheet in enumerate(SHEETS,1):
-  s=book.create_sheet(sheet);s.append(fields);s.append([f'Synthetic donor {n}',f'Synthetic village {n}','Synthetic region',f'Synthetic teacher {n}',f'Synthetic officer {n}','Morning','Unmapped synthetic learner'])
-  layout['sheets'][sheet]={'header_row':1,'header_version':1,'columns':{k:chr(65+i) for i,k in enumerate(fields)},'verified_headers':{k:k for k in fields}}
+  sheet_fields=[k for k in fields if not(optional_shift and sheet in SHEETS[-2:] and k=='shift')]
+  values=dict(zip(fields,[f'Synthetic donor {n}',f'Synthetic village {n}','Synthetic region',None if missing_teacher and sheet==SHEETS[-2] else f'Synthetic teacher {n}',f'Synthetic officer {n}','Morning','Unmapped synthetic learner']))
+  s=book.create_sheet(sheet);s.append(sheet_fields);s.append([values[k] for k in sheet_fields])
+  layout['sheets'][sheet]={'header_row':1,'header_version':1,'columns':{k:chr(65+i) for i,k in enumerate(sheet_fields)},'verified_headers':{k:k for k in sheet_fields}}
  book.save(path);path.chmod(0o600)
  plan=stage(path,layout,b'x'*32);mapping=scaffold(plan)
  for i,o in enumerate(plan['observations'],1):
@@ -24,11 +26,12 @@ def fixture(folder):
   donor=ident('approved-donor',i);centre=ident('approved-centre',i)
   mapping['entities']['donors'].append({'id':donor,'label':f"Synthetic donor {i} O'Neil $mass_import$",'source_label':o['raw']['donor'],'source_row_id':row,'source_slot':1})
   mapping['entities']['centres'].append({'id':centre,'label':o['raw']['centre'],'donor_id':donor,'source_row_id':row,'source_slot':2})
-  mapping['row_identities'][row]={'centre_id':centre,'donor_id':donor,'teacher_id':ident('approved-staff',i,'Teacher'),'officer_id':ident('approved-staff',i,'Cluster Officer')}
+  mapping['row_identities'][row]={'centre_id':centre,'donor_id':donor,'teacher_id':ident('approved-staff',i,'Teacher') if o['values'].get('teacher') else None,'officer_id':ident('approved-staff',i,'Cluster Officer') if o['values'].get('officer') else None}
   for role,col in [('Teacher',4),('Cluster Officer',5)]:
    staff=ident('approved-staff',i,role);raw=o['raw']['teacher' if role=='Teacher' else 'officer']
+   if not raw:continue
    mapping['entities']['staff_members'].append({'id':staff,'display_name':raw,'source_name':raw,'source_row_id':row,'source_slot':col})
-   mapping['entities']['centre_staff_assignments'].append({'id':ident('approved-assignment',i,role),'centre_id':centre,'staff_member_id':staff,'role_code':role,'shift_code':'Morning','source_row_id':row,'source_slot':col})
+   mapping['entities']['centre_staff_assignments'].append({'id':ident('approved-assignment',i,role),'centre_id':centre,'staff_member_id':staff,'role_code':role,'shift_code':o['values'].get('shift'),'source_row_id':row,'source_slot':col})
  approval={'approved':True,'scope':'directory-only','reviewer_ref':'synthetic-reviewer','decision_ref':'synthetic-decision',**{k:True for k in ('identity_reviewed','source_provenance_reviewed','single_donor_reviewed','regions_reviewed','shifts_reviewed','directory_privacy_approved')}}
  def approved():return {**approval,'plan_digest':digest(plan),'mapping_digest':digest(mapping)}
  return path,layout,plan,mapping,approved
@@ -43,6 +46,65 @@ class PipelineTests(unittest.TestCase):
  def test_approved_preview_has_explicit_directory_not_student_counts(self):
   self.assertEqual(validate(self.plan,self.mapping,self.approved())['proposed_entities'],dict(donors=4,centres=4,staff_members=8,centre_staff_assignments=8))
   self.assertFalse(preview(self.plan,self.mapping)['approved_for_execution'])
+ def test_absent_shift_is_null_without_a_dummy_source_column(self):
+  path,layout,plan,mapping,approved=fixture(self.tmp.name,optional_shift=True,missing_teacher=True)
+  observations=[o for o in plan['observations'] if o['worksheet_ordinal'] in (4,5)]
+  for o in observations:
+   self.assertNotIn('shift',o['source_columns']);self.assertIsNone(o['raw']['shift']);self.assertIsNone(o['values']['shift'])
+   self.assertNotIn('unverified_shift',o['issues'])
+  self.assertIsNone(observations[0]['values']['teacher'])
+  validate(plan,mapping,approved());sql=render(plan,mapping,approved())
+  self.assertIn('"shift_code":null',sql)
+  self.assertEqual(len(mapping['entities']['staff_members']),7)
+  assignment=next(a for a in mapping['entities']['centre_staff_assignments'] if a['source_row_id']==observations[0]['source_row_id'])
+  assignment['shift_code']='Morning'
+  with self.assertRaises(Invalid):validate(plan,mapping,approved())
+ def test_explicit_null_shift_mapping_is_absence_not_a_dummy_column(self):
+  path,layout,plan,_,_=fixture(self.tmp.name,optional_shift=True)
+  layout['sheets'][SHEETS[-2]]['columns']['shift']=None
+  result=stage(path,layout,b'x'*32)
+  row=next(o for o in result['observations'] if o['worksheet_ordinal']==4)
+  self.assertNotIn('shift',row['source_columns']);self.assertIsNone(row['values']['shift'])
+ def test_exact_trailing_space_worksheet_name_is_preserved(self):
+  from openpyxl import load_workbook
+  book=load_workbook(self.path);book['Janashkati Foundation'].title='Janashkati Foundation ';book.save(self.path);book.close()
+  self.layout['sheets']['Janashkati Foundation ']=self.layout['sheets'].pop('Janashkati Foundation')
+  plan=stage(self.path,self.layout,b'x'*32)
+  self.assertEqual(plan['sheets'][3]['original_name'],'Janashkati Foundation ')
+  self.assertEqual(plan['sheets'][3]['ordinal'],4)
+ def test_approved_donor_aliases_and_four_regional_donors(self):
+  from directory_decisions import canonical_donor
+  self.assertEqual(canonical_donor(' Mpockket '),'Mpokket');self.assertEqual(canonical_donor('Mpokket'),'Mpokket')
+  self.assertEqual(canonical_donor('Dasar UK'),'Dasra UK')
+  labels=[canonical_donor('J.F - '+x) for x in ['Hukkeri','Chikkodi','Raibag','Athani']]
+  self.assertEqual(len(set(labels)),4)
+  with self.assertRaises(Invalid):canonical_donor('Unapproved donor')
+ def test_association_review_defers_names_without_inventing_people(self):
+  from directory_decisions import association_review
+  from openpyxl import load_workbook
+  path,layout,_,_,_=fixture(self.tmp.name,optional_shift=True,missing_teacher=True)
+  book=load_workbook(path)
+  for name,value in zip(SHEETS,['Mpockket','Fanuc','McAfee','J.F - Hukkeri','Dasar UK']):book[name].cell(2,1,value)
+  book[SHEETS[3]].cell(2,2,'Masaraguppi')
+  second=[c.value for c in book[SHEETS[3]][2]];second[0]='J.F - Athani';book[SHEETS[3]].append(second)
+  book.save(path);book.close()
+  plan=stage(path,layout,b'x'*32);mapping,report=association_review(plan,'synthetic-user-decision')
+  self.assertEqual(len(mapping['entities']['centres']),6)
+  self.assertEqual(len(report['summary']['masaraguppi_centres']),2)
+  self.assertNotEqual(*[c['id'] for c in report['summary']['masaraguppi_centres']])
+  self.assertEqual(mapping['entities']['staff_members'],[]);self.assertEqual(mapping['entities']['centre_staff_assignments'],[])
+  self.assertTrue(all(c['canonical_staff_id'] is None for c in report['staff_candidates']))
+  approval={**self.approved(),'plan_digest':digest(plan),'mapping_digest':digest(mapping)}
+  sql=render(plan,mapping,approval)
+  self.assertNotIn('Synthetic teacher',sql);self.assertNotIn('Unmapped synthetic learner',sql)
+  self.assertIn('"field_ordinal":4',sql)
+ def test_present_named_staff_cannot_be_silently_discarded(self):
+  row=self.plan['observations'][0]['source_row_id'];self.mapping['row_identities'][row]['teacher_id']=None
+  with self.assertRaises(Invalid):validate(self.plan,self.mapping,self.approved())
+ def test_entity_conflicts_cannot_hide_in_deferred_issue_list(self):
+  row=self.plan['observations'][0]['source_row_id'];self.plan['observations'][0]['issues'].append('unverified_shift');self.mapping['plan_digest']=digest(self.plan)
+  self.mapping['resolutions'][row]={'resolved_issues':[],'deferred_issues':self.plan['observations'][0]['issues'],'decision_ref':'synthetic'}
+  with self.assertRaises(Invalid):validate(self.plan,self.mapping,self.approved())
  def test_stale_review_digest_rejected(self):
   a=self.approved();self.mapping['entities']['donors'][0]['label']='Changed'
   with self.assertRaises(Invalid):validate(self.plan,self.mapping,a)

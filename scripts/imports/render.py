@@ -11,9 +11,25 @@ def render(plan,mapping,approval):
   for r in s['rows']:
    disposition=mapping['dispositions'].get(r['id'],'excluded');counts[disposition]+=1
    rs.append({k:r[k] for k in ('id','row_number','content_hash','classification')})
-   if disposition=='quarantined':exceptions.append({'row_id':r['id'],'reason':'unverified_record'})
+   if disposition=='quarantined':exceptions.append({'row_id':r['id'],'reason':'unverified_record','field_ordinal':None})
   # Exact original names are preserved only in the private, checksum-linked plan.
   sheets.append({k:s[k] for k in ('id','ordinal','classification','header_version')}|{'rows':rs})
+ # Accepted donor/centre observations can retain unresolved person identities.
+ # Exception rows contain source locators/codes only, never names or raw values.
+ for o in plan['observations']:
+  row=o['source_row_id']
+  if mapping['dispositions'][row]!='accepted':continue
+  for field in mapping.get('deferred_staff',{}).get(row,{}):
+   exceptions.append({'row_id':row,'reason':'unverified_record','field_ordinal':o['source_columns'][field]})
+  deferred=set(mapping.get('resolutions',{}).get(row,{}).get('deferred_issues',[]))
+  for field in ('teacher','officer'):
+   if 'missing_'+field in deferred and field in o['source_columns']:
+    exceptions.append({'row_id':row,'reason':'missing_reference','field_ordinal':o['source_columns'][field]})
+  if 'student_name_identity_review' in deferred and 'student_name' in o['source_columns']:
+   exceptions.append({'row_id':row,'reason':'unverified_record','field_ordinal':o['source_columns']['student_name']})
+  if 'duplicate_source_observation' in deferred:
+   exceptions.append({'row_id':row,'reason':'duplicate_occurrence','field_ordinal':o['source_columns'].get('student_name')})
+ exceptions=list({(e['row_id'],e['field_ordinal'],e['reason']):e for e in exceptions}.values())
  payload={'source':{k:plan['source'][k] for k in ('id','sha256','storage_ref','original_file_id')},'sheets':sheets,'entities':mapping['entities'],'batch_id':batch,'mapping_version':plan['mapping_version'],'extractor_version':plan['extractor_version'],'counts':counts,'exceptions':exceptions}
  literal="'"+canonical(payload).replace("'","''")+"'::jsonb"
  # No raw source rows, observations, child names, original sheet names or keys enter SQL.
@@ -58,8 +74,8 @@ BEGIN
   END LOOP;
  END LOOP;
  FOR e IN SELECT value FROM jsonb_array_elements(d->'exceptions') LOOP
-  IF complete_retry AND NOT EXISTS(SELECT 1 FROM mass_foundation.import_exceptions WHERE batch_id=batch AND source_row_id=(e->>'row_id')::uuid AND field_ordinal IS NULL AND reason_code=e->>'reason') THEN RAISE EXCEPTION 'completed batch exception missing';END IF;
-  INSERT INTO mass_foundation.import_exceptions(batch_id,source_row_id,reason_code) VALUES(batch,(e->>'row_id')::uuid,e->>'reason') ON CONFLICT DO NOTHING;
+  IF complete_retry AND NOT EXISTS(SELECT 1 FROM mass_foundation.import_exceptions WHERE batch_id=batch AND source_row_id=(e->>'row_id')::uuid AND field_ordinal IS NOT DISTINCT FROM (e->>'field_ordinal')::int AND reason_code=e->>'reason') THEN RAISE EXCEPTION 'completed batch exception missing';END IF;
+  INSERT INTO mass_foundation.import_exceptions(batch_id,source_row_id,field_ordinal,reason_code) VALUES(batch,(e->>'row_id')::uuid,(e->>'field_ordinal')::int,e->>'reason') ON CONFLICT DO NOTHING;
  END LOOP;
  IF NOT complete_retry THEN
   UPDATE mass_foundation.import_batches SET state='validated' WHERE id=batch;

@@ -12,6 +12,7 @@ def main():
  q=sub.add_parser('init-key');q.add_argument('--out',required=True)
  q=sub.add_parser('stage');q.add_argument('--workbook',required=True);q.add_argument('--layout',required=True);q.add_argument('--key',required=True);q.add_argument('--out',required=True)
  q=sub.add_parser('review-template');q.add_argument('--plan',required=True);q.add_argument('--out',required=True)
+ q=sub.add_parser('directory-review');q.add_argument('--plan',required=True);q.add_argument('--decision-ref',required=True);q.add_argument('--out',required=True);q.add_argument('--exceptions-out',required=True)
  q=sub.add_parser('approval-template');q.add_argument('--plan',required=True);q.add_argument('--mapping',required=True);q.add_argument('--out',required=True)
  q=sub.add_parser('preview');q.add_argument('--plan',required=True);q.add_argument('--mapping');q.add_argument('--out',required=True)
  q=sub.add_parser('render');q.add_argument('--plan',required=True);q.add_argument('--mapping',required=True);q.add_argument('--approval',required=True);q.add_argument('--workbook',required=True);q.add_argument('--out',required=True)
@@ -28,6 +29,11 @@ def main():
    plan=stage(a.workbook,load(a.layout),read_private(a.key).read_bytes());write_private(a.out,canonical(plan)+'\n')
    print('Source staged privately. Candidates:',preview(plan)['candidate_source_rows'])
   elif a.command=='review-template':write_private(a.out,canonical(scaffold(load(a.plan)))+'\n')
+  elif a.command=='directory-review':
+   from directory_decisions import association_review
+   mapping,report=association_review(load(a.plan),a.decision_ref)
+   write_private(a.out,canonical(mapping)+'\n');write_private(a.exceptions_out,canonical(report)+'\n')
+   print('Private association review prepared; staff identities remain deferred. No execution approval or database connection.')
   elif a.command=='approval-template':
    plan=load(a.plan);mapping=load(a.mapping)
    approval={'plan_digest':digest(plan),'mapping_digest':digest(mapping),'scope':'directory-only','approved':False,'reviewer_ref':'','decision_ref':'',**{k:False for k in ('identity_reviewed','source_provenance_reviewed','single_donor_reviewed','regions_reviewed','shifts_reviewed','directory_privacy_approved')}}

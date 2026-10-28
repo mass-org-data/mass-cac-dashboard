@@ -28,6 +28,17 @@ class Reconciliation(unittest.TestCase):
   with tempfile.TemporaryDirectory() as tmp:
    p=Path(tmp)/'synthetic.xlsx';mapping=self.fixture(p);del mapping['Fanuc']['verified_donor_label']
    with self.assertRaises(ValueError):m.reconcile(p,mapping)
+ def test_missing_shift_column_and_exact_worksheet_spacing(self):
+  from openpyxl import load_workbook
+  with tempfile.TemporaryDirectory() as tmp:
+   p=Path(tmp)/'synthetic.xlsx';mapping=self.fixture(p);book=load_workbook(p)
+   for name in ('Janashkati Foundation','Dasar UK'):
+    book[name].delete_cols(5);mapping[name]['columns'].pop('shift');mapping[name]['verified_headers'].pop('shift')
+   book['Janashkati Foundation'].title='Janashkati Foundation ';mapping['Janashkati Foundation ']=mapping.pop('Janashkati Foundation')
+   book.save(p);book.close();result=m.reconcile(p,mapping)
+   rows=[r for r in result['rows'] if r['worksheet'] in ('Janashkati Foundation ','Dasar UK')]
+   self.assertTrue(all(r['normalized']['shift'] is None for r in rows));self.assertTrue(all('shift' not in r['source_columns'] for r in rows))
+   self.assertIn('Janashkati Foundation ',result['summary']['worksheets'])
  def test_normalization_does_not_correct_spelling(self):
   self.assertEqual(m.normalized('  Synthetic\tVillage '),'Synthetic Village');self.assertNotEqual(m.normalized('Village'),m.normalized('Vil lage'))
 if __name__=='__main__':unittest.main()
