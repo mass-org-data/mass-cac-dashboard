@@ -3,3 +3,12 @@ node_modules/
 .env*
 dist/
 .DS_Store
+supabase/.temp/
+supabase/.branches/
+# Defense in depth only: backups and credentials must be created outside this repo.
+*.dump
+*.backup
+*.pgdump
+backups/
+.pgpass
+.pg_service.conf
