@@ -2,6 +2,7 @@ node_modules/
 .vercel/
 .env*
 !.env.example
+!.env.preview.example
 dist/
 .DS_Store
 supabase/.temp/

@@ -21,7 +21,7 @@ async function walk(root, relative) {
   return files;
 }
 export async function writeSourceZip(root, destination) {
-  const files=['.gitignore','.env.example','README.md','package.json','package-lock.json','vercel.json'];
+  const files=['.gitignore','.env.example','.env.preview.example','README.md','package.json','package-lock.json','vercel.json'];
   for(const dir of ['src','scripts','docs']) files.push(...await walk(root,dir));
   files.push('tests/entry-workflows.mjs');
   const local=[],central=[];
