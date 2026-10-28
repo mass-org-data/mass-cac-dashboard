@@ -16,6 +16,10 @@ def main():
  q=sub.add_parser('approval-template');q.add_argument('--plan',required=True);q.add_argument('--mapping',required=True);q.add_argument('--out',required=True)
  q=sub.add_parser('preview');q.add_argument('--plan',required=True);q.add_argument('--mapping');q.add_argument('--out',required=True)
  q=sub.add_parser('render');q.add_argument('--plan',required=True);q.add_argument('--mapping',required=True);q.add_argument('--approval',required=True);q.add_argument('--workbook',required=True);q.add_argument('--out',required=True)
+ q=sub.add_parser('student-stage')
+ for name in ('staging','directory','source-plan','centres','source-rows','key','out','sql-out'):q.add_argument('--'+name,required=True)
+ q=sub.add_parser('history-stage')
+ for name in ('students','attendance','assessment','morarji','key','out','provenance-out','sql-directory'):q.add_argument('--'+name,required=True)
  a=p.parse_args()
  try:
   if a.command=='init-key':
@@ -40,6 +44,19 @@ def main():
    write_private(a.out,canonical(approval)+'\n')
   elif a.command=='preview':
    result=preview(load(a.plan),load(a.mapping) if a.mapping else None);write_private(a.out,canonical(result)+'\n');print('Preview written; not approval. No database connection.')
+  elif a.command=='student-stage':
+   from students import prepare,render as student_sql
+   result=prepare(read_private(a.staging),read_private(a.directory),load(a.source_plan),load(a.centres),load(a.source_rows),read_private(a.key).read_bytes())
+   write_private(a.out,canonical(result)+'\n');write_private(a.sql_out,student_sql(result));print('Student staging prepared privately:',canonical(result['counts']))
+  elif a.command=='history-stage':
+   from history import prepare
+   from history_sql import provenance,chunk
+   from common import private_path
+   result=prepare({k:read_private(getattr(a,k)) for k in ('attendance','assessment','morarji')},load(a.students)['rows'],read_private(a.key).read_bytes())
+   write_private(a.out,canonical(result)+'\n');write_private(a.provenance_out,provenance(result))
+   folder=private_path(a.sql_directory);folder.mkdir(mode=0o700,parents=True,exist_ok=True)
+   for i in range(0,len(result['accepted']),1000):write_private(folder/f'{i//1000+1:03d}.private.sql',chunk(result['accepted'][i:i+1000]))
+   print('Historical staging prepared privately:',canonical(result['summary']))
   else:
    plan=load(a.plan)
    if hashlib.sha256(read_private(a.workbook).read_bytes()).hexdigest()!=plan['source']['sha256']:raise Invalid('Workbook changed after review; restage and reapprove.')

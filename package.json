@@ -17,6 +17,7 @@
     "test:browser": "python tests/frontend/browser.py",
     "test:directory": "python tests/directory/reconcile_test.py && bash tests/directory/run-local.sh",
     "test:imports": "bash tests/imports/run-local.sh",
+    "test:students": "python tests/students/test_staging.py && bash tests/students/run-local.sh && bash tests/students/run-current-core.sh",
     "check:preview": "node scripts/preview-config.mjs"
   },
   "dependencies": {

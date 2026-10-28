@@ -1,8 +1,29 @@
 # Implemented entity–relationship diagrams
 
-Directory migration 017, 28 October 2026. **26 local relations, 17 migrations, 017 not hosted-applied.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).
+Administrative import migrations 018–019, 28 October 2026. **27 local relations, 19 migrations.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).
 
 Entity IDs use `mass_core_` / `mass_foundation_` instead of schema dots for Mermaid compatibility. Every column of each owning-domain relation is shown once; referenced parents repeat as key-only stubs. `auth_users` is the existing managed `auth.users` dependency, not a created table. Optional parent associations reflect FK nullability; child zero-or-one reflects FK columns containing a UNIQUE/PK. Composite keys/NULL behavior and runtime temporal checks are specified by the dictionary and migrations.
+
+## Private administrative import receipts
+
+```mermaid
+erDiagram
+    mass_import_receipts {
+        uuid source_row_id PK,FK
+        integer source_slot PK
+        text target_table PK
+        uuid target_id
+        text payload_hmac
+        text staging_sha256
+        boolean assumed_enrolment_dates
+        timestamp_with_time_zone imported_at
+        name imported_by
+    }
+    mass_foundation_source_rows {
+        uuid id
+    }
+    mass_foundation_source_rows ||--o{ mass_import_receipts : "source_row_id"
+```
 
 ## Foundation and managed Auth
 
@@ -314,4 +335,4 @@ erDiagram
 
 ## Relationships that are deliberately absent
 
-No person/name join, polymorphic audit business FK, historical source-slot/event bridge, automatic year/quarter alias or derived staff/funder relationship is implied. Audit entity_id is a durable locator, while actor_user_id and batch_id are real FKs. New directory relations are locally implemented, not asserted deployed. No unimplemented proposed relation is drawn as deployed. All actual FK edges, including Auth and composite contextual keys, appear above.
+No person/name join, polymorphic audit business FK, historical source-slot/event bridge, automatic year/quarter alias or derived staff/funder relationship is implied. Audit entity_id is a durable locator, while actor_user_id and batch_id are real FKs. Hosted deployment evidence is recorded separately in the current import handoff. No unimplemented proposed relation is drawn as deployed. All actual FK edges, including Auth and composite contextual keys, appear above.

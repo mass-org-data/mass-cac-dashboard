@@ -2,7 +2,7 @@
 
 This package preserves the current frontend implementation, design, logo, styling, chart references and interactions. The application is vanilla JavaScript with HTML and CSS, **not React**; there are no React components or React dependencies to omit. No framework migration has been performed.
 
-The repository contains the **17 SQL migrations implementing 26 relations** (001–016 user-confirmed deployed; 017 finalized locally, not hosted-applied), isolated synthetic tests, and schema/security documentation. Phase 4 adds authenticated Supabase adapters and a live workspace, preserving the manager-approved sample frontend from `migration/frontend @ 0b57ea1`. [Directory migration 017 and handoff](docs/MIGRATION-017-DEPLOYMENT-HANDOFF.md) add donor/staff associations and scoped UI; actual five-sheet reconciliation remains blocked by source access. The reviewed read API is finalized at `supabase/migrations/202610280016_frontend_reads.sql`; the exact original proposal remains as a historical snapshot. Hosted execution is not authorized by publication. See [016 deployment handoff](docs/MIGRATION-016-DEPLOYMENT-HANDOFF.md). No hosted change or Vercel release is performed by local commands below. See the [Phase 4 integration handoff](docs/PHASE-4-INTEGRATION-HANDOFF.md), [34-workflow mapping](docs/PHASE-4-FRONTEND-API-MAPPING.csv), [read API contract](docs/PHASE-4-READ-API-CONTRACTS.md) and [separate donor proposal](docs/PHASE-4-DONOR-REPORTING-PROPOSAL.md).
+The repository contains **19 SQL migrations implementing 27 relations**, isolated synthetic tests, and generated schema/security documentation. Migrations 001–017 are preserved unchanged. Additive migrations 018–019 provide the explicitly authorized private student/history import path, permanent readable student IDs, and period-only assessments. See the [current import handoff](docs/STUDENT-HISTORICAL-IMPORT-HANDOFF.md) for live execution evidence, counts, held records and recovery limits. The manager-approved frontend from `migration/frontend @ 0b57ea1` and production Vercel application are unchanged by this database release. Existing integration contracts remain in the [Phase 4 handoff](docs/PHASE-4-INTEGRATION-HANDOFF.md) and [workflow mapping](docs/PHASE-4-FRONTEND-API-MAPPING.csv). No hosted change or Vercel release is performed by the local commands below.
 
 ## Private import pipeline and controlled Preview
 
@@ -28,13 +28,14 @@ npm run test:browser
 npm run test:directory
 ```
 
-The API tests use synthetic PostgreSQL/PostgREST/JWT fixtures in an internal Docker network; browser tests require Python Playwright and Chromium and intercept all Auth/REST requests. Managed Supabase Auth remains a separate validation gate. Original 001–016 migration bytes/hashes are unchanged; the manifest appends 017. Do not run an unattended hosted migration push. The pending hosted list must contain only 202610280017; no replay of 001–016.
+The API tests use synthetic PostgreSQL/PostgREST/JWT fixtures in an internal Docker network; browser tests require Python Playwright and Chromium and intercept all Auth/REST requests. Managed Supabase Auth remains a separate validation gate. Original 001–017 migration bytes/hashes are unchanged; the manifest appends 018–019. Never replay those already-applied migrations or run an unattended hosted migration push. Current hosted evidence is in the import handoff.
 
 ## Database development and tests
 
 Database-test prerequisites: Docker, Bash and Python 3 as `python`. Offline directory reconciliation additionally uses `openpyxl==3.1.5` from requirements-dev.txt (install in an isolated virtual environment); private workbook/mapping/output files must stay outside the checkout. Images are digest-pinned; first runs may download public development images. Baseline SQL tests need no Supabase credentials. The frontend API test also needs the installed npm dependencies and its pinned Node client image.
 
 ```sh
+npm run test:students
 bash tests/foundation/run-local.sh
 MASS_TEST_REST=1 bash tests/core/run-local.sh
 bash tests/schema/run-local.sh
@@ -63,7 +64,7 @@ The [migration 007 Auth correction and resume handoff](docs/MIGRATION-007-AUTH-R
 - [Core implementation handover](docs/PHASE-3B-CORE-HANDOVER.md)
 - [Deployment gates and the approval-dependent apply sequence](docs/PHASE-3C-DEPLOYMENT-READINESS.md)
 
-The current manifest covers 17 files; [the 017 handoff](docs/MIGRATION-017-DEPLOYMENT-HANDOFF.md) supersedes original-install counts. SQL under `supabase/migrations/` is authoritative and stays in filename order. Never run `tests/core/bootstrap.sql`, test fixtures or local role stubs on hosted Supabase. The frontend source-download ZIP is frontend-only; database migrations/tests are delivered through Git. Changes to SQL require reviewing schema documentation and running `bash tests/schema/run-local.sh --write` followed by the default check; this command still uses only a new local database.
+The current manifest covers 19 files; [the current import handoff](docs/STUDENT-HISTORICAL-IMPORT-HANDOFF.md) supersedes original-install counts. The schema is 27 tables, 183 columns, 35 foreign keys and 108 RLS policies, including private import receipts and insert-only administrative policies. SQL under `supabase/migrations/` is authoritative and stays in filename order. Never run `tests/core/bootstrap.sql`, test fixtures or local role stubs on hosted Supabase. The frontend source-download ZIP is frontend-only; database migrations/tests are delivered through Git. Changes to SQL require reviewing schema documentation and running `bash tests/schema/run-local.sh --write` followed by the default check; this command still uses only a new local database.
 
 ## Deploy through the existing Vercel project
 

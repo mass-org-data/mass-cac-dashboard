@@ -1,12 +1,12 @@
 # Implemented database data dictionary
 
-Directory migration 017, 28 October 2026. **26 locally implemented relations: six foundation and 20 core; 17 migrations. Locally verified; 017 not applied to hosted Supabase.**
+Administrative import migrations 018–019, 28 October 2026. **27 relations: six foundation, 20 core and one private import receipt relation; 19 migrations.** Isolated catalog evidence; see STUDENT-HISTORICAL-IMPORT-HANDOFF.md for actual hosted execution results.
 
-This dictionary is generated from PostgreSQL catalog metadata after all 17 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.
+This dictionary is generated from PostgreSQL catalog metadata after all 19 version-controlled migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.
 
 The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E dictionary snapshot](DATABASE-PROPOSED-DATA-DICTIONARY-PHASE-2E.md); see [deferred relations](DATABASE-DEFERRED-RELATIONS.md). Historical decision documents retain their original context. This current dictionary makes no claim that every proposal is implemented.
 
-`auth.users` is an existing managed dependency, not a 27th relation created by these migrations. All 26 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; generated student_id/year-end values are nevertheless non-null under the current strict expressions over required inputs. No generic shared timestamp/origin columns are implied.
+`auth.users` is an existing managed dependency, not a relation created by these migrations. All 27 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; student_id is explicitly NOT NULL and immutable; academic-year end is generated from its required start. No generic shared timestamp/origin columns are implied.
 
 ## Inventory
 
@@ -38,6 +38,7 @@ The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E
 | `mass_foundation.source_files` | 7 | `id` | `202610270001_source_files.sql` |
 | `mass_foundation.source_rows` | 6 | `id` | `202610270004_source_rows.sql` |
 | `mass_foundation.source_sheets` | 6 | `id` | `202610270002_source_sheets.sql` |
+| `mass_import.receipts` | 9 | `source_row_id, source_slot, target_table` | `202610280018_controlled_student_import.sql` |
 
 ## mass_core.academic_years
 
@@ -167,7 +168,7 @@ One recorded result per child/definition with verified date/context; no routine 
 | `shift_code` | `text` | no | FK | `none` | Morning/Evening controlled applicability. |
 | `enrolment_id` | `uuid` | no | FK | `none` | Verified historical episode; composite FK preserves child/centre/shift context. |
 | `definition_id` | `uuid` | no | composite UK, FK | `none` | Approved current quarter/scale definition FK. |
-| `assessed_on` | `date` | no | — | `none` | Actual verified date within quarter and episode. |
+| `assessed_on` | `date` | yes | — | `none` | Actual verified date within quarter/episode, or NULL for a source-backed quarter fully contained in the enrolment. Never inferred. |
 | `score` | `numeric` | no | — | `none` | Recorded numeric 0..25; zero valid, missing is no accepted result row. |
 | `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
 
@@ -314,7 +315,7 @@ One explicitly registered person, internal UUID and immutable generated display 
 | Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | `id` | `uuid` | no | PK | `gen_random_uuid()` | Stable technical UUID. |
-| `student_id` | `text` | yes | UK | `GENERATED ALWAYS STORED: upper((id)::text)` | Permanent generated uppercase UUID display representation; not a fabricated source/student numbering scheme. |
+| `student_id` | `text` | no | UK | `none` | Immutable permanent display ID. Existing values survive; new registrations allocate ST_<two centre letters>_<class>_<sequence>, shared by prefix/class. |
 | `row_version` | `bigint` | no | — | `1` | Server-managed optimistic revision; RPC expected-version conflicts return PT409/HTTP409. |
 
 Exact final constraints (including composite FK columns/actions and CHECKs):
@@ -723,6 +724,36 @@ source_sheets_pkey: PRIMARY KEY (id)
 
 RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
 
+## mass_import.receipts
+
+Private append-only source-to-target import receipts; HMAC fingerprints, actual administrative principal and explicit assumed-date marker, never names or application grants.
+
+| Column | PostgreSQL type | Nullable | Keys | Default / generated expression | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `source_row_id` | `uuid` | no | PK, FK | `none` | Restricted physical source-row reference, not raw payload or a person identity key. |
+| `source_slot` | `integer` | no | PK | `none` | Positive physical source field/slot occurrence used with source row for retry identity. |
+| `target_table` | `text` | no | PK, composite UK | `none` | Allowlisted target relation, private import locator only. |
+| `target_id` | `uuid` | no | composite UK | `none` | Immutable target UUID; independently reconciled by the importer. |
+| `payload_hmac` | `text` | no | — | `none` | Keyed fingerprint of the reviewed payload; key remains private. |
+| `staging_sha256` | `text` | no | — | `none` | Exact approved workbook checksum. |
+| `assumed_enrolment_dates` | `boolean` | no | — | `false` | True only on enrolment receipts explicitly using the approved FY interval assumption. |
+| `imported_at` | `timestamp with time zone` | no | — | `clock_timestamp()` | Actual database import time. |
+| `imported_by` | `name` | no | — | `SESSION_USER` | Actual administrative session principal, never supplied staff identity. |
+
+Exact final constraints (including composite FK columns/actions and CHECKs):
+
+```sql
+receipts_payload_hmac_check: CHECK ((payload_hmac ~ '^[0-9a-f]{64}$'::text))
+receipts_pkey: PRIMARY KEY (source_row_id, source_slot, target_table)
+receipts_source_row_id_fkey: FOREIGN KEY (source_row_id) REFERENCES mass_foundation.source_rows(id) ON DELETE RESTRICT
+receipts_source_slot_check: CHECK ((source_slot > 0))
+receipts_staging_sha256_check: CHECK ((staging_sha256 ~ '^[0-9a-f]{64}$'::text))
+receipts_target_table_check: CHECK ((target_table = ANY (ARRAY['children'::text, 'private_child_profiles'::text, 'enrolments'::text, 'attendance_records'::text, 'assessment_results'::text, 'cohort_memberships'::text, 'morarji_outcomes'::text])))
+receipts_target_table_target_id_key: UNIQUE (target_table, target_id)
+```
+
+RLS enabled: **True**; forced: **True**. Access and trigger enforcement are in [implemented security](DATABASE-SECURITY-IMPLEMENTED.md).
+
 ## Important implementation boundaries
 
-Current-process scalar corrections retain attributable revision metadata, not a recoverable business-value archive. Profile corrections, general clears/deletes, bulk/offline workflows, historical provenance promotion, friendly-ID aliases and deferred modules require follow-up contracts. Exit-date mapping, calendar authority/H, Q/F aliases, assessment precision and historical ambiguities remain unresolved to their recorded extent. See [Phase 3C deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No personal record, retention duration, real grant or historical source correction is approved by this catalog.
+Current-process scalar corrections retain attributable revision metadata, not a recoverable business-value archive. Profile corrections, general clears/deletes, bulk/offline workflows, general historical entity reconciliation and deferred modules require follow-up contracts. Exit-date mapping, calendar authority/H, Q/F aliases, assessment precision and historical ambiguities remain unresolved to their recorded extent. See [Phase 3C deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No personal record, retention duration, real grant or historical source correction is approved by this catalog.
