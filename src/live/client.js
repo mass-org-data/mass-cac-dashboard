@@ -1,6 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
 
-export function createBackendClient(config, storage = globalThis.sessionStorage) {
+export function createBackendClient(config, storage = globalThis.localStorage) {
   return createClient(config.url, config.publishableKey, {
     db: {schema: 'mass_api'},
     auth: {
