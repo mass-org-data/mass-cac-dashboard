@@ -7,7 +7,7 @@ Phase 3C, 27 October 2026. Generated policy/ACL evidence from the isolated local
 - All 23 relations enable and force RLS. Private schemas are mass_foundation and mass_core; mass_api contains curated functions and no tables. The local API exposes only mass_api; actual hosted exposure must be reviewed before any apply/enablement.
 - Leadership has programme reads only within explicit valid grants and no business writes. Teachers and Cluster Officers need verified centre scopes; explicit can_read_profiles is additional and still excludes Leadership. No null/global centre or browser role claim grants access.
 - Authenticated direct mutations are not granted. Typed definer RPCs enforce scope and optimistic revisions; centred owner write policies add scope enforcement. Scoped invoker read projections preserve RLS and private-field filtering.
-- Technical foundation roles and core admin/owner are NOLOGIN and NOBYPASSRLS. No production memberships are added. Actor UID is trusted only behind a real validated Auth issuer/gateway; test stubs do not certify managed Auth.
+- Technical foundation roles and core admin/owner are NOLOGIN and NOBYPASSRLS. Only the trusted deployment principal receives explicit SET/INHERIT owner memberships; no application-role owner memberships or actual staff scope rows are installed. Actor UID is trusted only behind a real validated Auth issuer/gateway; test stubs do not certify managed Auth.
 - Runtime audit is append-only minimized revision metadata, atomic with writes; DB administrator tampering and generic runtime/error logging are separate operational controls. No PII-rich before/after payload, retention duration or end-user exception-review API is introduced.
 
 ## Technical roles

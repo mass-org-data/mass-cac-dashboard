@@ -3,7 +3,8 @@ SELECT foundation_test.assert_true((SELECT count(*)=6 AND bool_and(relrowsecurit
  FROM pg_class WHERE relnamespace='mass_foundation'::regnamespace AND relkind='r'),'exactly six tables, all with enabled and forced RLS');
 SELECT foundation_test.assert_true((SELECT bool_and(NOT rolcanlogin AND NOT rolsuper AND NOT rolbypassrls AND NOT rolcreaterole)
  FROM pg_roles WHERE rolname LIKE 'mass_foundation_%'),'all technical roles non-login and non-bypass');
-SELECT foundation_test.assert_true((SELECT count(*)=0 FROM pg_auth_members WHERE roleid='mass_foundation_owner'::regrole),'owner role has no members');
+SELECT foundation_test.assert_true((SELECT count(*)=1 AND bool_and(member=(SELECT oid FROM pg_roles WHERE rolname=session_user) AND set_option AND inherit_option)
+ FROM pg_auth_members WHERE roleid='mass_foundation_owner'::regrole),'owner membership restricted to deployment principal with SET/INHERIT');
 SELECT foundation_test.assert_true((SELECT count(*)=0 FROM information_schema.columns
  WHERE table_schema='mass_foundation' AND column_name IN ('full_name','phone','payload','payload_ref','resolution_note','header_spec','filename','name')),'no personal/free-payload columns');
 SELECT foundation_test.assert_true((SELECT bool_and(NOT has_function_privilege('authenticated',p.oid,'EXECUTE'))

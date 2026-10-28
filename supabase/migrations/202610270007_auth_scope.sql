@@ -3,6 +3,9 @@ BEGIN;
 -- an explicitly test-only compatible stub. No managed Auth resources are created.
 CREATE ROLE mass_core_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 CREATE ROLE mass_core_admin NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+-- Match the foundation bootstrap: owner membership belongs only to the trusted
+-- deployment principal, never anon/authenticated/service_role or staff roles.
+GRANT mass_core_owner TO CURRENT_USER WITH SET TRUE, INHERIT TRUE;
 CREATE SCHEMA mass_core AUTHORIZATION mass_core_owner;
 CREATE SCHEMA mass_api AUTHORIZATION mass_core_owner;
 REVOKE ALL ON SCHEMA mass_core,mass_api FROM PUBLIC;

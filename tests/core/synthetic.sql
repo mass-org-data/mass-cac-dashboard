@@ -154,7 +154,8 @@ SELECT set_config('request.jwt.claims','',false);
 SELECT core_test.assert_true((SELECT count(*)=3 FROM mass_foundation.audit_events WHERE entity_type='core.children'),'failed registrations leave no orphan audit event');
 SELECT core_test.assert_true((SELECT bool_and(NOT has_function_privilege('anon',oid,'EXECUTE')) FROM pg_proc WHERE pronamespace IN ('mass_core'::regnamespace,'mass_api'::regnamespace)),'no anonymous execution on core or API functions');
 SELECT core_test.assert_true((SELECT bool_and(proconfig @> ARRAY['search_path=pg_catalog']) FROM pg_proc WHERE pronamespace IN ('mass_core'::regnamespace,'mass_api'::regnamespace) AND prosecdef),'all definer helpers have fixed search paths');
-SELECT core_test.assert_true((SELECT count(*)=0 FROM pg_auth_members WHERE roleid='mass_core_owner'::regrole),'core owner has no granted members');
+SELECT core_test.assert_true((SELECT count(*)=1 AND bool_and(member=(SELECT oid FROM pg_roles WHERE rolname=session_user) AND set_option AND inherit_option)
+ FROM pg_auth_members WHERE roleid='mass_core_owner'::regrole),'core owner membership restricted to deployment principal with SET/INHERIT');
 -- RLS still denies direct mutation if a future ACL is widened accidentally.
 BEGIN;
 GRANT UPDATE(code) ON mass_core.attendance_records TO authenticated;

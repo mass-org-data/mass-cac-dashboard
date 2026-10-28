@@ -1,29 +1,29 @@
 # Final production migration preflight
 
-27 October 2026 (India). **NO-GO for production apply.** Local validation passes; actual managed Supabase permissions, isolated hosted compatibility and a production recovery point/restore rehearsal remain unverified. This phase prepares and commits safe local documentation/checks only. It does not connect to the hosted database or take its backup.
+Updated 28 October 2026 (India). **NO-GO for production apply until the corrected release is reviewed and separately authorized.** See the [PostgreSQL 17 role-membership correction](POSTGRES17-ROLE-MEMBERSHIP-FIX.md) for the user-reported failed attempt and retry prerequisites. Local validation passes; actual managed Supabase permissions, isolated hosted compatibility and a production recovery point/restore rehearsal remain unverified. This phase prepares and commits safe local documentation/checks only. It does not connect to the hosted database or take its backup.
 
 Target supplied by MASS: `pbkwpfdpdtelmvbkzgvx` — Mass CAC Dashboard — Mumbai (`ap-south-1`). Review: [PR #1](https://github.com/mass-org-data/mass-cac-dashboard/pull/1), feature branch `feature/source-data-discovery`. Do not merge or deploy Vercel as part of this procedure.
 
 ## Frozen release inputs
 
-The exact 15 SQL files are unchanged from reviewed implementation baseline **`6a2cf56bf3998357b422c86b11a64d3129bdfbd1`**. [MIGRATIONS.sha256](../supabase/compatibility/MIGRATIONS.sha256) records every filename and hash, independently matched to [DATABASE-SCHEMA-INVENTORY.json](DATABASE-SCHEMA-INVENTORY.json). From the repository root:
+The release retains 15 files. Migrations 01 and 07 are corrected from baseline **`d3304f53edc2034decdc6ad5082e4f5827296c0d`** with explicit SET/INHERIT membership grants to the deployment principal; the other 13 migration files are byte-for-byte unchanged. This revision targets the user-confirmed clean failed installation with zero recorded migrations, schemas, roles and tables; never use rewritten versions to repair an already-applied installation. [MIGRATIONS.sha256](../supabase/compatibility/MIGRATIONS.sha256) records every filename and hash, independently matched to [DATABASE-SCHEMA-INVENTORY.json](DATABASE-SCHEMA-INVENTORY.json). From the repository root:
 
 ```sh
 sha256sum --check supabase/compatibility/MIGRATIONS.sha256
 ```
 
-The subsequent local preflight commit packages these unchanged SQL files, Phase 3D work and additional checks. Record its full SHA with `git rev-parse HEAD` in the restricted release record; approve that exact commit separately before deployment. Verify exactly 15 files in `supabase/migrations`, no additional pending ledger versions and a clean release checkout. A hash manifest freezes content, not hosted execution authorization. If SQL or pending versions differ, stop and review a new release; do not edit the manifest to conceal a mismatch.
+The correction commit packages the two amended files, regenerated hashes/catalog evidence and role regression tests. Record its full SHA with `git rev-parse HEAD` in the restricted release record; approve that exact commit separately before deployment. Verify exactly 15 files in `supabase/migrations`, no additional pending ledger versions and a clean release checkout. A hash manifest freezes content, not hosted execution authorization. If SQL or pending versions differ, stop and review a new release; do not edit the manifest to conceal a mismatch.
 
 ## Concise approval checklist
 
 | Gate | Status / required evidence |
 | --- | --- |
-| Frozen SQL and model parity | PASS locally: 15 files, 23 tables, 155 columns, 27 FKs, 71 policies; six foundation and nine core files. No migration changes. |
-| Local behavioral/security checks | 207 checks passed in Phase 3D; SQL unchanged. Additional read-only report, failed-file rollback/retry and synthetic archive-restore checks pass in this phase. |
+| Frozen SQL and model parity | PASS locally: 15 files, 23 tables, 155 columns, 27 FKs, 71 policies; six foundation and nine core files. Only owner-membership bootstrap changes; model/RLS unchanged. |
+| Local behavioral/security checks | All 207 behavioral checks pass again on corrected SQL. Read-only reports, 171 function/role checks, restricted role-bootstrap rollback/retry and synthetic archive restore also pass. |
 | Definer review | All 19 reviewed; fixed search paths, qualified references, restricted local EXECUTE ACLs. [Per-function review](PRODUCTION-DEFINER-REVIEW.md). Hosted effective ACLs/memberships still unverified. |
-| Target/owner/region/endpoint | User identification only. Administrator must verify live project, owner, Mumbai region, endpoint and database version before any connection/apply. |
-| Managed role/Auth compatibility | NOT PASSED hosted. Local non-superuser model passes with explicit SET/INHERIT creator privileges and delegated Auth grants; default/SET-only creator settings fail. Prove equivalent actual principal capabilities in isolated managed Supabase. |
-| Existing objects/ledger/security conflicts | NOT INSPECTED hosted. Use the read-only report below; fresh role/schema collisions or unknown ledger entries require reconciliation. |
+| Target/owner/region/endpoint | User-reported live PG 17.11/Auth presence and intended target. Administrator must verify the correct endpoint/principal and absence of intervening changes before the retry. |
+| Managed role/Auth compatibility | NOT PASSED hosted. Corrected SQL passes under a local non-superuser with delegated Auth grants and default creator settings; explicit owner membership is now part of migrations 01/07. Prove equivalent actual principal capabilities in isolated managed Supabase. |
+| Existing objects/ledger/security conflicts | User reports zero committed versions, MASS tables, schemas or roles after the failure. Not inspected independently here; confirm unchanged immediately before the authorized retry. |
 | Free-project backup and restore | NOT TAKEN/NOT PROVEN hosted. Follow the private manual procedure below; no automatic backup/PITR assumption. |
 | Closed-install boundary and recovery window | Requires explicit approval of administrator, exact release, target, backup evidence, window and recovery procedure. No real users/grants/data/API activation. |
 | Execute production migrations | NOT AUTHORIZED. Separate authorization is required after gates pass. |
@@ -93,13 +93,13 @@ An authorized administrator provisions or selects a disposable **isolated** targ
 ## Managed role and SECURITY DEFINER acceptance
 
 - All six fresh roles are NOLOGIN/NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT/NOBYPASSRLS. Files 01/07 create them; files subsequently use SET LOCAL ROLE for ownership. PostgreSQL 16+ creator/ADMIN/SET/INHERIT semantics and Supabase role restrictions must be tested with the actual intended migration principal. `rolcreaterole=true` alone is not proof that every owner/grant operation will succeed. Do not assume hosted `postgres` is a superuser.
-- **Concrete PostgreSQL 17 local finding:** the unmodified first migration fails with SQLSTATE 42501 under a NOSUPERUSER/NOBYPASSRLS CREATEROLE principal with default creator settings. SET-only creator membership also fails: files 01/07 change schema ACLs before switching to the owner, so the creator needs effective owner privileges at those statements, not merely the ability to SET ROLE. Both failures roll back. In the isolated probe, explicit `createrole_self_grant='set, inherit'`, database CREATE and delegated Auth USAGE/EXECUTE/REFERENCES allow all 15 files to apply without superuser or BYPASSRLS. This is a local capability model, not a recommendation or authorization to change the hosted setting. Verify equivalent permitted capabilities in managed staging; otherwise stop and propose a separately reviewed correction rather than editing the frozen files.
+- **Production failure and correction:** the user reports SQLSTATE 42501, must be able to SET ROLE mass_foundation_owner, using hosted postgres. PostgreSQL 17 creator ADMIN authority does not imply SET/INHERIT. Corrected files 01/07 grant their new owner role to CURRENT_USER WITH SET TRUE, INHERIT TRUE before schema/ACL work. The restricted local model now applies all 15 corrected files with default creator settings; no session override or superuser/BYPASSRLS is needed. These grants are only for the trusted deployment principal, not public/API/staff roles. Grant/admin authority and managed Auth delegation still require provider verification.
 - Verify database CREATE/schema ownership, ability to SET ROLE each owner, grant delegation and policy/trigger/default-ACL authority. Unknown existing MASS roles/schemas are collisions, not objects to adopt automatically.
 - Files 07/14 require managed `auth.users(id)` and `auth.uid()`. Verify delegable Auth schema USAGE, uid EXECUTE, and **column-level REFERENCES(id) WITH GRANT OPTION** to the intended owner roles. A generic table-level privilege check can miss valid column grants. Managed Auth definitions must remain unchanged.
 - Review [all 19 definers](PRODUCTION-DEFINER-REVIEW.md) and effective inherited execution privileges. No local PUBLIC/anon/service_role EXECUTE exists. Authenticated can execute approved RPCs/scope predicates; owner-only guards/audit/helpers remain restricted. Schema exposure and authenticator memberships must match the approved boundary.
 - All 23 tables enable/force RLS. Owner helper policies are deliberate privileges; owner membership or superuser/BYPASSRLS access remains powerful. Real staff grants and profile capability are server-controlled and still unassigned. Local signed test JWTs prove neither managed issuer/JWKS/session lifecycle nor provider grant feasibility.
 
-Repeat the local model with `bash tests/deployment/run-role-probe.sh`. It creates only a fresh network-isolated disposable cluster with test-only Auth objects, tests both negative creator settings and then the full positive sequence. It accepts no hosted target. The exact provider principal, managed Auth definitions/grants and existing memberships remain untested.
+Repeat the local model with `bash tests/deployment/run-role-probe.sh`. It creates only a fresh network-isolated disposable cluster with test-only Auth objects, tests temporary legacy failures and corrected-bootstrap rollback/retry, then the full corrected sequence without creator-setting overrides. It accepts no hosted target. The exact provider principal, managed Auth definitions/grants and existing memberships remain untested.
 
 ## Read-only checks and exact apply order
 

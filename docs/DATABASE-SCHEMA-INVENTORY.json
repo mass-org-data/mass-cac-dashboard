@@ -287,7 +287,7 @@
   "migrations": [
     {
       "file": "supabase/migrations/202610270001_source_files.sql",
-      "sha256": "fd3d74ab1fcd556e41ab83326916a895eb874eedebbe4908e2cbfc90e73de977"
+      "sha256": "5b7d4634a3598b52f8ab4017cbac339ddd4d8420c96aa2a79996f646e0a7f5a4"
     },
     {
       "file": "supabase/migrations/202610270002_source_sheets.sql",
@@ -311,7 +311,7 @@
     },
     {
       "file": "supabase/migrations/202610270007_auth_scope.sql",
-      "sha256": "6ac5ed9288da9633237119e5f46678ef86faa35e5b24aef350e840c15b3a1f17"
+      "sha256": "0203d490b5ac1771894eee4386d069e0ec698a26bacd7d57a0c3a676bbcc620b"
     },
     {
       "file": "supabase/migrations/202610270008_identity_history.sql",

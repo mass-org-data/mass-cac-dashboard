@@ -4,6 +4,9 @@ CREATE ROLE mass_foundation_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NO
 CREATE ROLE mass_foundation_ingestor NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 CREATE ROLE mass_foundation_reviewer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 CREATE ROLE mass_foundation_auditor NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+-- PG17 CREATEROLE does not imply SET/INHERIT membership. Grant only the
+-- trusted deployment principal owner privileges, before schema/ACL operations.
+GRANT mass_foundation_owner TO CURRENT_USER WITH SET TRUE, INHERIT TRUE;
 CREATE SCHEMA mass_foundation AUTHORIZATION mass_foundation_owner;
 REVOKE ALL ON SCHEMA mass_foundation FROM PUBLIC;
 GRANT USAGE ON SCHEMA mass_foundation TO mass_foundation_ingestor, mass_foundation_reviewer, mass_foundation_auditor;

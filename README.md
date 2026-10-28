@@ -24,7 +24,7 @@ The deployment suite additionally verifies the read-only preflight/postflight re
 
 The [final production preflight](docs/PRODUCTION-MIGRATION-PREFLIGHT.md) freezes all 15 [SQL hashes](supabase/compatibility/MIGRATIONS.sha256), reviews [all 19 SECURITY DEFINER functions](docs/PRODUCTION-DEFINER-REVIEW.md), and prepares a private Free-project backup/recovery procedure. The deployment suite also verifies all 22 non-reference tables are empty and restores a synthetic custom-format archive in isolation. These checks do not establish managed Supabase compatibility or authorize hosted execution.
 
-The separate role probe applies the unchanged files as an isolated non-superuser with delegated Auth privileges. PostgreSQL 17 default creator membership and SET-only settings each fail safely; explicit SET plus INHERIT creator membership permits the full sequence in this local model. Verify equivalent capabilities with the actual managed provider before approval; the probe changes no hosted settings.
+The separate role probe reproduces the original PostgreSQL 17 failure in temporary legacy copies, then applies all corrected files as an isolated non-superuser with delegated Auth privileges and default creator settings. Migrations 01 and 07 explicitly grant SET/INHERIT membership on their new owner roles only to the deployment principal. Rollback/retry and effective owner membership are tested without a createrole_self_grant override. See the [role-membership correction and deployment handoff](docs/POSTGRES17-ROLE-MEMBERSHIP-FIX.md); actual managed-provider permissions remain a separate gate.
 
 - [Implemented dictionary: columns, types, PKs/FKs and constraints](docs/DATABASE-DATA-DICTIONARY.md)
 - [Complete implemented ER diagrams](docs/DATABASE-ERD.md)

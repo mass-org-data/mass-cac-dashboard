@@ -28,6 +28,8 @@ All 19 use fixed `search_path=pg_catalog` and qualified application references. 
 
 The other two `mass_api` functions (`attendance_summary`, `list_students`) are SECURITY INVOKER and retain caller RLS; no new definer surface is added. Trigger function invocation does not require callers to have direct EXECUTE once the trigger has been installed. SQL invoker helper/guard ACLs are also captured in the inventory.
 
+28 October 2026 follow-up: migrations 01/07 now explicitly grant owner SET/INHERIT membership only to the deployment principal. Function bodies, owners, direct EXECUTE ACLs and RLS policies remain unchanged. Review the [correction handoff](POSTGRES17-ROLE-MEMBERSHIP-FIX.md); the baseline above identifies the original function review, not the corrected migration hashes.
+
 ## Effective-permission acceptance
 
 - Private schemas are not Data API exposed schemas. Schema USAGE granted to authenticated for SQL/RLS dependency resolution is not endpoint exposure.
