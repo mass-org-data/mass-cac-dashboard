@@ -1,11 +1,12 @@
 import {createBackendClient} from './client.js';
 import {createReadApi} from './reads.js';
 import {createDirectoryApi} from './directory.js';
-import {centres} from '../data.js';
 
 // This adapter replaces the original prototype's synthetic data with authorized
 // read-only observations. It never writes to Supabase or browser local storage.
 export async function startOriginalReview(config) {
+  globalThis.__massReviewToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const {centres}=await import('../data.js');
   const client=createBackendClient(config);
   const {data:sessionResult}=await client.auth.getSession();
   if (!sessionResult?.session) return (await import('./workspace.js')).startLiveApp(config);
