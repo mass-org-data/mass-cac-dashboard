@@ -22,12 +22,12 @@ export async function startLiveApp(config) {
   const client=createBackendClient(config),api=createApi(client),reads=createReadApi(client),directory=createDirectoryApi(client);
   const directoryEnabled=config.directoryApi==='directory-v1';
   const root=document.querySelector('#app'),overlay=document.querySelector('#overlay');
-  const state={auth:{status:'checking'},context:null,refs:null,directory:[],staff:[],donor:'',data:null,page:'overview',centre:'',month:liveToday().slice(0,7),on:liveToday(),year:'',shift:'',grade:'',gender:'',query:'',definition:'',cohort:'',history:false,busy:false,saving:false,error:'',notice:'',menu:false,collapsed:false};
+  const state={auth:{status:'checking'},context:null,refs:null,directory:[],staff:[],donor:'',data:null,page:'overview',centre:'',month:liveToday().slice(0,7),on:liveToday(),year:'',shift:'',grade:'',gender:'',query:'',definition:'',cohort:'',history:false,reviewView:'',busy:false,saving:false,error:'',notice:'',menu:false,collapsed:false};
   let epoch=0,controller,modalSave=null,lastFocus=null;
   const targetsForDonor=()=>directoryEnabled?directoryCentres(state.context?.centres||[],state.directory,state.donor==='unassociated'?'':state.donor).filter(c=>state.donor!=='unassociated'||c.donor_id===null):state.context?.centres.map(c=>({centre_id:c.id}))||[];
   const centre=()=>state.context?.centres.find(c=>c.id===state.centre);
-  const canWrite=()=>Boolean(centre()?.can_write && state.auth.status==='signed-in' && !state.busy && !state.saving);
-  const isLeadership=()=>Boolean(state.context?.centres.some(c=>c.roles.includes('Leadership')));
+  const canWrite=()=>Boolean(state.reviewView!=='Leadership' && centre()?.can_write && state.auth.status==='signed-in' && !state.busy && !state.saving);
+  const isLeadership=()=>Boolean(state.reviewView==='Leadership'||(!state.reviewView&&state.context?.centres.some(c=>c.roles.includes('Leadership'))));
   const data=()=>state.data || emptyCentre(state.centre);
   const visible=()=>roster(data(),state.on,state);
   const definitions=()=>state.refs?.assessment_definitions.filter(d=>state.refs.assessment_periods.some(p=>p.id===d.period_id&&p.academic_year_id===state.year))||[];
@@ -233,7 +233,7 @@ export async function startLiveApp(config) {
     const episodes=state.data?.students||[];
     const shiftOptions=[...new Set(episodes.map(e=>e.shift_code).filter(Boolean))].sort();
     const gradeOptions=[...new Set(episodes.map(e=>e.grade_label).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
-    return `<form class="filters" id="workspace-filters">${directoryEnabled?choice('Donor','donor',[['','All permitted donors'],['unassociated','No verified association'],...[...new Map(donorRows.map(c=>[c.donor_id,c.donor_label])).entries()]],state.donor):''}${choice('Centre','centre',[...(scoped.length<=10?[['all','All permitted centres']]:[]),...options],state.centre)}${field('Reporting month','month',state.month,'month','required')}${field('Enrolment / attendance date','on',state.on,'date','required')}${choice('Shift','shift',[['','Both shifts'],...shiftOptions],state.shift)}${choice('Grade','grade',[['','All grades'],...gradeOptions],state.grade)}${centre()?.can_read_profiles?choice('Gender','gender',[['','All permitted genders'],'Girl','Boy'],state.gender):''}${field('Search student or ID','query',state.query,'search','maxlength="100" autocomplete="off"')}${state.page==='learning'?choice('Academic year','year',state.refs.academic_years.map(y=>[y.id,`${y.starts_on} to ${y.ends_before} (exclusive)`]),state.year):''}<button type="button" class="reset-filter" data-work-action="reset-filters">Reset filters</button></form>`;
+    return `<form class="filters" id="workspace-filters">${state.context?.centres.length===92&&state.context.centres.every(c=>c.roles.includes('Teacher')&&c.roles.includes('Cluster Officer'))?choice('Review view (UI only)','reviewView',[['','Actual assigned roles'],['Leadership','Leadership · read-only preview'],['Teacher','Teacher · data entry'],['Cluster Officer','Cluster Officer · data entry']],state.reviewView):''}${directoryEnabled?choice('Donor','donor',[['','All permitted donors'],['unassociated','No verified association'],...[...new Map(donorRows.map(c=>[c.donor_id,c.donor_label])).entries()]],state.donor):''}${choice('Centre','centre',[...(scoped.length<=10?[['all','All permitted centres']]:[]),...options],state.centre)}${field('Reporting month','month',state.month,'month','required')}${field('Enrolment / attendance date','on',state.on,'date','required')}${choice('Shift','shift',[['','Both shifts'],...shiftOptions],state.shift)}${choice('Grade','grade',[['','All grades'],...gradeOptions],state.grade)}${centre()?.can_read_profiles?choice('Gender','gender',[['','All permitted genders'],'Girl','Boy'],state.gender):''}${field('Search student or ID','query',state.query,'search','maxlength="100" autocomplete="off"')}${state.page==='learning'?choice('Academic year','year',state.refs.academic_years.map(y=>[y.id,`${y.starts_on} to ${y.ends_before} (exclusive)`]),state.year):''}<button type="button" class="reset-filter" data-work-action="reset-filters">Reset filters</button></form>`;
   }
   function directoryPanel() {
     if(state.centre==='all')return '';
@@ -297,7 +297,7 @@ export async function startLiveApp(config) {
   }
   function render() {
     if(state.auth.status!=='signed-in'){root.innerHTML=login();return;}
-    const roles=centre()?.roles||[...new Set((state.context?.centres||[]).flatMap(c=>c.roles))],leader=isLeadership(),officer=roles.includes('Cluster Officer');
+    const roles=centre()?.roles||[...new Set((state.context?.centres||[]).flatMap(c=>c.roles))],leader=isLeadership(),officer=state.reviewView?state.reviewView==='Cluster Officer':roles.includes('Cluster Officer');
     const nav=leader?[['overview','Overview'],['attendance','Attendance'],['learning','Learning'],['activities','Activities & Engagement'],['morarji','Morarji scholarship prep'],['visits','Officer Visits']]:[['overview',officer?'My Centres':'Overview'],...(officer?[['attendance','Attendance']]:[['daily','Daily Attendance']]),['children','Student Profile'],['learning','Learning'],['activities','Activities'],['morarji','Morarji scholarship prep'],...(officer?[['visits','Visits']]:[])];
     if(leader&&['children','daily','manage'].includes(state.page))state.page='overview';
     const title=nav.find(([id])=>id===state.page)?.[1]||({attendance:'Attendance',manage:'Correct / remove entries',directory:'Donor centres'}[state.page])||'Programme overview';
