@@ -1,6 +1,6 @@
 # Implemented entity–relationship diagrams
 
-Phase 3C, 27 October 2026. **23 local relations, 15 migrations, no hosted apply.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).
+Phase 4 migration 016, 28 October 2026. **23 local relations, 16 migrations, 016 not hosted-applied.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).
 
 Entity IDs use `mass_core_` / `mass_foundation_` instead of schema dots for Mermaid compatibility. Every column of each owning-domain relation is shown once; referenced parents repeat as key-only stubs. `auth_users` is the existing managed `auth.users` dependency, not a created table. Optional parent associations reflect FK nullability; child zero-or-one reflects FK columns containing a UNIQUE/PK. Composite keys/NULL behavior and runtime temporal checks are specified by the dictionary and migrations.
 

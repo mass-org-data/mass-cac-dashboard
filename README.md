@@ -2,7 +2,7 @@
 
 This package preserves the current frontend implementation, design, logo, styling, chart references and interactions. The application is vanilla JavaScript with HTML and CSS, **not React**; there are no React components or React dependencies to omit. No framework migration has been performed.
 
-The repository contains the **15 production-baseline SQL migrations implementing 23 relations** (six foundation and 17 core), isolated synthetic tests, and schema/security documentation. Phase 4 adds authenticated Supabase adapters and a live workspace, preserving the manager-approved sample frontend from `migration/frontend @ 0b57ea1`. The separately reviewed read-API proposal 016 remains under `supabase/proposals`, outside automatic deployment. No hosted change or Vercel release is performed by local commands below. See the [Phase 4 integration handoff](docs/PHASE-4-INTEGRATION-HANDOFF.md), [34-workflow mapping](docs/PHASE-4-FRONTEND-API-MAPPING.csv), [read API contract](docs/PHASE-4-READ-API-CONTRACTS.md) and [separate donor proposal](docs/PHASE-4-DONOR-REPORTING-PROPOSAL.md).
+The repository contains the **16 SQL migrations implementing 23 relations** (15 user-confirmed deployed baseline files plus finalized, not-yet-hosted migration 016), isolated synthetic tests, and schema/security documentation. Phase 4 adds authenticated Supabase adapters and a live workspace, preserving the manager-approved sample frontend from `migration/frontend @ 0b57ea1`. The reviewed read API is finalized at `supabase/migrations/202610280016_frontend_reads.sql`; the exact original proposal remains as a historical snapshot. Hosted execution is not authorized by publication. See [016 deployment handoff](docs/MIGRATION-016-DEPLOYMENT-HANDOFF.md). No hosted change or Vercel release is performed by local commands below. See the [Phase 4 integration handoff](docs/PHASE-4-INTEGRATION-HANDOFF.md), [34-workflow mapping](docs/PHASE-4-FRONTEND-API-MAPPING.csv), [read API contract](docs/PHASE-4-READ-API-CONTRACTS.md) and [separate donor proposal](docs/PHASE-4-DONOR-REPORTING-PROPOSAL.md).
 
 ## Frontend modes and configuration
 
@@ -10,7 +10,7 @@ Use Node 24.x (the SDK requires Node 22+). `npm ci` installs the official Supaba
 
 - `MASS_APP_MODE=live` (default): authenticated workspace, no sample fallback. Set `MASS_SUPABASE_URL=https://pbkwpfdpdtelmvbkzgvx.supabase.co` and `MASS_SUPABASE_PUBLISHABLE_KEY` outside Git. Only publishable keys are accepted; secret/service-role/legacy JWT keys are rejected.
 - `MASS_READ_API=baseline` (default): uses the existing 11 RPC baseline for read-only lists/attendance totals; live editing is gated because no scope/history discovery is available.
-- `MASS_READ_API=frontend-reads-v1`: full supported core flows, only after read proposal 016 is separately reviewed, applied and verified. It uses server-derived roles/centres, private-field RLS, real revisions and bounded reads. Removal/undo and other unsupported contracts remain disabled.
+- `MASS_READ_API=frontend-reads-v1`: full supported core flows, only after finalized migration 016 is separately authorized for hosted execution, applied and verified. It uses server-derived roles/centres, private-field RLS, real revisions and bounded reads. Removal/undo and other unsupported contracts remain disabled.
 - `MASS_APP_MODE=demo npm run build`: original manager-approved sample app and its browser-local removal/undo/reset behavior. It never initializes Supabase or uploads local records.
 
 An unconfigured live build shows a configuration screen without network calls or demo data. No real key is committed. No programme records are persisted to browser storage; Auth session material uses sessionStorage. Current Vercel production and the backend baseline remain unchanged.
@@ -22,7 +22,7 @@ npm run test:api
 npm run test:browser
 ```
 
-The API tests use synthetic PostgreSQL/PostgREST/JWT fixtures in an internal Docker network; browser tests require Python Playwright and Chromium and intercept all Auth/REST requests. Managed Supabase Auth remains a separate validation gate. The original 15 migration manifest is unchanged; the proposal has its own checksum and must not be included in an unattended production push.
+The API tests use synthetic PostgreSQL/PostgREST/JWT fixtures in an internal Docker network; browser tests require Python Playwright and Chromium and intercept all Auth/REST requests. Managed Supabase Auth remains a separate validation gate. The original 15 migration bytes/hashes are unchanged; the manifest now appends 016. Do not run an unattended hosted migration push. The pending hosted list must contain only 202610280016; no replay of 001–015.
 
 ## Database development and tests
 
@@ -37,13 +37,13 @@ bash tests/deployment/run-role-probe.sh
 bash tests/deployment/run-auth-probe.sh
 ```
 
-The first suite applies the original six foundation migrations. The second applies all 15 and runs synthetic core SQL/concurrency tests plus a real PostgREST HTTP suite with ephemeral signed test JWTs. The third checks the complete dictionary, ERDs, policy/ACL inventory and migration checksums against an independently migrated local catalog. All runners create disposable databases, use temporary storage, accept no hosted database URL and remove their containers on exit. SQL-only core testing (`MASS_TEST_REST=0`) does not verify API behavior.
+The first suite applies the original six foundation migrations. The second applies all 16 and runs synthetic core SQL/concurrency tests plus a real PostgREST HTTP suite with ephemeral signed test JWTs. The third checks the complete dictionary, ERDs, policy/ACL inventory and migration checksums against an independently migrated local catalog. All runners create disposable databases, use temporary storage, accept no hosted database URL and remove their containers on exit. SQL-only core testing (`MASS_TEST_REST=0`) does not verify API behavior.
 
 The existing behavioral suite has **207 checks**: 87 foundation, 102 core SQL/concurrency/attribution and 18 signed-token API checks. Managed Supabase Auth is represented by a test-only stub; these results do **not** verify real signup/login/session refresh or the hosted project. Full local Supabase startup was blocked by an image-registry `Forbidden` response. See [compatibility evidence](docs/PHASE-3C-COMPATIBILITY.md).
 
 The deployment suite additionally verifies the read-only preflight/postflight reports against a fresh closed installation, 15 catalog/security invariants, effective ACLs, initial reference data and failed-file rollback/retry. It never accepts an existing database target. See the [Phase 3D validation and deployment checklist](docs/PHASE-3D-DEPLOYMENT-VALIDATION.md) for current evidence, remaining hosted gates and the exact migration sequence.
 
-The [final production preflight](docs/PRODUCTION-MIGRATION-PREFLIGHT.md) freezes all 15 [SQL hashes](supabase/compatibility/MIGRATIONS.sha256), reviews [all 19 SECURITY DEFINER functions](docs/PRODUCTION-DEFINER-REVIEW.md), and prepares a private Free-project backup/recovery procedure. The deployment suite also verifies all 22 non-reference tables are empty and restores a synthetic custom-format archive in isolation. These checks do not establish managed Supabase compatibility or authorize hosted execution.
+The [final production preflight](docs/PRODUCTION-MIGRATION-PREFLIGHT.md) describes the original 15 [SQL hashes](supabase/compatibility/MIGRATIONS.sha256), reviews [all 19 SECURITY DEFINER functions](docs/PRODUCTION-DEFINER-REVIEW.md), and prepares a private Free-project backup/recovery procedure. The deployment suite also verifies all 22 non-reference tables are empty and restores a synthetic custom-format archive in isolation. These checks do not establish managed Supabase compatibility or authorize hosted execution.
 
 The separate role probe reproduces the original PostgreSQL 17 failure in temporary legacy copies, then applies all corrected files as an isolated non-superuser with delegated Auth privileges and default creator settings. Migrations 01 and 07 explicitly grant SET/INHERIT membership on their new owner roles only to the deployment principal. Rollback/retry and effective owner membership are tested without a createrole_self_grant override. See the [role-membership correction and deployment handoff](docs/POSTGRES17-ROLE-MEMBERSHIP-FIX.md); actual managed-provider permissions remain a separate gate.
 
@@ -57,7 +57,7 @@ The [migration 007 Auth correction and resume handoff](docs/MIGRATION-007-AUTH-R
 - [Core implementation handover](docs/PHASE-3B-CORE-HANDOVER.md)
 - [Deployment gates and the approval-dependent apply sequence](docs/PHASE-3C-DEPLOYMENT-READINESS.md)
 
-SQL under `supabase/migrations/` is authoritative and stays in filename order. Never run `tests/core/bootstrap.sql`, test fixtures or local role stubs on hosted Supabase. The frontend source-download ZIP is frontend-only; database migrations/tests are delivered through Git. Changes to SQL require reviewing schema documentation and running `bash tests/schema/run-local.sh --write` followed by the default check; this command still uses only a new local database.
+The current manifest covers 16 files; [the 016 handoff](docs/MIGRATION-016-DEPLOYMENT-HANDOFF.md) supersedes original-install counts. SQL under `supabase/migrations/` is authoritative and stays in filename order. Never run `tests/core/bootstrap.sql`, test fixtures or local role stubs on hosted Supabase. The frontend source-download ZIP is frontend-only; database migrations/tests are delivered through Git. Changes to SQL require reviewing schema documentation and running `bash tests/schema/run-local.sh --write` followed by the default check; this command still uses only a new local database.
 
 ## Deploy through the existing Vercel project
 

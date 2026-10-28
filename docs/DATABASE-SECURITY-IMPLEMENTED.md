@@ -1,6 +1,6 @@
 # Implemented database security and RLS
 
-Phase 3C, 27 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.
+Phase 4 migration 016, 28 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.
 
 ## Access boundary
 
@@ -198,10 +198,21 @@ Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_co
 | --- | --- | --- | --- | --- |
 | `admin_access` | * | `mass_core_admin` | `true` | `true` |
 | `owner_access` | * | `mass_core_owner` | `true` | `true` |
+| `self_scope_discovery` | r | `authenticated` | `((CURRENT_USER = 'authenticated'::name) AND (user_id = mass_core.request_user_id()) AND (starts_at <= statement_timestamp()) AND ((ends_at IS NULL) OR (statement_timestamp() < ends_at)))` | `none` |
 
 Table ACL: `{mass_core_owner=arwdDxtm/mass_core_owner,mass_core_admin=ar/mass_core_owner}`.
 
-Column ACL `ends_at`: `{mass_core_admin=w/mass_core_owner}`.
+Column ACL `user_id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `centre_id`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `role_code`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `starts_at`: `{authenticated=r/mass_core_owner}`.
+
+Column ACL `ends_at`: `{mass_core_admin=w/mass_core_owner,authenticated=r/mass_core_owner}`.
+
+Column ACL `can_read_profiles`: `{authenticated=r/mass_core_owner}`.
 
 ### mass_foundation.audit_events
 
@@ -327,7 +338,16 @@ Table ACL: `{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundatio
 | `mass_api.attendance_summary(p_centre uuid, p_from date, p_until date)` | `TABLE(present_count bigint, absent_count bigint, leave_count bigint, excluded_count bigint, percentage numeric)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.close_enrolment(p_id uuid, p_expected bigint, p_ends_before date, p_status text)` | `bigint` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.create_activity(p_id uuid, p_centre uuid, p_shift text, p_date date, p_name text)` | `uuid` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.get_context()` | `jsonb` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.get_references()` | `jsonb` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.list_students(p_centre uuid, p_on date)` | `TABLE(child_id uuid, student_id text, enrolment_id uuid, grade_label text, shift_code text, full_name text, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.read_activities(p_centre uuid, p_from date, p_until date, p_limit integer, p_offset integer)` | `TABLE(id uuid, shift_code text, activity_date date, name text, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.read_assessments(p_centre uuid, p_from date, p_until date, p_child uuid, p_limit integer, p_offset integer)` | `TABLE(id uuid, child_id uuid, enrolment_id uuid, shift_code text, definition_id uuid, assessed_on date, score numeric, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.read_attendance(p_centre uuid, p_from date, p_until date, p_child uuid, p_limit integer, p_offset integer)` | `TABLE(id uuid, child_id uuid, enrolment_id uuid, shift_code text, attendance_date date, code text, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.read_calendar(p_centre uuid, p_from date, p_until date, p_limit integer, p_offset integer)` | `TABLE(id uuid, shift_code text, session_date date, is_scheduled boolean, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.read_morarji(p_centre uuid, p_cohort uuid, p_limit integer, p_offset integer)` | `TABLE(membership_id uuid, cohort_id uuid, child_id uuid, enrolment_id uuid, shift_code text, outcome_id uuid, applied boolean, attended boolean, passed boolean, school_name text, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.read_participation(p_centre uuid, p_from date, p_until date, p_event uuid, p_child uuid, p_limit integer, p_offset integer)` | `TABLE(id uuid, event_id uuid, child_id uuid, enrolment_id uuid, shift_code text, activity_date date, participated boolean, row_version bigint)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_api.read_students(p_centre uuid, p_on date, p_limit integer, p_offset integer)` | `TABLE(child_id uuid, student_id text, enrolment_id uuid, grade_label text, shift_code text, starts_on date, ends_before date, status_code text, row_version bigint, full_name text, gender_code text, class10_board_passed boolean)` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.record_assessment(p_enrolment uuid, p_definition uuid, p_date date, p_score numeric, p_expected bigint)` | `uuid` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.record_attendance(p_enrolment uuid, p_date date, p_code text, p_expected bigint)` | `uuid` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_api.record_morarji(p_member uuid, p_applied boolean, p_attended boolean, p_passed boolean, p_school text, p_expected bigint)` | `uuid` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
@@ -343,6 +363,7 @@ Table ACL: `{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundatio
 | `mass_core.period_contains(p uuid, d date)` | `boolean` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_core.record_audit()` | `trigger` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner}` |
 | `mass_core.request_user_id()` | `uuid` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
+| `mass_core.require_read_scope(p_centre uuid, p_limit integer, p_offset integer, p_from date, p_until date)` | `void` | False | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}` |
 | `mass_core.writable_enrolment(e uuid)` | `mass_core.enrolments` | True | `search_path=pg_catalog` | `{mass_core_owner=X/mass_core_owner}` |
 | `mass_foundation.guard_batch()` | `trigger` | False | `search_path=pg_catalog` | `{mass_foundation_owner=X/mass_foundation_owner}` |
 | `mass_foundation.guard_exception()` | `trigger` | False | `search_path=pg_catalog` | `{mass_foundation_owner=X/mass_foundation_owner}` |
@@ -351,4 +372,4 @@ Table ACL: `{mass_foundation_owner=arwdDxtm/mass_foundation_owner,mass_foundatio
 
 ACL notation: r SELECT, a INSERT, w UPDATE, d DELETE, D TRUNCATE, x REFERENCES, t TRIGGER, X EXECUTE. PostgreSQL owner rights and role inheritance must also be reviewed; NULL ACL text is not proof of no rights. Foundation helpers use explicit PUBLIC EXECUTE revokes (a schema-local default revoke alone does not remove global function defaults). Core-owner global function defaults revoke PUBLIC EXECUTE. Check effective privileges on the real target, including service_role inheritance and grant options.
 
-Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 15 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.
+Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 16 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.

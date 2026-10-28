@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[2]
 p=argparse.ArgumentParser();p.add_argument('catalog',type=Path);p.add_argument('--check',action='store_true');args=p.parse_args()
 snapshot=json.loads(args.catalog.read_text())
 snapshot['migrations']=[{'file':str(f.relative_to(ROOT)),'sha256':hashlib.sha256(f.read_bytes()).hexdigest()} for f in sorted((ROOT/'supabase/migrations').glob('*.sql'))]
-assert len(snapshot['migrations'])==15
+assert len(snapshot['migrations'])==16
 assert len(snapshot['tables'])==23
 assert sum(t['schema']=='mass_foundation' for t in snapshot['tables'])==6
 assert sum(t['schema']=='mass_core' for t in snapshot['tables'])==17
@@ -91,8 +91,8 @@ common={
 'applied':'Nullable supplied indicator; NULL remains unknown.', 'attended':'Nullable supplied indicator; training/exam context is not inferred.',
 'passed':'Nullable supplied indicator; no extra outcome/status inferred.', 'school_name':'Supplied school observation only; not inferred admission or award.'}
 lines=['# Implemented database data dictionary', '',
-'Phase 3C, 27 October 2026. **23 locally implemented relations: six foundation and 17 core; 15 migrations. Not hosted or approved for production execution.**', '',
-'This dictionary is generated from PostgreSQL catalog metadata after all 15 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.', '',
+'Phase 4 migration 016, 28 October 2026. **23 locally implemented relations: six foundation and 17 core; 16 migrations. Locally verified; 016 not applied to hosted Supabase.**', '',
+'This dictionary is generated from PostgreSQL catalog metadata after all 16 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.', '',
 'The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E dictionary snapshot](DATABASE-PROPOSED-DATA-DICTIONARY-PHASE-2E.md); see [deferred relations](DATABASE-DEFERRED-RELATIONS.md). Historical decision documents retain their original context. This current dictionary makes no claim that every proposal is implemented.', '',
 '`auth.users` is an existing managed dependency, not a 24th relation created by these migrations. All 23 local relations enable and force RLS. NULL means unknown/optional, not absent/false/zero. Business dates are explicit dates; timestamptz operation metadata is not a fabricated source date. `PK/FK/UK` below describe exact keys; a composite FK must be read as a whole in its constraint definition. Nullable reports the catalog NOT NULL declaration; generated student_id/year-end values are nevertheless non-null under the current strict expressions over required inputs. No generic shared timestamp/origin columns are implied.', '',
 '## Inventory','', '| Relation | Columns | PK | Creation migration |','| --- | --- | --- | --- |']
@@ -126,7 +126,7 @@ groups=[('Foundation and managed Auth',[t for t in snapshot['tables'] if t['sche
  ('Attendance, assessments, activities and Morarji',[t for t in snapshot['tables'] if t['schema']=='mass_core' and t['name'] not in ['centres','user_scope_grants','children','private_child_profiles','enrolments','academic_years','assessment_periods']])]
 def eid(name):return name.replace('.','_')
 erd=['# Implemented entity–relationship diagrams','',
-'Phase 3C, 27 October 2026. **23 local relations, 15 migrations, no hosted apply.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).','',
+'Phase 4 migration 016, 28 October 2026. **23 local relations, 16 migrations, 016 not hosted-applied.** Generated from the same isolated PostgreSQL catalog as the [dictionary](DATABASE-DATA-DICTIONARY.md) and [machine inventory](DATABASE-SCHEMA-INVENTORY.json). Earlier proposed ERDs remain in [the preserved Phase 2E snapshot](DATABASE-PROPOSED-ERD-PHASE-2E.md).','',
 'Entity IDs use `mass_core_` / `mass_foundation_` instead of schema dots for Mermaid compatibility. Every column of each owning-domain relation is shown once; referenced parents repeat as key-only stubs. `auth_users` is the existing managed `auth.users` dependency, not a created table. Optional parent associations reflect FK nullability; child zero-or-one reflects FK columns containing a UNIQUE/PK. Composite keys/NULL behavior and runtime temporal checks are specified by the dictionary and migrations.','']
 for title,tables in groups:
  own={qualified(t) for t in tables};stubs={};edges=[]
@@ -160,7 +160,7 @@ erd+=['## Relationships that are deliberately absent','',
 'No person/name join, polymorphic audit business FK, historical source-slot/event bridge, automatic year/quarter alias or derived staff/funder relationship is implied. Audit entity_id is a durable locator, while actor_user_id and batch_id are real FKs. No unimplemented proposed relation is drawn as deployed. All actual FK edges, including Auth and composite contextual keys, appear above.','']
 # Full effective policy expressions and grants: evidence, not invented role permissions.
 security=['# Implemented database security and RLS','',
-'Phase 3C, 27 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.','',
+'Phase 4 migration 016, 28 October 2026. Generated policy/ACL evidence from the isolated local schema, not hosted Supabase certification. Read with [the core handover](PHASE-3B-CORE-HANDOVER.md) and [deployment gates](PHASE-3C-DEPLOYMENT-READINESS.md). No real users/scopes are provisioned.','',
 '## Access boundary','',
 '- All 23 relations enable and force RLS. Private schemas are mass_foundation and mass_core; mass_api contains curated functions and no tables. The local API exposes only mass_api; actual hosted exposure must be reviewed before any apply/enablement.',
 '- Leadership has programme reads only within explicit valid grants and no business writes. Teachers and Cluster Officers need verified centre scopes; explicit can_read_profiles is additional and still excludes Leadership. No null/global centre or browser role claim grants access.',
@@ -181,7 +181,7 @@ for t in snapshot['tables']:
 security+=['## Function boundary','', '| Function / identity arguments | Returns | Definer | Settings | ACL |','| --- | --- | --- | --- | --- |']
 for f in snapshot['functions']:security.append('| '+' | '.join([code(f['schema']+'.'+f['name']+'('+f['arguments']+')'),code(f['returns']),str(f['security_definer']),code(', '.join(f['settings'] or [])),code(f['acl'] or 'PostgreSQL defaults')])+' |')
 security+=['','ACL notation: r SELECT, a INSERT, w UPDATE, d DELETE, D TRUNCATE, x REFERENCES, t TRIGGER, X EXECUTE. PostgreSQL owner rights and role inheritance must also be reviewed; NULL ACL text is not proof of no rights. Foundation helpers use explicit PUBLIC EXECUTE revokes (a schema-local default revoke alone does not remove global function defaults). Core-owner global function defaults revoke PUBLIC EXECUTE. Check effective privileges on the real target, including service_role inheritance and grant options.','',
-'Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 15 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.','']
+'Exact constraints, trigger definitions, indexes and default ACLs are retained in DATABASE-SCHEMA-INVENTORY.json; their executable implementation is the 16 migrations. The existing 207 tests exercise allowed/denied roles, forced RLS, invalid signatures, centre isolation, profile masking, immutable metadata, transactional audit and expected-version conflicts. Actual managed Auth sessions and hosted migration-role/ownership grants remain unverified.','']
 outputs={ROOT/'docs/DATABASE-DATA-DICTIONARY.md':dictionary,ROOT/'docs/DATABASE-ERD.md':'\n'.join(erd),ROOT/'docs/DATABASE-SECURITY-IMPLEMENTED.md':'\n'.join(security),ROOT/'docs/DATABASE-SCHEMA-INVENTORY.json':json.dumps(snapshot,indent=2,sort_keys=True)+'\n'}
 for path,text in outputs.items():
  if args.check:
@@ -189,4 +189,4 @@ for path,text in outputs.items():
    old=json.loads(path.read_text());current=json.loads(text);old.pop('server_version',None);current.pop('server_version',None);assert old==current,path
   else:assert path.read_text()==text,path
  else:path.write_text(text)
-print(('Verified' if args.check else 'Rendered')+': 23 tables, every column/key/constraint/FK, all policies, ERDs and 15 migration checksums against isolated catalog.')
+print(('Verified' if args.check else 'Rendered')+': 23 tables, every column/key/constraint/FK, all policies, ERDs and 16 migration checksums against isolated catalog.')

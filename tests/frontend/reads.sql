@@ -72,3 +72,51 @@ SELECT core_test.assert_true((SELECT count(*)=155 FROM pg_attribute WHERE attrel
 SELECT core_test.assert_true((SELECT count(*)=27 FROM pg_constraint WHERE conrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace) AND relkind='r') AND contype='f'),'proposal preserves 27 foreign keys');
 SELECT core_test.assert_true((SELECT count(*)=19 FROM pg_proc WHERE prosecdef AND pronamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_api'::regnamespace)),'proposal preserves 19 existing definers');
 SELECT core_test.assert_true((SELECT array_agg(attname::text ORDER BY attname::text)=ARRAY['can_read_profiles','centre_id','ends_at','role_code','starts_at','user_id'] FROM pg_attribute WHERE attrelid='mass_core.user_scope_grants'::regclass AND attnum>0 AND NOT attisdropped AND has_column_privilege('authenticated',attrelid,attnum,'SELECT')),'self-discovery grants exactly six non-verifier columns');
+
+-- Exact approved reference projection, including keys within each returned row.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001"}',false);
+SELECT core_test.assert_true((SELECT array_agg(k ORDER BY k)=ARRAY['academic_years','assessment_definitions','assessment_periods','attendance_codes','programme_cohorts'] FROM jsonb_object_keys(mass_api.get_references()) k),'reference response has exactly five approved metadata collections');
+SELECT core_test.assert_true(NOT EXISTS(
+ SELECT 1 FROM jsonb_each(mass_api.get_references()) c CROSS JOIN LATERAL jsonb_array_elements(c.value) r CROSS JOIN LATERAL jsonb_object_keys(r) k
+ WHERE NOT k=ANY(CASE c.key
+  WHEN 'academic_years' THEN ARRAY['id','starts_on','ends_before']
+  WHEN 'assessment_periods' THEN ARRAY['id','academic_year_id','quarter']
+  WHEN 'assessment_definitions' THEN ARRAY['id','period_id','max_score']
+  WHEN 'programme_cohorts' THEN ARRAY['id','label','academic_year_id']
+  WHEN 'attendance_codes' THEN ARRAY['code','meaning'] END)
+),'reference rows expose only explicitly approved non-personal columns');
+SELECT core_test.expect_error(q,'42501','every operational RPC rejects another centre: '||name) FROM (VALUES
+ ('students',$q$SELECT * FROM mass_api.read_students('10000000-0000-4000-8000-000000000002')$q$),
+ ('attendance',$q$SELECT * FROM mass_api.read_attendance('10000000-0000-4000-8000-000000000002','2026-04-01','2026-05-01')$q$),
+ ('calendar',$q$SELECT * FROM mass_api.read_calendar('10000000-0000-4000-8000-000000000002','2026-04-01','2026-05-01')$q$),
+ ('assessments',$q$SELECT * FROM mass_api.read_assessments('10000000-0000-4000-8000-000000000002','2026-04-01','2026-05-01')$q$),
+ ('activities',$q$SELECT * FROM mass_api.read_activities('10000000-0000-4000-8000-000000000002','2026-04-01','2026-05-01')$q$),
+ ('participation',$q$SELECT * FROM mass_api.read_participation('10000000-0000-4000-8000-000000000002','2026-04-01','2026-05-01')$q$),
+ ('morarji',$q$SELECT * FROM mass_api.read_morarji('10000000-0000-4000-8000-000000000002')$q$)
+) v(name,q);
+RESET ROLE;
+BEGIN;
+SET ROLE mass_core_admin;
+UPDATE mass_core.user_scope_grants SET ends_at='2001-01-01' WHERE user_id='00000000-0000-4000-8000-000000000001';
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001"}',true);
+SELECT core_test.expect_error('SELECT mass_api.get_references()','42501','reference discovery immediately rejects revoked readable assignments');
+ROLLBACK;
+BEGIN;
+SET ROLE mass_core_admin;
+INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,verified_by,verified_at)
+ VALUES('00000000-0000-4000-8000-000000000006','10000000-0000-4000-8000-000000000001','Teacher',statement_timestamp()+interval '1 day','00000000-0000-4000-8000-000000000006',statement_timestamp());
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000006"}',true);
+SELECT core_test.expect_error('SELECT mass_api.get_references()','42501','future-only centre assignments do not enable reference discovery');
+ROLLBACK;
+SET ROLE anon;
+SELECT core_test.expect_error('SELECT mass_api.get_references()','42501','anonymous reference discovery denied');
+RESET ROLE;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims','{}',false);
+SELECT core_test.expect_error('SELECT mass_api.get_references()','42501','reference discovery without managed UID denied');
+RESET ROLE;

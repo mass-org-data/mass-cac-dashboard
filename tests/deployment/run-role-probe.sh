@@ -85,7 +85,7 @@ SELECT count(*)=23 AND bool_and(relrowsecurity AND relforcerowsecurity)
 SELECT count(*)=155 FROM pg_attribute WHERE attrelid IN
  (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped;
 SELECT count(*)=27 FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace) AND contype='f';
-SELECT count(*)=71 FROM pg_policy WHERE polrelid IN
+SELECT count(*)=72 FROM pg_policy WHERE polrelid IN
  (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace));
 -- PG17 may retain separate automatic-ADMIN and explicit-SET/INHERIT rows
 -- from different grantors. Verify effective rights and explicit grant coverage.
@@ -116,5 +116,5 @@ RESET ROLE;
 SET LOCAL ROLE mass_core_owner;
 ROLLBACK;
 SWITCH
-echo 'PASS: corrected core bootstrap failure rolls back roles/grants/schema; retry completes all 15 files.'
-echo 'PASS: restricted PG17 principal with default creator settings switches both owners; 23 tables/155 columns/27 FKs/71 policies; owner membership isolated to deployer. Managed Supabase unverified.'
+echo 'PASS: corrected core bootstrap failure rolls back roles/grants/schema; retry completes all 16 files.'
+echo 'PASS: restricted PG17 principal with default creator settings switches both owners; 23 tables/155 columns/27 FKs/72 policies; owner membership isolated to deployer. Managed Supabase unverified.'

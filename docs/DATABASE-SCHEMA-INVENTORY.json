@@ -65,9 +65,108 @@
     },
     {
       "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "",
+      "name": "get_context",
+      "returns": "jsonb",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "",
+      "name": "get_references",
+      "returns": "jsonb",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
       "arguments": "p_centre uuid, p_on date",
       "name": "list_students",
       "returns": "TABLE(child_id uuid, student_id text, enrolment_id uuid, grade_label text, shift_code text, full_name text, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_from date, p_until date, p_limit integer, p_offset integer",
+      "name": "read_activities",
+      "returns": "TABLE(id uuid, shift_code text, activity_date date, name text, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_from date, p_until date, p_child uuid, p_limit integer, p_offset integer",
+      "name": "read_assessments",
+      "returns": "TABLE(id uuid, child_id uuid, enrolment_id uuid, shift_code text, definition_id uuid, assessed_on date, score numeric, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_from date, p_until date, p_child uuid, p_limit integer, p_offset integer",
+      "name": "read_attendance",
+      "returns": "TABLE(id uuid, child_id uuid, enrolment_id uuid, shift_code text, attendance_date date, code text, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_from date, p_until date, p_limit integer, p_offset integer",
+      "name": "read_calendar",
+      "returns": "TABLE(id uuid, shift_code text, session_date date, is_scheduled boolean, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_cohort uuid, p_limit integer, p_offset integer",
+      "name": "read_morarji",
+      "returns": "TABLE(membership_id uuid, cohort_id uuid, child_id uuid, enrolment_id uuid, shift_code text, outcome_id uuid, applied boolean, attended boolean, passed boolean, school_name text, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_from date, p_until date, p_event uuid, p_child uuid, p_limit integer, p_offset integer",
+      "name": "read_participation",
+      "returns": "TABLE(id uuid, event_id uuid, child_id uuid, enrolment_id uuid, shift_code text, activity_date date, participated boolean, row_version bigint)",
+      "schema": "mass_api",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_on date, p_limit integer, p_offset integer",
+      "name": "read_students",
+      "returns": "TABLE(child_id uuid, student_id text, enrolment_id uuid, grade_label text, shift_code text, starts_on date, ends_before date, status_code text, row_version bigint, full_name text, gender_code text, class10_board_passed boolean)",
       "schema": "mass_api",
       "security_definer": false,
       "settings": [
@@ -240,6 +339,17 @@
       ]
     },
     {
+      "acl": "{mass_core_owner=X/mass_core_owner,authenticated=X/mass_core_owner}",
+      "arguments": "p_centre uuid, p_limit integer, p_offset integer, p_from date, p_until date",
+      "name": "require_read_scope",
+      "returns": "void",
+      "schema": "mass_core",
+      "security_definer": false,
+      "settings": [
+        "search_path=pg_catalog"
+      ]
+    },
+    {
       "acl": "{mass_core_owner=X/mass_core_owner}",
       "arguments": "e uuid",
       "name": "writable_enrolment",
@@ -355,6 +465,10 @@
     {
       "file": "supabase/migrations/202610270015_core_api.sql",
       "sha256": "5a751e609b1972cdd6f5b78da215103e3924435f162bbe4317b50f2e3af1bac3"
+    },
+    {
+      "file": "supabase/migrations/202610280016_frontend_reads.sql",
+      "sha256": "1587c60cf3dd643159e4179850126ea6880e44fac6a7e534d711fe03145602ea"
     }
   ],
   "roles": [
@@ -2816,7 +2930,7 @@
           "type": "uuid"
         },
         {
-          "acl": null,
+          "acl": "{authenticated=r/mass_core_owner}",
           "default": null,
           "generated": "",
           "name": "user_id",
@@ -2824,7 +2938,7 @@
           "type": "uuid"
         },
         {
-          "acl": null,
+          "acl": "{authenticated=r/mass_core_owner}",
           "default": null,
           "generated": "",
           "name": "centre_id",
@@ -2832,7 +2946,7 @@
           "type": "uuid"
         },
         {
-          "acl": null,
+          "acl": "{authenticated=r/mass_core_owner}",
           "default": null,
           "generated": "",
           "name": "role_code",
@@ -2840,7 +2954,7 @@
           "type": "text"
         },
         {
-          "acl": null,
+          "acl": "{authenticated=r/mass_core_owner}",
           "default": null,
           "generated": "",
           "name": "starts_at",
@@ -2848,7 +2962,7 @@
           "type": "timestamp with time zone"
         },
         {
-          "acl": "{mass_core_admin=w/mass_core_owner}",
+          "acl": "{mass_core_admin=w/mass_core_owner,authenticated=r/mass_core_owner}",
           "default": null,
           "generated": "",
           "name": "ends_at",
@@ -2880,7 +2994,7 @@
           "type": "bigint"
         },
         {
-          "acl": null,
+          "acl": "{authenticated=r/mass_core_owner}",
           "default": "false",
           "generated": "",
           "name": "can_read_profiles",
@@ -3002,6 +3116,15 @@
             "mass_core_owner"
           ],
           "using": "true"
+        },
+        {
+          "check": null,
+          "command": "r",
+          "name": "self_scope_discovery",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "((CURRENT_USER = 'authenticated'::name) AND (user_id = mass_core.request_user_id()) AND (starts_at <= statement_timestamp()) AND ((ends_at IS NULL) OR (statement_timestamp() < ends_at)))"
         }
       ],
       "rls": true,

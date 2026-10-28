@@ -6,7 +6,7 @@ rest="${container}-api"
 client="${container}-client"
 network="${container}-net"
 sdk_bundle="$(mktemp /tmp/mass-frontend-sdk.XXXXXX.mjs)"
-cleanup(){ docker rm -fv "$client" "$rest" "$container" >/dev/null 2>&1 || true;docker network rm "$network" >/dev/null 2>&1 || true;rm -f -- "$sdk_bundle"; }
+cleanup(){ docker rm -fv "$client" "$rest" "$container" >/dev/null 2>&1 || true;docker network rm "$network" >/dev/null 2>&1 || true;rm -f -- "$sdk_bundle" "${sdk_bundle}.failure"; }
 trap cleanup EXIT INT TERM
 docker network create --internal "$network" >/dev/null
 docker run -d --name "$container" --network "$network" \
@@ -20,12 +20,29 @@ for ((attempt=0;attempt<60;attempt++));do
 done
 sql(){ docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres "$@"; }
 sql -q < "$repo_root/tests/core/bootstrap.sql"
-for migration in "$repo_root"/supabase/migrations/*.sql;do sql -q < "$migration";done
+for migration in "$repo_root"/supabase/migrations/20261027*.sql;do sql -q < "$migration";done
+# Preflight is read-only and expects the existing 15-version baseline.
+sql -q < "$repo_root/supabase/compatibility/016-preflight.sql"
 sql -q < "$repo_root/tests/core/synthetic.sql"
-# Proposal intentionally outside automatic migration discovery and production manifests.
-sql -q < "$repo_root/supabase/proposals/202610280016_frontend_reads.sql"
+# Freeze original policy definitions before additive 016; inject a failure to prove
+# transaction rollback retains baseline objects/ACLs, then retry the exact file.
+policy_snapshot(){ sql -Atqc "SELECT jsonb_agg(jsonb_build_object('table',polrelid::regclass::text,'name',polname,'cmd',polcmd,'permissive',polpermissive,'roles',polroles::text,'using',pg_get_expr(polqual,polrelid),'check',pg_get_expr(polwithcheck,polrelid)) ORDER BY polrelid::regclass::text,polname) FROM pg_policy WHERE polrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace)) AND polname<>'self_scope_discovery'"; }
+baseline_policies="$(policy_snapshot)"
+python - "$repo_root/supabase/migrations/202610280016_frontend_reads.sql" <<'PYTEST' | sql -q > "${sdk_bundle}.failure" 2>&1 && { echo 'Injected 016 failure unexpectedly committed';exit 1; }
+from pathlib import Path
+import sys
+s=Path(sys.argv[1]).read_text();assert s.count('COMMIT;')==1
+print(s.replace('COMMIT;','SELECT 1/0;\nCOMMIT;'))
+PYTEST
+rg -q 'division by zero' "${sdk_bundle}.failure"
+[[ "$(sql -Atqc "SELECT to_regprocedure('mass_api.get_context()') IS NULL AND NOT EXISTS(SELECT 1 FROM pg_policy WHERE polname='self_scope_discovery') AND NOT has_any_column_privilege('authenticated','mass_core.user_scope_grants','SELECT')")" == t ]]
+[[ "$(policy_snapshot)" == "$baseline_policies" ]]
+echo 'PASS: injected 016 failure rolls back functions/policy/column grants; all 71 baseline policy definitions intact.'
+sql -q < "$repo_root/supabase/migrations/202610280016_frontend_reads.sql"
+[[ "$(policy_snapshot)" == "$baseline_policies" ]]
+echo 'PASS: exact 016 retry succeeds; all 71 baseline policy definitions unchanged.'
 sql -q < "$repo_root/tests/frontend/reads.sql"
-sql -q < "$repo_root/supabase/proposals/016-postflight.sql"
+sql -q < "$repo_root/supabase/compatibility/016-postflight.sql"
 rest_secret="$(python -c 'import secrets; print(secrets.token_hex(32))')"
 docker run -d --name "$rest" --network "$network" \
  -e PGRST_DB_URI="postgresql://mass_test_authenticator@${container}/postgres" \
@@ -42,4 +59,4 @@ docker run --rm -i --name "$client" --network "$network" \
  node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 \
  node --input-type=module - < "$sdk_bundle"
 unset rest_secret
-echo 'PASS: isolated proposal 016, bounded reads, role discovery, masking, centre isolation and revocation.'
+echo 'PASS: isolated migration 016, bounded reads, role discovery, masking, centre isolation and revocation.'

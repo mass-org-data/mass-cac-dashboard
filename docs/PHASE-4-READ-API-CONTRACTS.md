@@ -1,8 +1,8 @@
-# Proposed frontend read API — version frontend-reads-v1
+# Finalized frontend read API — version frontend-reads-v1
 
-Prepared locally for review. **Not installed on production.** Proposal: `supabase/proposals/202610280016_frontend_reads.sql`; independent hash: `supabase/proposals/FRONTEND-READS.sha256`. It intentionally stays outside automatic Supabase migration discovery until separately approved. The original 15 files and production manifest are unchanged.
+Finalized locally after conditional security approval, **not installed on production**. Authoritative SQL: `supabase/migrations/202610280016_frontend_reads.sql`, covered by `supabase/compatibility/MIGRATIONS.sha256`. It is byte-identical to the reviewed proposal preserved at `supabase/proposals/202610280016_frontend_reads.sql` with its historical checksum. The header in the SQL retains the original proposal warning to preserve those exact bytes; this document and [016 handoff](MIGRATION-016-DEPLOYMENT-HANDOFF.md) record promotion. Original 001–015 files/hashes are unchanged; only 016 was appended to the manifest. Publication does not authorize hosted execution.
 
-The proposal adds nine mass_api RPCs, one private invoker validation helper, one self-scope SELECT policy and SELECT on six scope columns only. It creates no table, identity, staff assignment, source row or operational reference data. The existing 71 policies are untouched; proposed total 72. All 23 tables still force RLS, with 155 columns and 27 FKs. API functions increase 11→20; existing 19 SECURITY DEFINER functions are unchanged. **All nine new RPCs and the helper are SECURITY INVOKER.**
+Migration 016 adds nine mass_api RPCs, one private invoker validation helper, one self-scope SELECT policy and SELECT on six scope columns only. It creates no table, identity, staff assignment, source row or operational reference data. The existing 71 policies are untouched; new total 72. All 23 tables still force RLS, with 155 columns and 27 FKs. API functions increase 11→20; existing 19 SECURITY DEFINER functions are unchanged. **All nine new RPCs and the helper are SECURITY INVOKER.**
 
 ## Security boundary
 
@@ -40,8 +40,20 @@ Enrolment changes append a verified episode or explicitly close the first episod
 
 ## Local and later-hosted verification
 
-`npm run test:api` creates an isolated PG 17.11 database, applies the 15 baseline migrations and synthetic fixture, then explicitly applies this proposal. It tests RLS/self-discovery, private masking, all centre/role/revocation boundaries, input bounds and actual Supabase SDK calls through real PostgREST 13.0.7. PostgreSQL/PostgREST/Node images are pinned; no host ports/mounts, production URL/credentials or real records are accepted. JWT issuance/Auth tables are synthetic stand-ins, not evidence of managed GoTrue sessions.
+`npm run test:api` creates an isolated PG 17.11 database, applies the 15 baseline migrations and synthetic fixture, then applies finalized 016 with injected-failure/rollback/retry and exact original-policy comparisons. It tests RLS/self-discovery, private masking, all centre/role/revocation boundaries, input bounds and actual Supabase SDK calls through real PostgREST 13.0.7. PostgreSQL/PostgREST/Node images are pinned; no host ports/mounts, production URL/credentials or real records are accepted. JWT issuance/Auth tables are synthetic stand-ins, not evidence of managed GoTrue sessions.
 
-Prepared read-only acceptance is `supabase/proposals/016-postflight.sql`:23/155/27/72, original71 policies retained,20 API functions, nine invoker reads, same 19 definers and narrow scope-column ACLs. It has not run on production. The old baseline postflight expects 11 functions/71 policies; do not mistake that expected version difference for a failure after an approved 016 install.
+Prepared read-only acceptance is `supabase/compatibility/016-postflight.sql`:23/155/27/72, original71 policies retained,20 API functions, nine invoker reads, same 19 definers and narrow scope-column ACLs. It has not run on production. The main postflight now also expects 20 functions/72 policies; do not run that post-016 acceptance against the still-baseline hosted database before installation.
 
-If approved later, promote the exact reviewed/checksummed SQL to the normal migration directory in a separate release, inspect the pending ledger list for **016 only**, verify backup/recovery and target permissions, then obtain explicit hosted execution authorization. Never replay or rewrite the 15 deployed versions. No proposal has been promoted, linked or executed against the hosted project here.
+Promotion is complete locally. Before a later hosted window, inspect pending migration history for **016 only**, verify private backup/recovery, target identity and actual deployment permissions, then obtain explicit hosted execution authorization. Apply only the exact finalized file with error-stop behavior; never replay/rewrite 001–015. No hosted SQL or account/data provisioning occurred here.
+
+## Approved reference allowlist
+
+get_references() deliberately returns programme-wide **non-personal** reference metadata, only after the caller has at least one active readable centre through existing centre RLS:
+
+- academic_years: id, starts_on, ends_before.
+- assessment_periods: id, academic_year_id, quarter.
+- assessment_definitions: id, period_id, max_score.
+- programme_cohorts: id, label, academic_year_id.
+- attendance_codes: code, meaning.
+
+No children, profiles, student results, membership/outcomes, other staff/grants, source rows, audit metadata or personal observations are read. Cohort label and code meaning are governed reference text, not fields for personal names or notes; an authorized administrator must validate their non-personal contents before later provisioning. SQL verifies the column allowlist, not the meaning of arbitrary administrator-entered text. Existing reference-table RLS still applies. Expired, future-only, revoked, anonymous and unassigned access cannot pass the readable-centre gate. This deliberately grants no reference mutations and no cross-centre operational reporting.

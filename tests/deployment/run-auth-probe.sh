@@ -118,7 +118,7 @@ SELECT count(*)=23 AND bool_and(relrowsecurity AND relforcerowsecurity)
 SELECT count(*)=155 FROM pg_attribute WHERE attrelid IN
  (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped;
 SELECT count(*)=27 FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace) AND contype='f';
-SELECT count(*)=71 FROM pg_policy WHERE polrelid IN
+SELECT count(*)=72 FROM pg_policy WHERE polrelid IN
  (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace));
 SQL
 python - "$auth_work/checks.txt" <<'PY'
@@ -139,4 +139,4 @@ SELECT core_test.expect_error('SELECT mass_core.request_user_id()','42501','invo
 RESET ROLE;
 ROLLBACK;
 SQL
-echo 'PASS: 007-015 resume with direct Auth privileges only; no Auth delegation, new definer or owner Auth-schema/data access; identity/RLS/FKs and runtime revocation enforced.'
+echo 'PASS: 007-016 local sequence with direct Auth privileges only; no Auth delegation, new definer or owner Auth-schema/data access; identity/RLS/FKs and runtime revocation enforced.'

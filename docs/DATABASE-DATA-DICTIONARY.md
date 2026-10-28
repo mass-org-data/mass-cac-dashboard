@@ -1,8 +1,8 @@
 # Implemented database data dictionary
 
-Phase 3C, 27 October 2026. **23 locally implemented relations: six foundation and 17 core; 15 migrations. Not hosted or approved for production execution.**
+Phase 4 migration 016, 28 October 2026. **23 locally implemented relations: six foundation and 17 core; 16 migrations. Locally verified; 016 not applied to hosted Supabase.**
 
-This dictionary is generated from PostgreSQL catalog metadata after all 15 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.
+This dictionary is generated from PostgreSQL catalog metadata after all 16 committed migrations are applied to an isolated empty database. SQL is authoritative. The machine-readable [inventory](DATABASE-SCHEMA-INVENTORY.json) includes migration SHA-256 checksums, exact columns/defaults/constraints, indexes, policies, triggers, functions and ACL metadata. Reproduce with `bash tests/schema/run-local.sh`.
 
 The earlier **43-relation proposal** is preserved byte-for-byte in [the Phase 2E dictionary snapshot](DATABASE-PROPOSED-DATA-DICTIONARY-PHASE-2E.md); see [deferred relations](DATABASE-DEFERRED-RELATIONS.md). Historical decision documents retain their original context. This current dictionary makes no claim that every proposal is implemented.
 
