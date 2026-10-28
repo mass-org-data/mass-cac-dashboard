@@ -59,7 +59,7 @@ export async function startLiveApp(config) {
       state.context=context;
       if(!context.centres.length){state.refs=null;state.busy=false;render();return;}
       const leadership=context.centres.some(c=>c.roles.includes('Leadership'));
-      if(state.centre!=='all'&&!context.centres.some(c=>c.id===state.centre))state.centre=leadership?'all':context.centres[0].id;
+      if(!context.centres.some(c=>c.id===state.centre) && !(state.centre==='all' && context.centres.length<=10))state.centre=context.centres[0].id;
       state.refs=await reads.references(controller.signal);
       if(directoryEnabled){
         const rows=await directory.centres({signal:controller.signal});
@@ -91,7 +91,7 @@ export async function startLiveApp(config) {
       const allowed=new Set(targetsForDonor().map(c=>c.centre_id));
       const targets=(state.centre==='all'?state.context.centres:[centre()]).filter(c=>c&&allowed.has(c.id));
       if(!targets.length){state.data=emptyCentre(state.centre);state.staff=[];state.busy=false;render();return;}
-      if(!targets[0]||targets.length>10)throw new Error('Choose one assigned centre. Combined reads are limited to ten centres per selection.');
+      if(!targets[0]||targets.length>10)throw new Error('Select an individual CAC centre to load its records. The current detailed view supports at most ten centres at a time.');
       if(!targets.every(c=>c.can_read_profiles))state.gender='';
       if(!definitions().some(d=>d.id===state.definition))state.definition=definitions()[0]?.id||'';
       const results=[];
@@ -226,7 +226,7 @@ export async function startLiveApp(config) {
       '<p class="form-help full">Unknown remains unknown. Training days, selection, admission and scholarship outcomes are not part of the approved backend.</p>',f=>save(()=>api.recordMorarji({member:id,applied:booleanValue(f.applied),attended:booleanValue(f.attended),passed:booleanValue(f.passed),school:f.school.trim()||null,expected:row.outcome_id?Number(row.row_version):0}),'Morarji outcomes saved.'));
   }
   function filters() {
-    return `<form class="filters" id="workspace-filters">${directoryEnabled?choice('Donor','donor',[['','All associated donors'],['unassociated','No verified association'],...[...new Map(state.directory.filter(c=>c.donor_id).map(c=>[c.donor_id,c.donor_label])).entries()]],state.donor):''}${choice('Centre','centre',[['all','All assigned centres'],...state.context.centres.filter(c=>targetsForDonor().some(d=>d.centre_id===c.id)).map(c=>[c.id,c.label])],state.centre)}${field('Reporting month','month',state.month,'month','required')}${field('Enrolment / attendance date','on',state.on,'date','required')}${choice('Shift','shift',[['','Both shifts'],'Morning','Evening'],state.shift)}${choice('Grade','grade',[['','All grades'],...Array.from({length:10},(_,i)=>String(i+1))],state.grade)}${centre()?.can_read_profiles?choice('Gender','gender',[['','All permitted genders'],'Girl','Boy'],state.gender):''}${field('Search student or ID','query',state.query,'search','maxlength="100" autocomplete="off"')}${state.page==='learning'?choice('Academic year','year',state.refs.academic_years.map(y=>[y.id,`${y.starts_on} to ${y.ends_before} (exclusive)`]),state.year):''}<button type="submit" class="btn primary" ${state.busy?'disabled':''}>Apply filters</button><button type="button" class="reset-filter" data-work-action="reset-filters">Reset filters</button></form>`;
+    return `<form class="filters" id="workspace-filters">${directoryEnabled?choice('Donor','donor',[['','All associated donors'],['unassociated','No verified association'],...[...new Map(state.directory.filter(c=>c.donor_id).map(c=>[c.donor_id,c.donor_label])).entries()]],state.donor):''}${choice('Centre','centre',[...(targetsForDonor().length<=10?[['all','All assigned centres']]:[]),...state.context.centres.filter(c=>targetsForDonor().some(d=>d.centre_id===c.id)).map(c=>[c.id,c.label])],state.centre)}${field('Reporting month','month',state.month,'month','required')}${field('Enrolment / attendance date','on',state.on,'date','required')}${choice('Shift','shift',[['','Both shifts'],'Morning','Evening'],state.shift)}${choice('Grade','grade',[['','All grades'],...Array.from({length:10},(_,i)=>String(i+1))],state.grade)}${centre()?.can_read_profiles?choice('Gender','gender',[['','All permitted genders'],'Girl','Boy'],state.gender):''}${field('Search student or ID','query',state.query,'search','maxlength="100" autocomplete="off"')}${state.page==='learning'?choice('Academic year','year',state.refs.academic_years.map(y=>[y.id,`${y.starts_on} to ${y.ends_before} (exclusive)`]),state.year):''}<button type="submit" class="btn primary" ${state.busy?'disabled':''}>Apply filters</button><button type="button" class="reset-filter" data-work-action="reset-filters">Reset filters</button></form>`;
   }
   function directoryPanel() {
     if(state.centre==='all')return '';
