@@ -1,4 +1,5 @@
-import {cp,mkdir,rm} from 'node:fs/promises';
+import {cp,mkdir,rm,writeFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {writeSourceZip} from './zip.mjs';
@@ -24,5 +25,15 @@ await build({
     builder.onLoad({filter:/.*/,namespace:'public-config'},()=>({contents:`export const runtimeConfig=${JSON.stringify(config)};`,loader:'js'}));
   }}],
 });
+let commit=process.env.VERCEL_GIT_COMMIT_SHA||'',dirty=null;
+try {
+  if(!commit)commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
+  dirty=Boolean(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim());
+} catch { /* A source archive may legitimately have no Git metadata. */ }
+const release={format:1,commit:/^[0-9a-f]{40}$/.test(commit)?commit:null,dirty,
+  deploymentEnvironment:['preview','production','development'].includes(process.env.VERCEL_ENV)?process.env.VERCEL_ENV:null,
+  mode:config.mode,project:config.project||null,url:config.url||null,readApi:config.readApi||null,directoryApi:config.directoryApi||null};
+// Intentionally excludes ALL keys, tokens, identity and programme records.
+await writeFile(path.join(output,'release.json'),JSON.stringify(release,null,2)+'\n');
 await writeSourceZip(root,path.join(output,'MASS-CAC-Vercel-Source.zip'));
 console.log(`Built MASS ${input.mode} workspace and code-only source archive in dist/.`);

@@ -1,5 +1,5 @@
 import {BackendError} from './api.js';
-export function createOriginalActions({client,api,refs,context,refresh,signOut}) {
+export function createOriginalActions({client,api,refs,context,refresh,signOut,capabilities}) {
  const rpc=async(name,args)=>{let r;try{r=await client.schema('mass_api').rpc(name,args).retry(false);}catch{throw new BackendError({message:'network'},0,true);}if(r.error)throw new BackendError(r.error,r.status,true);return r.data;};
  return async function handle(el,t){
  if(globalThis.__massDataLoading)throw Error('Wait for the selected academic year to finish loading.');
@@ -10,6 +10,9 @@ export function createOriginalActions({client,api,refs,context,refresh,signOut})
  const blocked=message=>modal('This operation needs approval',message,'<p class="form-help">No record was changed. The original workflow is retained; unsupported values will not be invented.</p>');
  const done=async work=>{await work();await refresh();t.toast('Saved and refreshed.');};
  if(action==='sign-out')return signOut();
+ if(capabilities&&!capabilities.originalWorkflows)throw Error('Backend activation pending. Existing scoped reads are available; this workflow has not been enabled and no record was changed.');
+ if(capabilities&&!capabilities.operationalDetails&&(action==='session-entry'||action==='new-activity'||action==='activity-entry'||action==='new-visit'||el.dataset.visitEdit||el.dataset.visitHistory||el.dataset.activityEdit))throw Error('Operational backend activation pending. No record was changed.');
+ if(capabilities&&!capabilities.aggregates&&el.dataset.recordHistory)throw Error('Audit-history read API activation pending.');
  if(state.role==='Leadership'||!eligible.length)throw Error('Your verified role does not permit programme changes.');
  if(action==='manage-records'){
   modal('Correct / remove entries','Corrections preserve identity, history and enforced permissions.',`<p>Deletion and undo await an approved record-specific retention/recovery policy. No record can be silently deleted.</p><h3>Student profiles / assessments</h3>${t.children().map(s=>`<p>${esc(s.name)} · ${esc(s.studentId)} <button type="button" data-edit-child="${s.id}">Edit profile</button> <button type="button" data-edit-marks="${s.id}">Edit marks</button></p>`).join('')}<h3>Attendance corrections</h3>${Object.values(db.attendanceRecords).filter(r=>eligible.some(c=>c.id===db.students.find(s=>s.id===r.enrolment_id)?.centre)).sort((a,b)=>b.attendance_date.localeCompare(a.attendance_date)).slice(0,100).map(r=>`<p>${esc(db.students.find(s=>s.id===r.enrolment_id)?.studentId)} · ${esc(r.attendance_date)} · ${esc(r.code)} <button type="button" data-attendance-edit="${r.id}">Correct</button> <button type="button" data-record-history="attendance_records|${r.id}|${db.students.find(s=>s.id===r.enrolment_id)?.centre}">History</button></p>`).join('')}<p>Attendance list is the latest100 records; use Daily Attendance and its date/centre filters for older records.</p>`,null,true);return;

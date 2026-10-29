@@ -16,6 +16,7 @@ ALTER DATABASE postgres SET mass_test.deployment_principal='mass_release_deploye
 SQL
 migrate(){ docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U mass_release_deployer -d postgres; }
 for f in "$repo_root"/supabase/migrations/*.sql;do
+ if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 && "$(basename "$f")" > 202610290019 ]];then continue;fi
  if [[ "$f" == *202610290021* ]];then
   failure_log="$(mktemp /tmp/mass-release-rollback.XXXXXX)"
   if python - "$f" <<'PYINJECT' | migrate > "$failure_log" 2>&1
@@ -33,18 +34,20 @@ PYINJECT
 done
 sql -Atc "SELECT 'SCHEMA_INVENTORY '||jsonb_build_object('tables',(SELECT count(*) FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r'),'columns',(SELECT count(*) FROM pg_attribute WHERE attrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped),'foreign_keys',(SELECT count(*) FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND contype='f'),'policies',(SELECT count(*) FROM pg_policy WHERE polrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace))))::text;"
 
-python - "$repo_root" <<'PY' | sql
+python - "$repo_root" "${MASS_BASELINE_BROWSER:-0}" <<'PY' | sql
 from pathlib import Path
 import sys
 s=(Path(sys.argv[1])/'tests/core/synthetic.sql').read_text()
-s=s.replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=25 AND bool_and(relrowsecurity AND relforcerowsecurity)')
+s=s.replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)',('count(*)=20' if sys.argv[2]=='1' else 'count(*)=25')+' AND bool_and(relrowsecurity AND relforcerowsecurity)')
 s=s.replace('bool_and(student_id=upper(id::text))',"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')")
 s=s.replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'")
 print(s)
 PY
-sql < "$repo_root/tests/release/visits.sql"
-source "$repo_root/tests/release/concurrency.sh"
-echo 'PASS: full migration sequence and original core plus release behavioral checks.'
+if [[ "${MASS_BASELINE_BROWSER:-0}" != 1 ]];then
+ sql < "$repo_root/tests/release/visits.sql"
+ source "$repo_root/tests/release/concurrency.sh"
+fi
+if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'PASS: isolated001–019sequence and original core checks.';else echo 'PASS: full migration sequence and original core plus release behavioral checks.';fi
 if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then
  network="${container}-network";rest="${container}-rest";client="${container}-http-client"
  cleanup(){ docker rm -fv "$client" "$rest" "$container" >/dev/null 2>&1 || true;docker network rm "$network" >/dev/null 2>&1 || true; }

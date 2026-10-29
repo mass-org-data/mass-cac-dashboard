@@ -32,7 +32,7 @@ function nullableBoolean(value) {
   return value;
 }
 export class BackendError extends Error {
-  constructor(error, status, writing) {
+  constructor(error, status, writing, rpcName = '') {
     const conflict = error?.code === 'PT409' || status === 409;
     const forbidden = status === 403 || error?.code === '42501';
     const session = status === 401 || ['PGRST301', 'PGRST303'].includes(error?.code);
@@ -47,6 +47,10 @@ export class BackendError extends Error {
     super(message);
     this.name = 'BackendError'; this.conflict = conflict; this.sessionExpired = session;
     this.uncertain = Boolean(writing && network); this.code = error?.code || ''; this.status = status;
+    // Function identity/status only. Never include request arguments, JWTs,
+    // rejected field values or provider details/hints in diagnostics.
+    this.rpc = /^[a-z][a-z0-9_]{0,63}$/.test(rpcName) ? rpcName : '';
+    this.diagnostic = Object.freeze({rpc:this.rpc, status:this.status, code:/^[A-Za-z0-9]{1,16}$/.test(this.code)?this.code:''});
     // Do not retain provider detail/hint/error dumps: they can contain rejected personal values.
   }
 }

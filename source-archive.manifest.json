@@ -25,6 +25,8 @@
     "src/live.css",
     "src/live/api.js",
     "src/live/app.js",
+    "src/live/backend-capabilities.js",
+    "src/live/baseline-aggregates.js",
     "src/live/baseline-app.js",
     "src/live/client.js",
     "src/live/config.js",

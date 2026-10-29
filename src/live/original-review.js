@@ -7,13 +7,15 @@ import {reportingOn} from './population.js';
 import {liveToday,monthWindow} from './model.js';
 import {startPublicReview} from './public-review.js';
 import {loadVisitTrends} from './visit-trends.js';
+import {discoverCapabilities,BASELINE_READ_NOTICE,safeDiagnosticText} from './backend-capabilities.js';
+import {baselineAggregates} from './baseline-aggregates.js';
 
 export async function startOriginalReview(config) {
  globalThis.__massReviewToday=liveToday();
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
  const readController=new AbortController();let dead=false;
  const clear=()=>{dead=true;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
- const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false);return r.data;};
+ const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
  const session=await client.auth.getSession();
  if(session.error||!session.data?.session)return startPublicReview(client);
@@ -23,8 +25,8 @@ export async function startOriginalReview(config) {
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Loading authorized MASS records</h1><p id="mass-load-status" role="status">Preparing verified centre scope…</p></section></main>';
  try{
  const reads=createReadApi(client),directory=createDirectoryApi(client),api=createApi(client);
- const [context,dir,refs,capabilities]=await Promise.all([reads.context(readController.signal),directory.centres({signal:readController.signal}),reads.references(readController.signal),rpc('get_original_capabilities')]);
- if(capabilities?.original_workflows!==20||capabilities?.operational_details!==22||capabilities?.aggregate_api!==23)throw Error('The reviewed backend release is not installed.');
+ const [context,dir,refs,capabilities]=await Promise.all([reads.context(readController.signal),directory.centres({signal:readController.signal}),reads.references(readController.signal),discoverCapabilities(rpc)]);
+ globalThis.__massBackendCapabilities=capabilities;globalThis.__massBackendNotice=capabilities.baseline?BASELINE_READ_NOTICE:!capabilities.operationalDetails||!capabilities.aggregates?'The installed backend has partial workflow capabilities. Unavailable operational and reporting features require activation; no data or permission is invented.':'';
  if(context?.user_id!==identity.data.user.id||!context.centres?.length)throw Error('No verified centre scope is available. Contact the administrator.');
  const roles=new Set(context.centres.flatMap(c=>c.roles));globalThis.__massActualRole=roles.has('Leadership')?'Leadership':roles.has('Cluster Officer')?'Cluster Officer':'Teacher';
  globalThis.__massActualRoles=[...roles];globalThis.__massAggregateMode=globalThis.__massActualRole==='Leadership'||context.centres.some(c=>!c.can_read_profiles);
@@ -45,7 +47,7 @@ export async function startOriginalReview(config) {
   // Verify identity and current scope for every refresh; never trust a preview role.
   const [{data:auth,error},scope]=await Promise.all([client.auth.getUser(),reads.context(readController.signal)]);
   if(error||auth?.user?.id!==context.user_id||scope.user_id!==context.user_id||JSON.stringify(scope.centres)!==JSON.stringify(context.centres)){clear();throw Error('Your authorized scope changed. Sign in again.');}
-  const results=[];let index=0;async function worker(){while(index<context.centres.length){const c=context.centres[index++];const [rows,staff,delivery,activityDetails,basis]=await Promise.all([reads.centre({centre:c.id,from:reportYear.starts_on,until:reportYear.ends_before,signal:readController.signal}),directory.staff({centre:c.id,signal:readController.signal}),reads.rows('read_delivery',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal),reads.rows('read_activity_details',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal),reads.rows('read_enrolment_basis',{p_centre:c.id},readController.signal)]);results.push({c,rows:{...rows,activities:activityDetails},staff,delivery,basis});const label=document.querySelector('#mass-load-status');if(label)label.textContent=`Loaded ${results.length}/${context.centres.length} authorized centres`;}}
+  const results=[];let index=0;async function worker(){while(index<context.centres.length){const c=context.centres[index++];const [rows,staff,delivery,activityDetails,basis]=await Promise.all([reads.centre({centre:c.id,from:reportYear.starts_on,until:reportYear.ends_before,includeAssessments:capabilities.periodAssessments,signal:readController.signal}),directory.staff({centre:c.id,signal:readController.signal}),capabilities.operationalDetails?reads.rows('read_delivery',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal):Promise.resolve([]),capabilities.operationalDetails?reads.rows('read_activity_details',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal):Promise.resolve(null),capabilities.aggregates?reads.rows('read_enrolment_basis',{p_centre:c.id},readController.signal):Promise.resolve([])]);results.push({c,rows:{...rows,activities:activityDetails??rows.activities},staff,delivery,basis});const label=document.querySelector('#mass-load-status');if(label)label.textContent=`Loaded ${results.length}/${context.centres.length} authorized centres`;}}
   await Promise.all(Array.from({length:6},worker));
   // Build privately before swapping: failed loads never silently truncate the scope.
   const next={students:[],attendance:{},attendanceRecords:{},scores:{},assessmentDetails:{},participation:{},participationRecords:{},events:[],sessions:[],calendar:[],morarji:{},morarjiHistory:[]};const byEpisode=new Map(),observed={};
@@ -63,6 +65,7 @@ export async function startOriginalReview(config) {
   const reportingMonth=reportYear.starts_on<=liveToday()&&liveToday()<reportYear.ends_before?liveToday().slice(0,7):reportYear.starts_on.slice(0,7);await loadVisits(reportingMonth);if(globalThis.__massAggregateMode)await loadAggregates({month:reportingMonth});if(trendsRequested)await refreshVisitTrends();
  }
  async function loadVisits(month,officer=null){
+  if(!capabilities.operationalDetails){db.visitAvailable=false;db.visitError='Visit backend activation pending; existing directory assignments are not visit events.';return;}
   const {from,until}=monthWindow(month);const summaries=[],details=[],officers=[];const selectedOfficer=officer;
   if(globalThis.__massActualRole==='Cluster Officer'&&!officer){try{const assignments=await rpc('get_visit_assignments',{});const ids=[...new Set(assignments.map(a=>a.officer_id))];if(ids.length!==1)throw Error('One verified staff identity is required for officer-specific targets.');officer=ids[0];}catch(error){if(dead)return;db.visitAvailable=false;db.visitError=error.message;return;}}
   try{let index=0;await Promise.all(Array.from({length:6},async()=>{while(index<context.centres.length){const c=context.centres[index++];const [rows,grouped]=await Promise.all([rpc('visit_summary',{p_centre:c.id,p_from:from,p_until:until,p_officer:officer}),rpc('visit_officer_summary',{p_centre:c.id,p_from:from,p_until:until})]);summaries.push(...rows);officers.push(...grouped.map(r=>({...r,centre_id:c.id})));if(c.can_write&&c.roles.includes('Cluster Officer')){for(let offset=0;offset<=100000;offset+=100){const page=await rpc('read_visits',{p_centre:c.id,p_from:from,p_until:until,p_limit:100,p_offset:offset});details.push(...page);if(page.length<100)break;if(offset===100000)throw Error('Visit limit exceeded; narrow the scope.');}}}}));if(dead)return;
@@ -74,6 +77,7 @@ export async function startOriginalReview(config) {
  async function loadAggregates(state){
   if(!globalThis.__massAggregateMode)return;
   const key=aggregateKey(state);if(db.aggregates[key]||aggregateLoading.has(key)||aggregateFailed.has(key))return;aggregateLoading.add(key);const epoch=dataEpoch;
+  if(!capabilities.aggregates){try{db.aggregates[key]=baselineAggregates(db,centres,{...state,page:'overview',today:liveToday()});}catch(error){db.aggregateError=error.message;aggregateFailed.add(key);}finally{aggregateLoading.delete(key);}return;}
   const {from,until}=monthWindow(state.month),output=[];let index=0;
   try{await Promise.all(Array.from({length:6},async()=>{while(index<context.centres.length){const c=context.centres[index++];output.push(await rpc('programme_aggregate',{p_centre:c.id,p_on:reportingOn({...state,today:liveToday()}),p_from:from,p_until:until,p_year:year.id,p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null}));}}));if(!dead&&epoch===dataEpoch)db.aggregates[key]=output;}catch(error){db.aggregateError=error.message;aggregateFailed.add(key);}
   aggregateLoading.delete(key);if(!dead)globalThis.__massOriginalRefresh?.();
@@ -91,6 +95,7 @@ export async function startOriginalReview(config) {
  globalThis.__massAggregateExport=(state,selected)=>{const a=globalThis.__massAggregateFor(state,selected);if(!a)throw Error('Load the authorized aggregate before exporting.');return [['Centre','Students','Present student-days','Good engagement','Month','Grade','Shift','Gender'],...a.centres.map(r=>[centres.find(c=>c.id===r.centre_id)?.name||'',r.students,r.attendance.p,'Unknown: coverage incomplete',state.month,state.grade,state.shift,state.gender])];};
  let yearChanging=false;globalThis.__massSelectAcademicYear=async(id)=>{if(yearChanging)throw Error('Wait for the academic year load.');const selected=refs.academic_years.find(y=>y.id===id);if(!selected)throw Error('Choose an approved academic year.');yearChanging=true;const previous=year;globalThis.__massDataLoading=true;year=selected;setMonths();try{await refresh();return selected;}catch(error){year=previous;setMonths();throw error;}finally{yearChanging=false;globalThis.__massDataLoading=false;}};
  async function refreshVisitTrends(){
+  if(!capabilities.operationalDetails){db.visitTrendsError='Visit backend activation pending.';globalThis.__massOriginalRefresh?.();return;}
   const epoch=dataEpoch;db.visitTrendsLoading=true;db.visitTrendsError='';globalThis.__massOriginalRefresh?.();
   try{let officer=trendOfficer;if(!officer&&globalThis.__massActualRole==='Cluster Officer'){const links=await rpc('get_visit_assignments',{});const ids=[...new Set(links.map(a=>a.officer_id))];if(ids.length!==1)throw Error('One verified officer identity is required for monthly trends.');officer=ids[0];}const values=await loadVisitTrends({officer,months:(globalThis.__massReportingMonths||[]).map(([month])=>month).filter(month=>month<=liveToday().slice(0,7)),centres:context.centres.map(c=>c.id),readSummary:args=>rpc('visit_summary',args)});if(!dead&&epoch===dataEpoch){db.visitTrends=values;db.visitTrendOfficer=trendOfficer;}}
   catch(error){if(!dead&&epoch===dataEpoch){db.visitTrends=null;db.visitTrendsError=error.message;}}
@@ -99,12 +104,12 @@ export async function startOriginalReview(config) {
  globalThis.__massLoadVisitTrends=async(officer=null)=>{if(db.visitTrendsLoading)return;trendOfficer=officer;trendsRequested=true;await refreshVisitTrends();};
  globalThis.__massLoadVisitMonth=loadVisits;
  await refresh();globalThis.__massMorarjiCohort=Object.values(db.morarji)[0]?.cohort||db.morarjiHistory[0]?.cohort||'';globalThis.__massLiveReviewData=db;
- globalThis.__massOriginalActions=createOriginalActions({client,api,refs,context,refresh,signOut:async()=>{clear();try{await client.auth.signOut({scope:'local'});}finally{clearStoredSession(config);window.location.reload();}}});
+ globalThis.__massOriginalActions=createOriginalActions({client,api,refs,context,refresh,capabilities,signOut:async()=>{clear();try{await client.auth.signOut({scope:'local'});}finally{clearStoredSession(config);window.location.reload();}}});
  const fingerprint=JSON.stringify(context.centres);
  client.auth.onAuthStateChange((event,session)=>queueMicrotask(async()=>{if(!session||session.user?.id!==context.user_id){clear();login('Your session has ended.');return;}if(event==='TOKEN_REFRESHED'){try{const current=await reads.context(readController.signal);if(current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){clear();login('Your scope changed. Sign in again.');}}catch{clear();login('Unable to verify your current access.');}}}));
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void verifyScope();});
  async function verifyScope(){if(dead)return;try{const [current,auth]=await Promise.all([reads.context(readController.signal),client.auth.getUser()]);if(auth.error||auth.data?.user?.id!==context.user_id||current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){clear();login('Your access changed. Sign in again.');}}catch{clear();login('Unable to verify current access.');}}
  const timer=setInterval(()=>{if(dead)clearInterval(timer);else void verifyScope();},30000);
  await import('../app.js');
- }catch(error){clear();root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Programme data could not be loaded</h1><p role="alert"></p><button onclick="location.reload()">Retry verified load</button></section></main>';root.querySelector('[role=alert]').textContent=error.message;}
+ }catch(error){clear();root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Programme data could not be loaded</h1><p role="alert"></p><button onclick="location.reload()">Retry verified load</button></section></main>';root.querySelector('[role=alert]').textContent=[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ');}
 }

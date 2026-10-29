@@ -32,6 +32,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
   try:self.wfile.write(body)
   except (BrokenPipeError,ConnectionResetError):pass
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread(target=server.serve_forever,daemon=True).start()
+if os.environ.get('MASS_BASELINE_BROWSER')=='1':
+ from baseline_browser import run
+ run('http://127.0.0.1:'+str(server.server_port),local_post,token)
+ server.shutdown()
+ raise SystemExit(0)
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox']);page=browser.new_page();origin='http://127.0.0.1:'+str(server.server_port)
  page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin) else r.abort())

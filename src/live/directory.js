@@ -7,8 +7,8 @@ export function createDirectoryApi(client) {
     for(let page=0;page<100;page++) {
       let result;
       try {const q=api.rpc(name,{...args,p_limit:100,p_offset:page*100});result=await(signal?q.abortSignal(signal):q);}
-      catch {throw new BackendError({message:'network'},0,false);}
-      if(result.error)throw new BackendError(result.error,result.status,false);
+      catch {throw new BackendError({message:'network'},0,false,name);}
+      if(result.error)throw new BackendError(result.error,result.status,false,name);
       if(!Array.isArray(result.data))throw new Error('Unexpected directory response.');
       rows.push(...result.data);
       if(result.data.length<100)return rows;

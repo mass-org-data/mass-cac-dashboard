@@ -5,8 +5,8 @@ export function createReadApi(client) {
   async function call(name, args = {}, signal) {
     let result;
     try { const query=api.rpc(name,args); result=await (signal?query.abortSignal(signal):query); }
-    catch { throw new BackendError({message:'network'},0,false); }
-    if(result.error) throw new BackendError(result.error,result.status,false);
+    catch { throw new BackendError({message:'network'},0,false,name); }
+    if(result.error) throw new BackendError(result.error,result.status,false,name);
     return result.data;
   }
   async function rows(name,args,signal) {
@@ -23,13 +23,13 @@ export function createReadApi(client) {
     rows,
     context: signal=>call('get_context',{},signal),
     references: signal=>call('get_references',{},signal),
-    async centre({centre,from,until,yearFrom=from,yearUntil=until,signal}) {
+    async centre({centre,from,until,yearFrom=from,yearUntil=until,includeAssessments=true,signal}) {
       const window={p_centre:centre,p_from:from,p_until:until};
       const [students,attendance,calendar,assessments,activities,participation,morarji]=await Promise.all([
         rows('read_students',{p_centre:centre,p_on:null},signal),
         rows('read_attendance',{...window,p_child:null},signal),
         rows('read_calendar',window,signal),
-        rows('read_assessments',{p_centre:centre,p_from:yearFrom,p_until:yearUntil,p_child:null},signal),
+        includeAssessments?rows('read_assessments',{p_centre:centre,p_from:yearFrom,p_until:yearUntil,p_child:null},signal):Promise.resolve([]),
         rows('read_activities',window,signal),
         rows('read_participation',{...window,p_event:null,p_child:null},signal),
         rows('read_morarji',{p_centre:centre,p_cohort:null},signal),
