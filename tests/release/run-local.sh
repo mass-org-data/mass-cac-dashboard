@@ -57,6 +57,13 @@ if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then
  export MASS_RELEASE_REST_URL="http://${rest}:3000"
  export MASS_RELEASE_HTTP_CLIENT="$client"
  docker run -d --name "$client" --network "$network" node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 tail -f /dev/null >/dev/null
+ # Wait for the isolated REST service; container start is not API readiness.
+ ready=0
+ for ((attempt=0;attempt<30;attempt++));do
+  if docker exec "$client" node -e 'fetch(process.argv[1]).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))' "$MASS_RELEASE_REST_URL/" >/dev/null 2>&1;then ready=1;break;fi
+  sleep 1
+ done
+ if [[ "$ready" != 1 ]];then echo 'Local PostgREST failed readiness';docker logs "$rest";exit 1;fi
  export MASS_RELEASE_TEST_OUTPUT="$(mktemp -d /tmp/mass-release-browser.XXXXXX)"
  node --input-type=module - "$repo_root" "$MASS_RELEASE_TEST_OUTPUT" <<'JS'
 import {build} from 'esbuild';import path from 'node:path';

@@ -1,0 +1,122 @@
+{
+  "base_commit": "f1a62e8be565c32ef451378e103eac91f812ddef",
+  "date": "2026-10-29",
+  "frontend_unit_tests": 32,
+  "demo_regression_checks": 27,
+  "current_release_sql_behavioral_assertions": 146,
+  "browser": {
+    "browser": "Chromium",
+    "checks": 36,
+    "passed": 36,
+    "failed": 0,
+    "persisted_revisions": 2,
+    "local_network_change_read_retries": 0,
+    "scenarios": [
+      "Scoped monthly visit trends load from the isolated API",
+      "CO original page loads",
+      "CO visit saved",
+      "CO correction saved",
+      "Reload retains corrected visit",
+      "History dialog shows revision",
+      "Mobile navigation",
+      "Independent database history matches",
+      "Teacher registration persisted and refreshed",
+      "Teacher profile correction persists",
+      "Stored synthetic markup is escaped in original tables and dialog titles",
+      "Teacher individual attendance persists",
+      "Teacher confirmed bulk attendance persists",
+      "Teacher assessment batch persists",
+      "Attendance P to bulk A to L correction retains independent audit revisions",
+      "Corrected attendance persists after full refresh",
+      "Assessment correction retains original context and independent audit revisions",
+      "Corrected assessment persists after full refresh",
+      "Historical academic year loads without fabricated scores/dates",
+      "Academic year can return to current verified data",
+      "Back and forward restore non-personal view state",
+      "Teacher cross-centre API request denied independently of UI",
+      "Teacher named activity persists",
+      "Teacher participation persists",
+      "Teacher observed CAC delivery persists",
+      "Unavailable API fails closed without sample fallback or partial data",
+      "Leadership original aggregate-only view has no write/profile navigation",
+      "Leadership analytics do not expose private names",
+      "No-login original dashboard opens with explicit protected-data pending state and no false zeroes",
+      "Anonymous dashboard navigation issues no programme read or write RPCs",
+      "Anonymous attendance write denied independently by local API permissions",
+      "Optional authorization can be canceled without closing the dashboard",
+      "Failed optional authorization retains public isolation and clears the password",
+      "Optional authorization enters a verified synthetic session without creating an account",
+      "Existing synthetic session survives refresh",
+      "Sign-out purges private programme state and returns directly to the public dashboard"
+    ],
+    "boundary": "Original UI and actual isolated PostgREST/PostgreSQL persistence for three signed fixture roles; not managed Auth or deployed Preview."
+  },
+  "population": {
+    "tested": 36432,
+    "failed": 0,
+    "passed": 36432,
+    "boundary": "Actual shared UI population function versus independent private administrative export; not hosted staff Auth or browser certification."
+  },
+  "calculation_queries": {
+    "definitions_checked": 49,
+    "query_failures": [],
+    "unknown_definitions": 29,
+    "boundary": "Read-only administrative SQL comparison; not anonymous publication, staff Auth or hosted browser verification.",
+    "matches_prior_with_numeric_serialization_normalized": 49,
+    "changed_or_failed_definitions": [],
+    "note": "Numeric strings returned by the management API are compared numerically, not as float-vs-string inequality. Explicitly unknown definitions are not validated real chart values."
+  },
+  "historical_header_tests": 2,
+  "officer_source_tests": 1,
+  "database_regressions": [
+    {
+      "command": "npm run check",
+      "exit_code": 0
+    },
+    {
+      "command": "bash tests/foundation/run-local.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "bash tests/core/run-local.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:api",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:directory",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:imports",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:students",
+      "exit_code": 0
+    },
+    {
+      "command": "bash tests/deployment/run-role-probe.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "bash tests/deployment/run-auth-probe.sh",
+      "exit_code": 0
+    }
+  ],
+  "build": "PASS",
+  "syntax": "PASS",
+  "migration_hashes_verified": 23,
+  "canonical_migrations_modified": false,
+  "anonymous_live_data_published": false,
+  "public_archive_internal_document_check": "PASS",
+  "production_sql_writes": false,
+  "hosted_migrations_020_023_applied": false,
+  "hosted_auth_write_uat": "NOT_RUN",
+  "vercel_authentication": "UNAVAILABLE",
+  "new_preview_url": null,
+  "production_backup_created": false,
+  "production_deployment": "NOT_PERFORMED"
+}

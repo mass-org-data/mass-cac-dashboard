@@ -5,6 +5,8 @@ import {createApi,BackendError} from './api.js';
 import {createOriginalActions} from './original-actions.js';
 import {reportingOn} from './population.js';
 import {liveToday,monthWindow} from './model.js';
+import {startPublicReview} from './public-review.js';
+import {loadVisitTrends} from './visit-trends.js';
 
 export async function startOriginalReview(config) {
  globalThis.__massReviewToday=liveToday();
@@ -12,13 +14,12 @@ export async function startOriginalReview(config) {
  const readController=new AbortController();let dead=false;
  const clear=()=>{dead=true;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false);return r.data;};
- const login=message=>{
-  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>MASS CAC Dashboard</h1><form id="sign-in"><label class="field">Email<input name="email" type="email" autocomplete="username" required></label><label class="field">Password<input name="password" type="password" autocomplete="current-password" required></label><p role="alert"></p><button class="btn primary">Sign in</button></form></section></main>';
-  root.querySelector('[role=alert]').textContent=message||'';
-  root.querySelector('form').addEventListener('submit',async e=>{e.preventDefault();const form=e.target,button=form.querySelector('button');button.disabled=true;const f=new FormData(form);try{const {error}=await client.auth.signInWithPassword({email:String(f.get('email')).trim(),password:f.get('password')});if(error)throw Error('Unable to sign in. Check your account access.');form.reset();window.location.reload();}catch(error){form.querySelector('[role=alert]').textContent=error.message;}finally{button.disabled=false;}});
- };
- const session=await client.auth.getSession();if(!session.data?.session){login();return;}
- const identity=await client.auth.getUser();if(identity.error||!identity.data?.user){clearStoredSession(config);login('Your session has ended.');return;}
+ const login=()=>{clearStoredSession(config);window.location.reload();};
+ const session=await client.auth.getSession();
+ if(session.error||!session.data?.session)return startPublicReview(client);
+ const identity=await client.auth.getUser();
+ if(identity.error||!identity.data?.user){clearStoredSession(config);return startPublicReview(client);}
+ globalThis.__massPublicReview=false;
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Loading authorized MASS records</h1><p id="mass-load-status" role="status">Preparing verified centre scope…</p></section></main>';
  try{
  const reads=createReadApi(client),directory=createDirectoryApi(client),api=createApi(client);
@@ -37,6 +38,7 @@ export async function startOriginalReview(config) {
  const dictionary=new Map(dir.map(d=>[d.centre_id,d])),definitions=new Map(refs.assessment_definitions.map(d=>[d.id,d])),periods=new Map(refs.assessment_periods.map(q=>[q.id,q]));
  centres.splice(0,centres.length,...context.centres.map(c=>({id:c.id,name:c.label,officer:'',officers:[],donor:dictionary.get(c.id)?.donor_label||''})));
  const aggregateLoading=new Set(),aggregateFailed=new Set();let dataEpoch=0;
+ let trendsRequested=false,trendOfficer=null;
  const officerLabels={};globalThis.__massOfficerLabels=officerLabels;
  async function refresh(){
   const reportYear=year;
@@ -57,8 +59,8 @@ export async function startOriginalReview(config) {
    for(const r of rows.calendar)next.calendar.push({id:r.id,centre:c.id,date:r.session_date,shift:r.shift_code,status:r.is_scheduled?'Planned':'Not Scheduled'});
    for(const r of rows.morarji){const id=r.enrolment_id;if(!byEpisode.has(id))continue;const cohort=refs.programme_cohorts.find(x=>x.id===r.cohort_id);next.morarjiHistory.push({s:byEpisode.get(id),...r,cohort:cohort?.label||'',membershipId:r.membership_id,school:r.school_name,applied:r.applied??null,attended:r.attended??null,passed:r.passed??null,took:r.attended??null,result:r.passed===true?'Passed':r.passed===false?'Not passed':'Not recorded',trainingDays:null,selected:null,admitted:null,scholarship:'Not recorded'});}
   }
-  if(dead)throw Error('Session ended during data load.');Object.assign(db,next);db.academicYear=reportYear.id;globalThis.__massConfiguredQuarters=refs.assessment_definitions.filter(d=>periods.get(d.period_id)?.academic_year_id===reportYear.id).map(d=>periods.get(d.period_id).quarter);db.aggregates={};aggregateFailed.clear();dataEpoch++;globalThis.__massReviewObservedDatesByCentre=Object.fromEntries(Object.entries(observed).map(([id,months])=>[id,Object.fromEntries(Object.entries(months).map(([m,dates])=>[m,[...dates].sort()]))]));
-  const reportingMonth=reportYear.starts_on<=liveToday()&&liveToday()<reportYear.ends_before?liveToday().slice(0,7):reportYear.starts_on.slice(0,7);await loadVisits(reportingMonth);if(globalThis.__massAggregateMode)await loadAggregates({month:reportingMonth});
+  if(dead)throw Error('Session ended during data load.');Object.assign(db,next);db.visitTrends=null;db.academicYear=reportYear.id;globalThis.__massConfiguredQuarters=refs.assessment_definitions.filter(d=>periods.get(d.period_id)?.academic_year_id===reportYear.id).map(d=>periods.get(d.period_id).quarter);db.aggregates={};aggregateFailed.clear();dataEpoch++;globalThis.__massReviewObservedDatesByCentre=Object.fromEntries(Object.entries(observed).map(([id,months])=>[id,Object.fromEntries(Object.entries(months).map(([m,dates])=>[m,[...dates].sort()]))]));
+  const reportingMonth=reportYear.starts_on<=liveToday()&&liveToday()<reportYear.ends_before?liveToday().slice(0,7):reportYear.starts_on.slice(0,7);await loadVisits(reportingMonth);if(globalThis.__massAggregateMode)await loadAggregates({month:reportingMonth});if(trendsRequested)await refreshVisitTrends();
  }
  async function loadVisits(month,officer=null){
   const {from,until}=monthWindow(month);const summaries=[],details=[],officers=[];const selectedOfficer=officer;
@@ -88,6 +90,13 @@ export async function startOriginalReview(config) {
  };
  globalThis.__massAggregateExport=(state,selected)=>{const a=globalThis.__massAggregateFor(state,selected);if(!a)throw Error('Load the authorized aggregate before exporting.');return [['Centre','Students','Present student-days','Good engagement','Month','Grade','Shift','Gender'],...a.centres.map(r=>[centres.find(c=>c.id===r.centre_id)?.name||'',r.students,r.attendance.p,'Unknown: coverage incomplete',state.month,state.grade,state.shift,state.gender])];};
  let yearChanging=false;globalThis.__massSelectAcademicYear=async(id)=>{if(yearChanging)throw Error('Wait for the academic year load.');const selected=refs.academic_years.find(y=>y.id===id);if(!selected)throw Error('Choose an approved academic year.');yearChanging=true;const previous=year;globalThis.__massDataLoading=true;year=selected;setMonths();try{await refresh();return selected;}catch(error){year=previous;setMonths();throw error;}finally{yearChanging=false;globalThis.__massDataLoading=false;}};
+ async function refreshVisitTrends(){
+  const epoch=dataEpoch;db.visitTrendsLoading=true;db.visitTrendsError='';globalThis.__massOriginalRefresh?.();
+  try{let officer=trendOfficer;if(!officer&&globalThis.__massActualRole==='Cluster Officer'){const links=await rpc('get_visit_assignments',{});const ids=[...new Set(links.map(a=>a.officer_id))];if(ids.length!==1)throw Error('One verified officer identity is required for monthly trends.');officer=ids[0];}const values=await loadVisitTrends({officer,months:(globalThis.__massReportingMonths||[]).map(([month])=>month).filter(month=>month<=liveToday().slice(0,7)),centres:context.centres.map(c=>c.id),readSummary:args=>rpc('visit_summary',args)});if(!dead&&epoch===dataEpoch){db.visitTrends=values;db.visitTrendOfficer=trendOfficer;}}
+  catch(error){if(!dead&&epoch===dataEpoch){db.visitTrends=null;db.visitTrendsError=error.message;}}
+  finally{if(!dead&&epoch===dataEpoch){db.visitTrendsLoading=false;globalThis.__massOriginalRefresh?.();}}
+ }
+ globalThis.__massLoadVisitTrends=async(officer=null)=>{if(db.visitTrendsLoading)return;trendOfficer=officer;trendsRequested=true;await refreshVisitTrends();};
  globalThis.__massLoadVisitMonth=loadVisits;
  await refresh();globalThis.__massMorarjiCohort=Object.values(db.morarji)[0]?.cohort||db.morarjiHistory[0]?.cohort||'';globalThis.__massLiveReviewData=db;
  globalThis.__massOriginalActions=createOriginalActions({client,api,refs,context,refresh,signOut:async()=>{clear();try{await client.auth.signOut({scope:'local'});}finally{clearStoredSession(config);window.location.reload();}}});
