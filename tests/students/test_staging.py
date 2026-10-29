@@ -48,8 +48,12 @@ class Staging(unittest.TestCase):
         path=self.p/'history.xlsx';w=openpyxl.Workbook();s=w.active;s.title='Mpokket - Morning'
         if kind=='attendance':
             s.append(['source']);s.append(['weekday']);s.append(['Name of Child','Grade','Gender','Village Name','Class Category',datetime(2026,7,1)])
+        elif kind=='morarji':
+            for i in range(3):s.append(['title'])
+            s.append(['Date','Student ID','Student Name','Applied (Yes/No)','Attended (Yes/No)','Passed','School'])
+            s.append([None,None,'Example Student'])
         else:
-            for i in range(7 if kind=='assessment' else 5):s.append(['header'])
+            for i in range(7):s.append(['header'])
         for r in data:s.append(r)
         w.save(path)
         st=self.stage()['rows'][0];st['donor']='Mpokket'

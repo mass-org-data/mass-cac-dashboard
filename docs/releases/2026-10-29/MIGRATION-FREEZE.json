@@ -1,0 +1,140 @@
+[
+  {
+    "file": "supabase/migrations/202610270001_source_files.sql",
+    "sha256": "5b7d4634a3598b52f8ab4017cbac339ddd4d8420c96aa2a79996f646e0a7f5a4",
+    "bytes": 3013,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270002_source_sheets.sql",
+    "sha256": "297765933373fefd4e64d2fb8c5116815b6cd7c09913b6f7433b32adbb5dbb0c",
+    "bytes": 1655,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270003_import_batches.sql",
+    "sha256": "c674bda8085735568b55d065f498aba383947cdc055a74af1013503d097dc22d",
+    "bytes": 4386,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270004_source_rows.sql",
+    "sha256": "9be157dfe1c46c896f2521651d1b4fbaac023a95c9a50053f19a1bd63fdba2e7",
+    "bytes": 1719,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270005_import_exceptions.sql",
+    "sha256": "3d3f64d20208483ec430c7f599bb2df53468d944e8996016340f20e975a1c4ac",
+    "bytes": 3612,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270006_audit_events.sql",
+    "sha256": "4f0a1e64e551ef7dcc3d717af26c6389aa5911c50250e2c5e96fd5926aa17ff9",
+    "bytes": 3879,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270007_auth_scope.sql",
+    "sha256": "22520d0136bf786fbca8ecc78f483b10df16109d7eacc618250ac80752ea250e",
+    "bytes": 4782,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270008_identity_history.sql",
+    "sha256": "bd4faa33b92f6221978d98900ebba9a70d32e5c3ec4ff20dc685b0395a24c8ae",
+    "bytes": 2237,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270009_academic_periods.sql",
+    "sha256": "a533b6712559832df123f443d62ae05263e9360075c1334ff8ca853e7acee8bd",
+    "bytes": 1270,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270010_attendance.sql",
+    "sha256": "51f4e95ee98ea6ff44ecd5e1fad574513c83d56c5d56afe757619995a73751ce",
+    "bytes": 1657,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270011_assessments.sql",
+    "sha256": "c5bf3dee2945800b98776c84317a4dbcc8b826958f996f61eabd87f8e24c06ce",
+    "bytes": 1472,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270012_named_activities.sql",
+    "sha256": "4253d9fa14cf547f0b1f04927f9482993e813331e2237c4768f1c4cb3f49f76b",
+    "bytes": 1338,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270013_morarji.sql",
+    "sha256": "669fff72ac688be634c457404562960a526a52ed43cb3202c2329f6d7deaf333",
+    "bytes": 1583,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270014_core_security_audit.sql",
+    "sha256": "354b437e4dd83abf3cff4c04d30e760a1c736960bb63b77b387cef9ae46ccd84",
+    "bytes": 25196,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610270015_core_api.sql",
+    "sha256": "5a751e609b1972cdd6f5b78da215103e3924435f162bbe4317b50f2e3af1bac3",
+    "bytes": 9094,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610280016_frontend_reads.sql",
+    "sha256": "1587c60cf3dd643159e4179850126ea6880e44fac6a7e534d711fe03145602ea",
+    "bytes": 12946,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610280017_donor_staff_directory.sql",
+    "sha256": "a7c37a8a1ab2138169ca120ab3acad90ca6465cc5e2963f3a21dbe755e3d304a",
+    "bytes": 10226,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610280018_controlled_student_import.sql",
+    "sha256": "2fecd462efb3bc96139fb16376abfb9bda5c655ca7e4ac20474c065625fae681",
+    "bytes": 6849,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610280019_import_history_integrity.sql",
+    "sha256": "e4ac8b7f422c1295cfd8c969f57145e30c7d8262bc74ba6a580eda5def36516f",
+    "bytes": 5670,
+    "status": "unchanged deployed baseline"
+  },
+  {
+    "file": "supabase/migrations/202610290020_original_workflows.sql",
+    "sha256": "00b99ca682e662e1d1abdcbf7c3cab685d5a426e2e2ad35919348e27b65ca125",
+    "bytes": 16083,
+    "status": "new,local only"
+  },
+  {
+    "file": "supabase/migrations/202610290021_cluster_officer_visits.sql",
+    "sha256": "0dac03e5a04eb8b82d035b0097a6da9aadf90e0aa909932a46e557ee36ecbb39",
+    "bytes": 17004,
+    "status": "new,local only"
+  },
+  {
+    "file": "supabase/migrations/202610290022_activity_delivery.sql",
+    "sha256": "a784dfb1263e9bdd7be4187ff193b3a903f8c2684b6b7069c8739b47c42e8d9c",
+    "bytes": 10790,
+    "status": "new,local only"
+  },
+  {
+    "file": "supabase/migrations/202610290023_programme_aggregates.sql",
+    "sha256": "20973a85d26d85c446c7d1a486fa74afc0b797be9d48597032e39efa7f8bf0bc",
+    "bytes": 9599,
+    "status": "new,local only"
+  }
+]

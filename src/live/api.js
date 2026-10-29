@@ -96,7 +96,7 @@ export function createApi(client) {
     },
     recordAssessment({enrolment, definition, on, score, expected}) {
       if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 25) throw new Error('Score must be between 0 and 25.');
-      return write('record_assessment', {p_enrolment: uuid(enrolment), p_definition: uuid(definition), p_date: date(on), p_score: score, p_expected: revision(expected)});
+      return write('record_assessment', {p_enrolment: uuid(enrolment), p_definition: uuid(definition), p_date: on===null?null:date(on), p_score: score, p_expected: revision(expected)});
     },
     recordParticipation({enrolment, event, participated, expected}) {
       return write('record_participation', {p_enrolment: uuid(enrolment), p_event: uuid(event), p_participated: nullableBoolean(participated), p_expected: revision(expected)});

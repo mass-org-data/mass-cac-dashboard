@@ -1,0 +1,8 @@
+{
+  "candidate_text_files": 57,
+  "environment_secret_scan": "PASS",
+  "private_student_name_comparison": "PASS",
+  "private_inputs_published": false,
+  "workbooks_or_backups_in_publication": false,
+  "note": "Automated checks supplement explicit path review; fixture identities are synthetic."
+}

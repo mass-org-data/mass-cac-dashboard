@@ -8,7 +8,7 @@ from datetime import date,datetime
 from decimal import Decimal,InvalidOperation
 from pathlib import Path
 import openpyxl
-from common import ident,row_hash,json_value
+from common import ident,row_hash,json_value,Invalid
 from students import norm,grade
 
 def day(v):
@@ -38,7 +38,10 @@ def prepare(paths,students,key):
                 header=rs[2];columns={i:day(v) for i,v in enumerate(header) if day(v)}
                 dates=collections.Counter(columns.values());start=3
             elif kind=='assessment':start=7
-            else:start=5
+            else:
+                headers=[i for i,r in enumerate(rs[:10]) if len(r)>2 and str(r[2]).strip()=='Student Name']
+                if len(headers)!=1:raise Invalid('Morarji worksheet requires one verified Student Name header')
+                start=headers[0]+1;sh['header_row']=start
             for physical,r in enumerate(rs[start:],start+1):
                 name=r[0] if kind=='attendance' else r[2] if len(r)>2 else None
                 if not name or str(name).lower().startswith('example'):continue

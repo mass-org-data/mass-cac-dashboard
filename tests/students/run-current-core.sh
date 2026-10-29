@@ -20,7 +20,7 @@ python - "$repo_root" <<'PY' | sql
 from pathlib import Path
 import sys
 s=(Path(sys.argv[1])/'tests/core/synthetic.sql').read_text()
-changes={"count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)":"count(*)=20 AND bool_and(relrowsecurity AND relforcerowsecurity)",
+changes={"count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)":"count(*)=25 AND bool_and(relrowsecurity AND relforcerowsecurity)",
  "bool_and(student_id=upper(id::text))":"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')",
  "'428C9','generated permanent student ID cannot be overwritten'":"'55000','generated permanent student ID cannot be overwritten'"}
 for a,b in changes.items():
@@ -28,4 +28,4 @@ for a,b in changes.items():
  s=s.replace(a,b)
 print(s)
 PY
-echo 'PASS: all existing core behavioral assertions against migrations 001–019.'
+echo 'PASS: all existing core behavioral assertions against migrations 001–022.'

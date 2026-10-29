@@ -1,0 +1,12 @@
+-- READ ONLY. Expected AFTER all four new migrations; NO test writes/fixtures.
+SELECT count(*) tables,bool_and(relrowsecurity AND relforcerowsecurity) all_force_rls FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r'; --32,true
+SELECT count(*) columns FROM pg_attribute WHERE attrelid IN(SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped; --230
+SELECT count(*) foreign_keys,bool_and(convalidated) all_validated FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND contype='f'; --45,true
+SELECT count(*) policies FROM pg_policy WHERE polrelid IN(SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace)); --115
+SELECT version,name FROM supabase_migrations.schema_migrations ORDER BY version; --23 versions
+SELECT bool_and(NOT has_function_privilege('anon',oid,'EXECUTE') AND NOT has_function_privilege('service_role',oid,'EXECUTE')) api_closed FROM pg_proc WHERE pronamespace='mass_api'::regnamespace; --true
+SELECT count(*) unauthorized_owner_memberships FROM pg_roles caller CROSS JOIN pg_roles owner WHERE caller.rolname IN ('anon','authenticated','service_role') AND owner.rolname IN ('mass_core_owner','mass_foundation_owner') AND (pg_has_role(caller.oid,owner.oid,'SET') OR pg_has_role(caller.oid,owner.oid,'USAGE')); --0
+SELECT 'children' relation,count(*) FROM mass_core.children UNION ALL SELECT 'enrolments',count(*) FROM mass_core.enrolments UNION ALL SELECT 'attendance',count(*) FROM mass_core.attendance_records UNION ALL SELECT 'assessments',count(*) FROM mass_core.assessment_results UNION ALL SELECT 'officer_assignments',count(*) FROM mass_core.officer_assignments UNION ALL SELECT 'visits',count(*) FROM mass_core.cluster_officer_visits UNION ALL SELECT 'delivery',count(*) FROM mass_core.cac_delivery_records;
+-- Existing programme counts must equal the captured pre-deployment snapshot;
+-- no fixture, staff link or operational record is installed by these files.
+SELECT n.nspname,p.proname,pg_get_userbyid(p.proowner) owner,p.proconfig FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('mass_core','mass_api') AND p.prosecdef ORDER BY 1,2;

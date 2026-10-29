@@ -11,7 +11,8 @@ test('directory filtering intersects authenticated centre scope',()=>{
 test('directory configuration stays off until explicitly enabled after 017',()=>{
  const config={url:'https://pbkwpfdpdtelmvbkzgvx.supabase.co',publishableKey:'sb_publishable_'+'x'.repeat(32)};
  assert.equal(validateConfig(config).directoryApi,'off');
- assert.throws(()=>validateConfig({...config,directoryApi:'directory-v1'}));
+ assert.throws(()=>validateConfig({...config,readApi:'baseline',directoryApi:'directory-v1'}));
+ assert.equal(validateConfig(config).readApi,'frontend-reads-v1');
  assert.equal(validateConfig({...config,readApi:'frontend-reads-v1',directoryApi:'directory-v1'}).directoryApi,'directory-v1');
 });
 test('directory adapter fixes schema, validates IDs and preserves errors safely',async()=>{

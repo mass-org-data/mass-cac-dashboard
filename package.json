@@ -14,7 +14,7 @@
     "check": "node scripts/check.mjs",
     "test": "node --test tests/frontend/*.test.mjs && node tests/entry-workflows.mjs",
     "test:api": "bash tests/frontend/run-database.sh",
-    "test:browser": "python tests/frontend/browser.py",
+    "test:browser": "MASS_RELEASE_BROWSER=1 bash tests/release/run-local.sh",
     "test:directory": "python tests/directory/reconcile_test.py && bash tests/directory/run-local.sh",
     "test:imports": "bash tests/imports/run-local.sh",
     "test:students": "python tests/students/test_staging.py && bash tests/students/run-local.sh && bash tests/students/run-current-core.sh",

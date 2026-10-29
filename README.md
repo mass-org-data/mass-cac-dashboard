@@ -104,7 +104,7 @@ With no live configuration, the default build displays the configuration gate. T
 - `src/index.html`: HTML entry point.
 - `src/entry.js`: validated live/demo entry point.
 - `src/live/`: Auth/session handling, scoped API adapters and authenticated workspace.
-- `src/app.js`: preserved manager-approved demo rendering, navigation, charts, role previews, forms and browser-local persistence.
+- `src/app.js`: original rendering, navigation and dialogs shared by explicit demo mode and authenticated integration; browser-local programme persistence is confined to demo mode.
 - `src/data.js`: fictional sample data, programme helpers and bands.
 - `src/dropout.js`: derived CAC dropout classification.
 - `src/style.css`: full responsive styles and print styles.
@@ -122,10 +122,30 @@ The Git checkout excludes generated `dist/`. The app’s existing “Download Ve
 
 Explicit **demo mode** uses fictional sample records from `src/data.js` and browser-local edits (`mass-cac-companion-v1`). Its role selector and fixed operating date remain unchanged. It never initializes Supabase or uploads sample rows. Records from other websites/origins are not transferred.
 
-**Live mode** uses verified Supabase Auth identity and server-enforced scope. Programme data stays in memory; only the tab's Auth session uses sessionStorage. No role selector, sample fallback, imported browser snapshots or private-schema API calls are used. Baseline mode supports the existing read-only RPCs; the complete scoped workspace requires separate approval and deployment of proposed read API 016. Real Auth/provider behavior, staff scope provisioning and production activation remain release gates documented in the handoff.
+**Live mode** uses verified Supabase Auth identity and server-enforced scope. Programme data stays in memory; Auth session persistence uses the configured localStorage key and is cleared on sign-out. The live role display is read-only; no sample fallback, imported browser snapshots or private-schema API exposure is used. The integrated original interface requires the additive020–023 release after the already deployed001–019 baseline; its capability check fails closed until that release is installed. Real Auth/provider behavior, staff scope provisioning and production activation remain release gates documented in the handoff.
 
 ## Validation
 
 `npm run check` checks JavaScript syntax; it is not a type checker or linter. No frontend type-check or lint suite is configured. The separate automated database suites are described above. Migration verification additionally exercised the actual local server in Chromium; results and remaining deployment checks are recorded in [docs/MIGRATION.md](docs/MIGRATION.md).
 
 Keep `dist/`, `node_modules/`, `.vercel/`, and environment files out of Git. The build intentionally generates a publicly downloadable source archive to preserve the existing prototype feature. Never put credentials or private data in `src/`, `scripts/`, `docs/`, or other archive inputs.
+
+## Original-interface integration release — 29 October2026
+
+See [release handover](docs/releases/2026-10-29/README.md), the43-gap closure matrix and24-chart validation register. The deployed001–019 migration files remain unchanged. New020–023 files have been prepared/tested locally; this release does not apply them to hosted Supabase.
+
+```sh
+npm ci
+npm test
+npm run check
+npm run build
+# Fresh isolated PostgreSQL17, restricted deployer, synthetic fixtures only:
+bash tests/release/run-local.sh
+# Adds Chromium and actual isolated PostgREST persistence checks:
+MASS_RELEASE_BROWSER=1 bash tests/release/run-local.sh
+python tests/release/test_history_headers.py
+```
+
+The database runner requires Docker and uses pinned images, ephemeral tmpfs and internal networking. Browser tests require Python Playwright and `/usr/bin/chromium`. Signed fixture identities stand in for managed Auth only inside the test bundle; they are never bundled into the application. No production connection string is accepted. Existing tests retain their historical migration baselines; `tests/students/run-current-core.sh` tests the current schema. Production backup, verified officer links, hosted Auth and deployed Preview UAT remain separately documented gates.
+
+The supported `npm run test:browser` now runs the original-interface suite against an ephemeral local database. The legacy mock workspace browser file is retained as historical reference. The publicly downloadable frontend source archive is governed by `source-archive.manifest.json`; update that reviewed allowlist when adding public source files. Untracked/private working notes are excluded.

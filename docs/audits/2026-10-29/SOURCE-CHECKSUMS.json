@@ -1,0 +1,345 @@
+[
+  {
+    "filename": "All CAC_s Information_.xlsx",
+    "sha256": "3daaf28d89e017e6d3f8a1fb97716c493c0356953a0106799600c918eaeaf01b",
+    "sheets": [
+      {
+        "exact_name": "Mpokket",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Janashkati Foundation ",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dasar UK",
+        "physical_max_row": null,
+        "physical_max_column": null
+      }
+    ]
+  },
+  {
+    "filename": "MASS-2026-27-student-import-staging.xlsx",
+    "sha256": "302abc1153582a5d0ad0873fe96021be1dbe019ee643dd1129ffe4dec492628f",
+    "sheets": [
+      {
+        "exact_name": "Student import staging",
+        "physical_max_row": 2636,
+        "physical_max_column": 12
+      }
+    ]
+  },
+  {
+    "filename": "Mass_MPokket_Attendance2026-27.xlsx",
+    "sha256": "a8321dd18c8d88bd2c1a0d53f22f501e21e5c8e367ef836d0491d3af2eed8c43",
+    "sheets": [
+      {
+        "exact_name": "Aralimatti",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Sheet8",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Pivot Table 3",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Avaradi",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Badigawad",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Bisanakoppa ",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dhawaleshwar",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Haleyaragudri",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Hallur",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Hosayaragudri",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Pamaladinni",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Rajapur",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Shivapur",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Tigadi",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Timmapur",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Tukkanatti",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Waderhatti",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "MasterSheet2026",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Pivot Table 2",
+        "physical_max_row": null,
+        "physical_max_column": null
+      }
+    ]
+  },
+  {
+    "filename": "Center_Assessment_Score_Entry (1).xlsx",
+    "sha256": "73d2f8c864ca7bc7cfeb2b12f660ace8d110bda55a606c47c27b520deee14e2c",
+    "sheets": [
+      {
+        "exact_name": "Mpokket -  Morning",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Mpokket - Evening",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc - Morning",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc - Evening",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee - Morning",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee - Evening",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dasar UK- Morning",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dasaea UK-Evening",
+        "physical_max_row": null,
+        "physical_max_column": null
+      }
+    ]
+  },
+  {
+    "filename": "Morarji Training.xlsx",
+    "sha256": "e283c17b5cc855329a606a73740c3f6cd184d9fbbfed4de23bede5db3669f681",
+    "sheets": [
+      {
+        "exact_name": "Mpokket-Morarji Training",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc-Morarji Training",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee-Morarji Training",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dasar UK-Morarji Training",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "J.F-Morarji Training",
+        "physical_max_row": null,
+        "physical_max_column": null
+      }
+    ]
+  },
+  {
+    "filename": "Monthly activity.xlsx",
+    "sha256": "3d4b63de8ab04239fbf5e9beca01ff8a99127e0c49eb4673adeb416fa13d695d",
+    "sheets": [
+      {
+        "exact_name": "Mpokkket Monthly Activity",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc_Monthly Activity",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee_Monthly Activity",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dasar UK_Monthly Activity",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "J.F_Monthly Activity",
+        "physical_max_row": null,
+        "physical_max_column": null
+      }
+    ]
+  },
+  {
+    "filename": "Cluster_Officer_Visit_Sheet (1).xlsx",
+    "sha256": "4fa39ef486f37033fa331d2fa873c1dabf415b463a8c25cd73d8c4cb4555eb12",
+    "sheets": [
+      {
+        "exact_name": "Mpokket - Visit Log",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Mpokket-Monthly Summary",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Mpokket-Visit Log",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Mpokket - Monthly Summary",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc-Visit Log",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc- Monthly Summary",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc - Visit Log",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Fanuc - Monthly Summary",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee-Visit Log",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee-Monthly Summary",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee - Visit Log",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "McAfee - Monthly Summary",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dasar UK- Visit Log",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Dasar UK - Monthly Summary",
+        "physical_max_row": null,
+        "physical_max_column": null
+      }
+    ]
+  },
+  {
+    "filename": "SVP_ChildListUpdate.xlsx",
+    "sha256": "b087c62cdfb60def8c2acad08111c5e8ab1d5e473bba9f095dac4a0417a8fa68",
+    "sheets": [
+      {
+        "exact_name": "New Entry",
+        "physical_max_row": null,
+        "physical_max_column": null
+      },
+      {
+        "exact_name": "Sheet2",
+        "physical_max_row": null,
+        "physical_max_column": null
+      }
+    ]
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "output": "/workspace/exports/MASS-CAC-Exhaustive-Gap-Audit-2026-10-29.xlsx",
+  "sha256": "efe6620e59e6325d56b284023fdd36be98db8e1d9a6aea270b9ecf7ca6f2ab24",
+  "original_cells_preserved": 615,
+  "tabs": {
+    "START HERE": {
+      "original_rows": 6,
+      "final_rows": 12,
+      "added": 6
+    },
+    "SOURCE GAPS": {
+      "original_rows": 15,
+      "final_rows": 58,
+      "added": 43
+    },
+    "CHART AUDIT": {
+      "original_rows": 18,
+      "final_rows": 126,
+      "added": 108
+    },
+    "FORM FIELD AUDIT": {
+      "original_rows": 13,
+      "final_rows": 307,
+      "added": 294
+    },
+    "FILTER TESTS": {
+      "original_rows": 13,
+      "final_rows": 16225,
+      "added": 16212
+    },
+    "CALC DEFINITIONS": {
+      "original_rows": 11,
+      "final_rows": 60,
+      "added": 49
+    },
+    "DECISION LOG": {
+      "original_rows": 11,
+      "final_rows": 33,
+      "added": 22
+    },
+    "QA & SIGNOFF": {
+      "original_rows": 13,
+      "final_rows": 21,
+      "added": 8
+    },
+    "SOURCE INVENTORY": {
+      "original_rows": 7,
+      "final_rows": 18,
+      "added": 11
+    }
+  },
+  "manager_commit": "0b57ea193e5dd8decb9a451d0b1cea44e22322fb",
+  "integration_commit": "61893eb6d3d9dfe4fc9936a63ac87b578dd5ce3d",
+  "chart_count": 24,
+  "filter_combinations": 36432,
+  "filter_mismatches": 16188,
+  "queries": 49
+}

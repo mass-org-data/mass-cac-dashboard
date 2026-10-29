@@ -17,3 +17,8 @@ backups/
 
 __pycache__/
 *.pyc
+
+# Real source/staging workbooks and private operational release packages.
+*.xlsx
+*.xlsm
+*.private.*

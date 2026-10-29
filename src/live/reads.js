@@ -20,6 +20,7 @@ export function createReadApi(client) {
     throw new Error('This selection contains too many records. Request a narrower approved read workflow.');
   }
   return {
+    rows,
     context: signal=>call('get_context',{},signal),
     references: signal=>call('get_references',{},signal),
     async centre({centre,from,until,yearFrom=from,yearUntil=until,signal}) {

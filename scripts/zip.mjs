@@ -1,4 +1,4 @@
-import {readFile, readdir, writeFile} from 'node:fs/promises';
+import {readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const crcTable = Array.from({length:256}, (_,n) => {
@@ -10,19 +10,16 @@ function crc32(bytes) {
   for (const byte of bytes) crc=crcTable[(crc^byte)&255]^(crc>>>8);
   return (crc^0xffffffff)>>>0;
 }
-async function walk(root, relative) {
-  const entries=await readdir(path.join(root,relative),{withFileTypes:true});
-  const files=[];
-  for (const entry of entries.filter(e=>e.name!=='__pycache__'&&!e.name.endsWith('.pyc')).sort((a,b)=>a.name.localeCompare(b.name))) {
-    const next=path.posix.join(relative,entry.name);
-    if(entry.isDirectory()) files.push(...await walk(root,next));
-    else if(entry.isFile()) files.push(next);
-  }
-  return files;
-}
 export async function writeSourceZip(root, destination) {
   const files=['.gitignore','.env.example','.env.preview.example','README.md','package.json','package-lock.json','vercel.json'];
-  for(const dir of ['src','scripts','docs']) files.push(...await walk(root,dir));
+  // A reviewed allowlist prevents untracked/private working notes being exposed
+  // by the public source-download feature. It also works without Git on Vercel.
+  files.push('source-archive.manifest.json');
+  const reviewed=JSON.parse(await readFile(path.join(root,'source-archive.manifest.json'),'utf8'));
+  for(const relative of reviewed.files){
+    if(!/^(src|scripts|docs)\//.test(relative)||relative.includes('..')||/\.private\.|\.(xlsx|dump|backup|pgdump)$/i.test(relative))throw Error('Unsafe source archive entry.');
+    files.push(relative);
+  }
   files.push('tests/entry-workflows.mjs');
   const local=[],central=[];
   let offset=0;

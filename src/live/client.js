@@ -14,6 +14,6 @@ export function createBackendClient(config, storage = globalThis.localStorage) {
   });
 }
 
-export function clearStoredSession(config, storage = globalThis.sessionStorage) {
+export function clearStoredSession(config, storage = globalThis.localStorage) {
   for (const suffix of ['', '-code-verifier', '-user']) storage.removeItem(`mass-auth-${config.project}${suffix}`);
 }
