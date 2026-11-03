@@ -1,0 +1,148 @@
+{
+  "checked_on": "2026-11-03",
+  "database": {
+    "version": "17.11",
+    "principal": "supabase_read_only_user",
+    "read_only": "on",
+    "tables": 27,
+    "force_rls": true,
+    "students": 1458,
+    "enrolments": 1458,
+    "attendance": 47323,
+    "assessments": 207,
+    "owner_set": {
+      "mass_core_owner": true,
+      "mass_foundation_owner": true
+    }
+  },
+  "catalog": {
+    "columns": 183,
+    "policies": 108,
+    "foreign_keys": 35,
+    "scope_grants": 276,
+    "owner_inherit": {
+      "mass_core_owner": true,
+      "mass_foundation_owner": true
+    },
+    "rpc_acl_closed": true,
+    "runtime_shift_column": false
+  },
+  "history": [
+    {
+      "name": "controlled_student_import",
+      "version": "202610280018"
+    },
+    {
+      "name": "import_history_integrity",
+      "version": "202610280019"
+    },
+    {
+      "name": "202610270001_source_files",
+      "version": "20261028034950"
+    },
+    {
+      "name": "202610270002_source_sheets",
+      "version": "20261028035008"
+    },
+    {
+      "name": "202610270003_import_batches",
+      "version": "20261028035013"
+    },
+    {
+      "name": "202610270004_source_rows",
+      "version": "20261028035016"
+    },
+    {
+      "name": "202610270005_import_exceptions",
+      "version": "20261028035020"
+    },
+    {
+      "name": "202610270006_audit_events",
+      "version": "20261028035023"
+    },
+    {
+      "name": "202610270007_auth_scope",
+      "version": "20261028041120"
+    },
+    {
+      "name": "202610270008_identity_history",
+      "version": "20261028041129"
+    },
+    {
+      "name": "202610270009_academic_periods",
+      "version": "20261028041133"
+    },
+    {
+      "name": "202610270010_attendance",
+      "version": "20261028041136"
+    },
+    {
+      "name": "202610270011_assessments",
+      "version": "20261028041141"
+    },
+    {
+      "name": "202610270012_named_activities",
+      "version": "20261028041150"
+    },
+    {
+      "name": "202610270013_morarji",
+      "version": "20261028041153"
+    },
+    {
+      "name": "202610270014_core_security_audit",
+      "version": "20261028041158"
+    },
+    {
+      "name": "202610270015_core_api",
+      "version": "20261028041201"
+    },
+    {
+      "name": "202610280016_frontend_reads",
+      "version": "20261028081156"
+    },
+    {
+      "name": "202610280017_donor_staff_directory",
+      "version": "20261028090341"
+    }
+  ],
+  "rpc_names": [
+    "add_enrolment",
+    "add_morarji_member",
+    "attendance_summary",
+    "close_enrolment",
+    "create_activity",
+    "get_centre_directory",
+    "get_centre_staff",
+    "get_context",
+    "get_references",
+    "list_students",
+    "read_activities",
+    "read_assessments",
+    "read_attendance",
+    "read_calendar",
+    "read_morarji",
+    "read_participation",
+    "read_students",
+    "record_assessment",
+    "record_attendance",
+    "record_morarji",
+    "record_participation",
+    "register_student"
+  ],
+  "backup": {
+    "pitr_enabled": false,
+    "walg_enabled": true,
+    "backups_listed": 0
+  },
+  "api_exposure": {
+    "db_schema": "public,graphql_public,mass_api",
+    "db_extra_search_path": "public,extensions",
+    "max_rows": 1000
+  },
+  "auth_configuration": {
+    "email_sign_in_enabled": true,
+    "recovery_delivery_verified": false,
+    "redirect_review_required": true,
+    "hosted_configuration_changed": false
+  }
+}

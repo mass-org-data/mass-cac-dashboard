@@ -9,7 +9,7 @@ def run(origin,post,token):
     checks=[]
     with sync_playwright() as p:
         browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
-        page=browser.new_page();errors=[];requests=[];responses=[];failures=[]
+        page=browser.new_page();page.clock.set_fixed_time('2026-10-29T12:00:00+05:30');errors=[];requests=[];responses=[];failures=[]
         page.on('pageerror',lambda e:errors.append(str(e)))
         page.on('request',lambda r:requests.append(r.url.rsplit('/',1)[-1]) if '/rpc/' in r.url else None)
         page.on('response',lambda r:responses.append((r.url.rsplit('/',1)[-1],r.status)) if '/rpc/' in r.url else None)

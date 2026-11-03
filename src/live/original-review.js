@@ -5,22 +5,25 @@ import {createApi,BackendError} from './api.js';
 import {createOriginalActions} from './original-actions.js';
 import {reportingOn} from './population.js';
 import {liveToday,monthWindow} from './model.js';
-import {startPublicReview} from './public-review.js';
+import {showSignIn,handleRecoveryEntry,scrubImplicitFragment} from './auth-page.js';
 import {loadVisitTrends} from './visit-trends.js';
 import {discoverCapabilities,BASELINE_READ_NOTICE,safeDiagnosticText} from './backend-capabilities.js';
 import {baselineAggregates} from './baseline-aggregates.js';
 
 export async function startOriginalReview(config) {
  globalThis.__massReviewToday=liveToday();
+ window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
  const readController=new AbortController();let dead=false;
  const clear=()=>{dead=true;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
+ root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Checking your session</h1><p role="status">No programme records have been loaded.</p></section></main>';
+ if(await handleRecoveryEntry(client,{root,clearSession:()=>clearStoredSession(config)}))return;
  const session=await client.auth.getSession();
- if(session.error||!session.data?.session)return startPublicReview(client);
+ if(session.error||!session.data?.session)return showSignIn(client,{root,clearSession:()=>clearStoredSession(config)});
  const identity=await client.auth.getUser();
- if(identity.error||!identity.data?.user){clearStoredSession(config);return startPublicReview(client);}
+ if(identity.error||!identity.data?.user||identity.data.user.id!==session.data.session.user?.id){clearStoredSession(config);return showSignIn(client,{root,message:'Your session has ended. Sign in again.',clearSession:()=>clearStoredSession(config)});}
  globalThis.__massPublicReview=false;
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Loading authorized MASS records</h1><p id="mass-load-status" role="status">Preparing verified centre scope…</p></section></main>';
  try{
