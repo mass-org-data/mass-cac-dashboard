@@ -9,13 +9,14 @@ import {showSignIn,handleRecoveryEntry,scrubImplicitFragment} from './auth-page.
 import {loadVisitTrends} from './visit-trends.js';
 import {discoverCapabilities,BASELINE_READ_NOTICE,safeDiagnosticText} from './backend-capabilities.js';
 import {baselineAggregates} from './baseline-aggregates.js';
+import {reviewedCalculations} from './reviewed-calculations.js';
 
 export async function startOriginalReview(config) {
  globalThis.__massReviewToday=liveToday();
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
- const readController=new AbortController();let dead=false;
- const clear=()=>{dead=true;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
+ const readController=new AbortController(),reviewedCache=new Map();let dead=false;
+ const clear=()=>{dead=true;reviewedCache.clear();delete globalThis.__massReviewedFor;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Checking your session</h1><p role="status">No programme records have been loaded.</p></section></main>';
@@ -36,7 +37,7 @@ export async function startOriginalReview(config) {
  let year=refs.academic_years.find(y=>y.starts_on<=liveToday()&&liveToday()<y.ends_before)||[...refs.academic_years].sort((a,b)=>b.starts_on.localeCompare(a.starts_on))[0];
  if(!year)throw Error('No approved academic year is configured.');
  const db={aggregates:{},version:1,academicYear:year.id,students:[],attendance:{},attendanceRecords:{},scores:{},assessmentDetails:{},participation:{},participationRecords:{},events:[],visits:[],visitSummary:{},visitOfficerSummary:{},visitAvailable:false,morarji:{},guidance:[],sessions:[],morarjiHistory:[],assessmentBatches:{},followups:{},lastSaved:null};
- globalThis.__massAcademicYears=refs.academic_years;
+ globalThis.__massAcademicYears=refs.academic_years;db.references=refs;
  function setMonths(){globalThis.__massReportingMonths=Array.from({length:12},(_,i)=>{const d=new Date(year.starts_on+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+i);return[d.toISOString().slice(0,7),d.toLocaleDateString('en-GB',{month:'long',year:'numeric',timeZone:'Asia/Kolkata'})];});}
  setMonths();
 
@@ -62,9 +63,9 @@ export async function startOriginalReview(config) {
    for(const p of rows.participation){const key=p.enrolment_id+'|'+p.event_id;next.participation[key]=p.participated===null?'Unknown':p.participated?'Attended':'Not attended';next.participationRecords[key]=p;}
    for(const r of delivery)next.sessions.push({id:r.id,centre:c.id,date:r.session_date,shift:r.shift_code,status:r.status,row_version:r.row_version});
    for(const r of rows.calendar)next.calendar.push({id:r.id,centre:c.id,date:r.session_date,shift:r.shift_code,status:r.is_scheduled?'Planned':'Not Scheduled'});
-   for(const r of rows.morarji){const id=r.enrolment_id;if(!byEpisode.has(id))continue;const cohort=refs.programme_cohorts.find(x=>x.id===r.cohort_id);next.morarjiHistory.push({s:byEpisode.get(id),...r,cohort:cohort?.label||'',membershipId:r.membership_id,school:r.school_name,applied:r.applied??null,attended:r.attended??null,passed:r.passed??null,took:r.attended??null,result:r.passed===true?'Passed':r.passed===false?'Not passed':'Not recorded',trainingDays:null,selected:null,admitted:null,scholarship:'Not recorded'});}
+   for(const r of rows.morarji){const id=r.enrolment_id;if(!byEpisode.has(id))continue;const cohort=refs.programme_cohorts.find(x=>x.id===r.cohort_id);next.morarjiHistory.push({s:byEpisode.get(id),...r,cohort:cohort?.label||'',cohortAcademicYear:cohort?.academic_year_id||null,membershipId:r.membership_id,school:r.school_name,applied:r.applied??null,attended:r.attended??null,passed:r.passed??null,took:r.attended??null,result:r.passed===true?'Passed':r.passed===false?'Not passed':'Not recorded',trainingDays:null,selected:null,admitted:null,scholarship:'Not recorded'});}
   }
-  if(dead)throw Error('Session ended during data load.');Object.assign(db,next);db.visitTrends=null;db.academicYear=reportYear.id;globalThis.__massConfiguredQuarters=refs.assessment_definitions.filter(d=>periods.get(d.period_id)?.academic_year_id===reportYear.id).map(d=>periods.get(d.period_id).quarter);db.aggregates={};aggregateFailed.clear();dataEpoch++;globalThis.__massReviewObservedDatesByCentre=Object.fromEntries(Object.entries(observed).map(([id,months])=>[id,Object.fromEntries(Object.entries(months).map(([m,dates])=>[m,[...dates].sort()]))]));
+  if(dead)throw Error('Session ended during data load.');Object.assign(db,next);db.visitTrends=null;reviewedCache.clear();db.academicYear=reportYear.id;globalThis.__massConfiguredQuarters=refs.assessment_definitions.filter(d=>periods.get(d.period_id)?.academic_year_id===reportYear.id).map(d=>periods.get(d.period_id).quarter);db.aggregates={};aggregateFailed.clear();dataEpoch++;globalThis.__massReviewObservedDatesByCentre=Object.fromEntries(Object.entries(observed).map(([id,months])=>[id,Object.fromEntries(Object.entries(months).map(([m,dates])=>[m,[...dates].sort()]))]));
   const reportingMonth=reportYear.starts_on<=liveToday()&&liveToday()<reportYear.ends_before?liveToday().slice(0,7):reportYear.starts_on.slice(0,7);await loadVisits(reportingMonth);if(globalThis.__massAggregateMode)await loadAggregates({month:reportingMonth});if(trendsRequested)await refreshVisitTrends();
  }
  async function loadVisits(month,officer=null){
@@ -80,11 +81,24 @@ export async function startOriginalReview(config) {
  async function loadAggregates(state){
   if(!globalThis.__massAggregateMode)return;
   const key=aggregateKey(state);if(db.aggregates[key]||aggregateLoading.has(key)||aggregateFailed.has(key))return;aggregateLoading.add(key);const epoch=dataEpoch;
+  if(state.gender==='Unknown'){aggregateLoading.delete(key);return;}
   if(!capabilities.aggregates){try{db.aggregates[key]=baselineAggregates(db,centres,{...state,page:'overview',today:liveToday()});}catch(error){db.aggregateError=error.message;aggregateFailed.add(key);}finally{aggregateLoading.delete(key);}return;}
   const {from,until}=monthWindow(state.month),output=[];let index=0;
   try{await Promise.all(Array.from({length:6},async()=>{while(index<context.centres.length){const c=context.centres[index++];output.push(await rpc('programme_aggregate',{p_centre:c.id,p_on:reportingOn({...state,today:liveToday()}),p_from:from,p_until:until,p_year:year.id,p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null}));}}));if(!dead&&epoch===dataEpoch)db.aggregates[key]=output;}catch(error){db.aggregateError=error.message;aggregateFailed.add(key);}
   aggregateLoading.delete(key);if(!dead)globalThis.__massOriginalRefresh?.();
  }
+ globalThis.__massReviewedFor=(state,selected)=>{
+  const key=JSON.stringify([dataEpoch,state.page,state.date,state.month,state.academicYear,state.grade,state.shift,state.gender,state.query,state.fromExam,state.toExam,selected.map(c=>c.id).sort()]);
+  if(reviewedCache.has(key))return reviewedCache.get(key);
+  if(state.month>liveToday().slice(0,7)){const value={unavailable:'Future reporting periods have no verified observations.'};reviewedCache.set(key,value);return value;}
+  if(capabilities.reviewedCharts&&selected.length&&!state.query){
+   reviewedCache.set(key,{pending:'Loading authorized reviewed calculations…'});const epoch=dataEpoch;const {from,until}=monthWindow(state.month);
+   void rpc('reviewed_chart_metrics',{p_centres:selected.map(c=>c.id),p_on:reportingOn({...state,today:liveToday()}),p_from:from,p_until:until,p_year:year.id,p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null,p_earlier:Number(state.fromExam.slice(1)),p_later:Number(state.toExam.slice(1))}).then(value=>{if(!dead&&epoch===dataEpoch){reviewedCache.set(key,value);globalThis.__massOriginalRefresh?.();}}).catch(error=>{if(!dead&&epoch===dataEpoch){reviewedCache.set(key,{unavailable:[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ')});globalThis.__massOriginalRefresh?.();}});
+   return reviewedCache.get(key);
+  }
+  const value=reviewedCalculations(db,centres,state,{profileReadable:!globalThis.__massAggregateMode,assessmentReady:capabilities.periodAssessments,detailsReady:capabilities.operationalDetails});
+  reviewedCache.set(key,value);return value;
+ };
  globalThis.__massLoadAggregates=loadAggregates;
  globalThis.__massAggregateFor=(state,selected)=>{
   const rows=db.aggregates[aggregateKey(state)];if(!rows)return null;

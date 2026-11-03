@@ -32,6 +32,10 @@ PYINJECT
  fi
  migrate < "$f"
 done
+if [[ "${MASS_REVIEWED_CHARTS:-0}" == 1 ]];then
+if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'Reviewed proposal requires020–023; invalid test combination';exit 1;fi
+ migrate < "$repo_root/supabase/proposals/202611030024_reviewed_chart_metrics.sql"
+fi
 sql -Atc "SELECT 'SCHEMA_INVENTORY '||jsonb_build_object('tables',(SELECT count(*) FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r'),'columns',(SELECT count(*) FROM pg_attribute WHERE attrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped),'foreign_keys',(SELECT count(*) FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND contype='f'),'policies',(SELECT count(*) FROM pg_policy WHERE polrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace))))::text;"
 
 python - "$repo_root" "${MASS_BASELINE_BROWSER:-0}" <<'PY' | sql
@@ -46,6 +50,14 @@ PY
 if [[ "${MASS_BASELINE_BROWSER:-0}" != 1 ]];then
  sql < "$repo_root/tests/release/visits.sql"
  source "$repo_root/tests/release/concurrency.sh"
+fi
+if [[ "${MASS_REVIEWED_CHARTS:-0}" == 1 ]];then
+ sql < "$repo_root/tests/reviewed-calculations/synthetic.sql"
+ review_output="$(mktemp -d /tmp/mass-reviewed-calculations.XXXXXX)"
+ sql -At < "$repo_root/tests/reviewed-calculations/export.sql" > "$review_output/input.json"
+ node "$repo_root/tests/reviewed-calculations/cases.mjs" "$review_output/input.json" "$review_output/cases.json" "$review_output/cases.sql"
+ sql -At < "$review_output/cases.sql" > "$review_output/sql-results.jsonl"
+ node "$repo_root/tests/reviewed-calculations/compare.mjs" "$review_output/input.json" "$review_output/cases.json" "$review_output/sql-results.jsonl"
 fi
 if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'PASS: isolated001–019sequence and original core checks.';else echo 'PASS: full migration sequence and original core plus release behavioral checks.';fi
 if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then

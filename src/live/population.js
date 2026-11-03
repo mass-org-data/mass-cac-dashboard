@@ -3,12 +3,12 @@ export function reportingOn(state){if(state.page==='daily')return state.date;if(
 export function programmePopulation(students,centres,state,{ignoreGender=false}={}) {
   const allowed=new Set(centres.filter(c=>(!state.centre||c.id===state.centre)&&(!state.donor||c.donor===state.donor)&&(!state.officer||(c.officers||[c.officer]).includes(state.officer))).map(c=>c.id));
   const on=reportingOn(state);
-  return students.filter(s=>allowed.has(s.centre)&&s.enrolled<=on&&(!s.exitDate||on<s.exitDate)&&(!state.grade||s.grade===state.grade)&&(!state.shift||s.shift===state.shift)&&(ignoreGender||!state.gender||s.gender===state.gender)&&(!state.query||`${s.name||''} ${s.studentId||''}`.toLowerCase().includes(state.query.toLowerCase())));
+  return students.filter(s=>allowed.has(s.centre)&&s.enrolled<=on&&(!s.exitDate||on<s.exitDate)&&(!state.grade||s.grade===state.grade)&&(!state.shift||s.shift===state.shift)&&(ignoreGender||!state.gender||(state.gender==='Unknown'?!s.gender:s.gender===state.gender))&&(!state.query||`${s.name||''} ${s.studentId||''}`.toLowerCase().includes(state.query.toLowerCase())));
 }
 export function filterOptions(students,centres,state) {
   const base={...state,grade:'',shift:'',gender:'',query:''};
   const rows=programmePopulation(students,centres,base);
-  return Object.fromEntries(['grade','shift','gender'].map(k=>[k,[...new Set(rows.map(s=>s[k]).filter(Boolean))].sort((a,b)=>k==='grade'?Number(a)-Number(b):a.localeCompare(b))]));
+  return Object.fromEntries(['grade','shift','gender'].map(k=>[k,[...new Set(rows.map(s=>k==='gender'?(s[k]||'Unknown'):s[k]).filter(Boolean))].sort((a,b)=>k==='grade'?Number(a)-Number(b):a.localeCompare(b))]));
 }
 export function safeCsvCell(value){const s=String(value??'');return '"'+(/^[\s]*[=+\-@\t\r]/.test(s)?"'"+s:s).replaceAll('"','""')+'"';}
 export function visitMetrics(rows,centres,{month,shift='',officer=''}={}){

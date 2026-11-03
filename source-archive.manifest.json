@@ -39,6 +39,8 @@
     "src/live/population.js",
     "src/live/public-review.js",
     "src/live/reads.js",
+    "src/live/reviewed-calculations.js",
+    "src/live/reviewed-chart-view.js",
     "src/live/session.js",
     "src/live/visit-trends.js",
     "src/live/workspace.js",

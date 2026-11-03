@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-03",
+  "source_workbooks": {
+    "calculations_sha256": "c042a0d1f707d699cb94115e0fa7e82b4fc4e67cc988444b91c901078bf7cc99",
+    "staff_sha256": "53e9e73bc8cc4caf4f640101eea3bd8449b2cbdb20ea417afab4bf7d2a02c628"
+  },
+  "live_read_only_sql": {
+    "cases": 880,
+    "passed": 880,
+    "failed": 0,
+    "contexts": {
+      "all": 1,
+      "centre": 92,
+      "donor": 8,
+      "officer": 11
+    },
+    "months": [
+      "2026-04",
+      "2026-10"
+    ],
+    "boundary": "Privileged read-only SQL versus frontend math; not a staff-session or protected Preview test.",
+    "firstFailures": []
+  },
+  "isolated_sql_frontend": {
+    "cases": 1440,
+    "passed": 1440,
+    "failed": 0
+  },
+  "frontend_unit_tests": 52,
+  "entry_workflow_checks": 27,
+  "staff_audit_tests": 3,
+  "chromium_checks": 44,
+  "baseline_001_019_browser_checks": 7,
+  "foundation_security_suite": "passed",
+  "build": "passed",
+  "syntax": "passed",
+  "production_changed": false,
+  "staff_accounts_created": 0,
+  "grants_created": 0,
+  "preview_deployed_or_verified": false,
+  "proposal_024_sha256": "509ca71502e9c729bae764c0bc91c8bf93460aefb8cfe466d1af02784ca2b4f4",
+  "canonical_migration_manifest_sha256": "fab6b7be27c2317f240c04f58f6663f9be7957deb7cc44896447c3a5cd7d2d5d",
+  "canonical_migrations_001_023_unchanged": true,
+  "credentials_or_source_workbooks_published": false
+}

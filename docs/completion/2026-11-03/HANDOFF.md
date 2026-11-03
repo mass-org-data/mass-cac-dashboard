@@ -1,3 +1,5 @@
+> Update, 3 November 2026: the uploaded calculation and staff workbooks have now been reviewed. The current calculation decisions, staff-quality results and activation dependencies are in [the calculation integration handoff](../../calculations/2026-11-03/HANDOFF.md). Earlier missing-file/pending-calculation statements below are historical, not current blockers.
+
 # Final integration continuation — 3 November 2026
 
 Status: **safe development and local verification completed; integrated hosted release remains NO-GO.** The user confirmed the new calculation decisions and staff spreadsheet are still in preparation. Neither has been received. No production database or Auth configuration changes, staff accounts, real data writes, deployments, merges or paid infrastructure were created.
