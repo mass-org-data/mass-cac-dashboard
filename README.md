@@ -160,6 +160,8 @@ For programme-loading errors, see the [Preview loading investigation](docs/diagn
 
 Calculation workbook reconciliation (3 November 2026): [chart decisions, 29-rule register, staff-quality review and verification handoff](docs/calculations/2026-11-03/HANDOFF.md). The scoped reviewed-chart aggregate is proposal 024 only; production migrations and staff activation remain separately controlled.
 
-Next-phase readiness (4 November 2026): [dependent filters, frontend parity, populated upgrade tests and recovery options](docs/development/2026-11-04/HANDOFF.md). Hosted activation remains gated on a verified recovery arrangement.
+Next-phase readiness (4 November 2026): [dependent filters, frontend parity, populated upgrade tests and recovery options](docs/development/2026-11-04/HANDOFF.md). That earlier recovery assessment is retained as historical context; the current installation-versus-activation review below defines the specific execution holds.
 
 Recovered operational completion: [Save Attendance, assessment history, scoped definer review, staff dry-run and final Preview checklist](docs/readiness/2026-11-04/HANDOFF.md). Canonical migrations remain unapplied beyond 019; 024 is still a separately checksummed proposal.
+
+Default-disabled backend installation proposal: [server-enforced gates, unchanged canonical hashes, staged installation and outstanding hosted audit](docs/readiness/2026-11-04/INSTALLATION-VERSUS-ACTIVATION.md). Prepared locally only; no hosted activation or staff provisioning.

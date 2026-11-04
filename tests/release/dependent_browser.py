@@ -3,6 +3,7 @@ import csv,io,json,os,pathlib,zipfile
 from playwright.sync_api import sync_playwright
 A='10000000-0000-4000-8000-000000000001';B='10000000-0000-4000-8000-000000000002'
 DA='Synthetic donor A';DB='Synthetic donor B'
+DISABLED=os.environ.get('MASS_ACTIVATION_DISABLED_BROWSER')=='1'
 Y='20000000-0000-4000-8000-000000000001';PAST='20000000-0000-4000-8000-000000000002'
 def run(origin,post,token):
  checks=[]
@@ -38,7 +39,7 @@ def run(origin,post,token):
   rows=list(csv.reader(io.StringIO(pathlib.Path(downloaded.value.path()).read_text())));assert len(rows)==2 and rows[1][3:5]==['Morning','6'];checks.append('Filtered table and CSV export contain the same single eligible episode')
   page.locator('[data-nav=overview]').first.click();choose('shift','Morning');choose('grade','6');page.wait_for_function("document.querySelector('.metric-value')?.textContent==='1'");page.wait_for_function("document.querySelector('[data-chart=\"22\"] svg')?.textContent.includes('6')")
   headers={'Authorization':'Bearer '+token('00000000-0000-4000-8000-000000000001'),'Content-Type':'application/json','Content-Profile':'mass_api'}
-  data=post('/rpc/reviewed_chart_metrics',json.dumps({'p_centres':[A],'p_on':'2026-10-29','p_from':'2026-10-01','p_until':'2026-11-01','p_year':Y,'p_grade':'6','p_shift':'Morning','p_gender':None,'p_earlier':1,'p_later':2}).encode(),headers);assert data['status']==200;assert json.loads(data['body'])['children']==1;checks.append('KPI and chart filtered population agree with the independently requested scoped SQL aggregate')
+  data=post('/rpc/programme_aggregate' if DISABLED else '/rpc/reviewed_chart_metrics',json.dumps(({'p_centre':A} if DISABLED else {'p_centres':[A],'p_earlier':1,'p_later':2})|{'p_on':'2026-10-29','p_from':'2026-10-01','p_until':'2026-11-01','p_year':Y,'p_grade':'6','p_shift':'Morning','p_gender':None}).encode(),headers);assert data['status']==200;assert json.loads(data['body'])['students' if DISABLED else 'children']==1;checks.append('KPI and chart filtered population agree with the independently requested scoped SQL aggregate')
   page.locator('[data-chart="23"] [data-gender="Girl"]').click();assert page.locator('[data-filter=gender]').input_value()=='Girl';page.locator('[data-chart="23"] [data-gender="Girl"]').click();assert page.locator('[data-filter=gender]').input_value()=='';checks.append('Original gender chart quick filters toggle the shared population and clear on repeated click')
   assert B not in values('centre');checks.append('Teacher filter options never include another centre')
   page.locator('[data-nav=learning]').first.click();choose('academicYear',PAST);page.wait_for_function('(y)=>globalThis.__massLiveReviewData.academicYear===y&&!globalThis.__massDataLoading',arg=PAST);page.wait_for_function("[...document.querySelectorAll('[data-filter=grade] option')].filter(o=>o.value).length===0");assert page.locator('[data-filter=shift]').input_value()=='';checks.append('Academic year reload clears invalid Grade/Shift using actual historical assignment dates')
@@ -50,7 +51,7 @@ def run(origin,post,token):
   choose('donor',DA);choose('centre',A);choose('shift','Morning')
   page.wait_for_function("[...document.querySelectorAll('[data-filter=gender] option')].some(o=>o.value==='Girl')")
   choose('gender','Girl')
-  aggregate=post('/rpc/reviewed_chart_metrics',json.dumps({'p_centres':[A],'p_on':'2026-10-29','p_from':'2026-10-01','p_until':'2026-11-01','p_year':Y,'p_grade':None,'p_shift':'Morning','p_gender':'Girl','p_earlier':1,'p_later':2}).encode(),{'Authorization':'Bearer '+token('00000000-0000-4000-8000-000000000004'),'Content-Type':'application/json','Content-Profile':'mass_api'})
+  aggregate=post('/rpc/programme_aggregate' if DISABLED else '/rpc/reviewed_chart_metrics',json.dumps(({'p_centre':A} if DISABLED else {'p_centres':[A],'p_earlier':1,'p_later':2})|{'p_on':'2026-10-29','p_from':'2026-10-01','p_until':'2026-11-01','p_year':Y,'p_grade':None,'p_shift':'Morning','p_gender':'Girl'}).encode(),{'Authorization':'Bearer '+token('00000000-0000-4000-8000-000000000004'),'Content-Type':'application/json','Content-Profile':'mass_api'})
   assert aggregate['status']==200;expected=sorted(json.loads(aggregate['body'])['grades'],key=int)
   page.wait_for_function("(xs)=>JSON.stringify([...document.querySelectorAll('[data-filter=grade] option')].map(o=>o.value).filter(Boolean))===JSON.stringify(xs)",arg=expected)
   assert not page.locator('[data-nav=children]').count();checks.append('Masked Leadership gender→Grade options use only authorized aggregates, never private profile inference')

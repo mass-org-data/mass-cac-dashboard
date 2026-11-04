@@ -100,6 +100,16 @@ PATHCHECK
  sql -Atc "SELECT coalesce(jsonb_agg(jsonb_build_object('schema',n.nspname,'name',p.proname,'arguments',pg_get_function_identity_arguments(p.oid),'body',p.prosrc,'owner',pg_get_userbyid(p.proowner),'settings',p.proconfig) ORDER BY n.nspname,p.proname),'[]'::jsonb) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='mass_api' AND p.prosecdef" > "$MASS_SECURITY_CATALOG_DIR/local-functions.private.json"
  chmod 600 "$MASS_SECURITY_CATALOG_DIR/local-functions.private.json"
 fi
+if [[ "${MASS_ACTIVATION_DISABLED_BROWSER:-0}" == 1 ]];then
+ if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'Activation gate requires020–023';exit 1;fi
+ { echo 'BEGIN;';cat "$repo_root/supabase/activation/control.sql" "$repo_root/supabase/activation/seal.sql";echo 'COMMIT;'; } | migrate
+ if [[ "${MASS_REVIEWED_CHARTS:-0}" == 1 ]];then
+  sql -c "SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated reviewed read reconciliation' WHERE feature='reviewed_reads';"
+  sql -At < "$review_output/cases.sql" > "$review_output/sealed-sql-results.jsonl"
+  node "$repo_root/tests/reviewed-calculations/compare.mjs" "$review_output/input.json" "$review_output/cases.json" "$review_output/sealed-sql-results.jsonl"
+  sql -c "SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=false,approval_reference='isolated read deactivation' WHERE feature='reviewed_reads';"
+ fi
+fi
 if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'PASS: isolated001–019sequence and original core checks.';else echo 'PASS: full migration sequence and original core plus release behavioral checks.';fi
 if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then
  network="${container}-network";rest="${container}-rest";client="${container}-http-client"

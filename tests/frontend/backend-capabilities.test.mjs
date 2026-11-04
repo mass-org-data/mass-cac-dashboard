@@ -35,3 +35,12 @@ test('baseline loading does not query dated-only assessments and critical failur
  const failed={schema(){return{rpc(){return Promise.resolve({error:{code:'42501'},status:403})}}}};
  await assert.rejects(createReadApi(failed).context(),e=>e.rpc==='get_context'&&e.status===403);
 });
+
+test('installed APIs never enable writes without explicit versioned true activation flags',async()=>{
+ const {operationAllowed}=await import('../../src/live/backend-capabilities.js');
+ const old=await discoverCapabilities(async()=>({original_workflows:20,period_assessments:true,operational_details:22,aggregate_api:23}));
+ assert.equal(operationAllowed(old,'attendance_entry'),false);assert.equal(old.aggregates,true);
+ const guarded=await discoverCapabilities(async()=>({original_workflows:20,period_assessments:true,activation_control:1,writes:{attendance_entry:true,assessment_entry:'true',transfers:false}}));
+ assert.equal(operationAllowed(guarded,'attendance_entry'),true);assert.equal(operationAllowed(guarded,'assessment_entry'),false);assert.equal(operationAllowed(guarded,'transfers'),false);assert.equal(operationAllowed(guarded,'unknown'),false);assert(Object.isFrozen(guarded.writes));
+ const unversioned=await discoverCapabilities(async()=>({original_workflows:20,period_assessments:true,reviewed_charts:24,writes:{attendance_entry:true}}));assert.equal(operationAllowed(unversioned,'attendance_entry'),false);assert.equal(unversioned.reviewedCharts,false);
+});
