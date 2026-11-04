@@ -22,9 +22,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
   if self.path.split('?')[0]=='/':
    role=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get('role',['officer'])[0];user={'officer':USER,'teacher':'00000000-0000-4000-8000-000000000001','leadership':'00000000-0000-4000-8000-000000000004','signedout':''}[role]
    body=('<!doctype html><html><head><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/live.css"></head><body><div id="app"></div><div id="overlay"></div><div id="toast"></div><script>globalThis.__fixtureUser='+json.dumps(user)+';globalThis.__fixtureToken='+json.dumps(token(user))+';globalThis.__fixtureLoginToken='+json.dumps(TOKEN)+';globalThis.__fixtureLoginUser='+json.dumps(USER)+'</script><script type="module" src="/fixture.js"></script></body></html>').encode();self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers();self.wfile.write(body);return
-  path=OUT/'fixture.js' if self.path=='/fixture.js' else ROOT/'src'/self.path.lstrip('/')
+  path=OUT/self.path.lstrip('/') if self.path in ('/fixture.js','/MASS-CAC-Vercel-Source.zip') else ROOT/'src'/self.path.lstrip('/')
   if not path.is_file():self.send_error(404);return
-  self.send_response(200);self.send_header('Content-Type','text/javascript' if path.suffix=='.js' else 'text/css' if path.suffix=='.css' else 'image/jpeg');self.end_headers();self.wfile.write(path.read_bytes())
+  self.send_response(200);self.send_header('Content-Type','text/javascript' if path.suffix=='.js' else 'text/css' if path.suffix=='.css' else 'application/zip' if path.suffix=='.zip' else 'image/jpeg');self.end_headers();self.wfile.write(path.read_bytes())
  def do_POST(self):
   headers={k:v for k,v in self.headers.items() if k.lower() in ('authorization','content-type','content-profile','accept-profile','prefer')}
   r=local_post(self.path.replace('/rest/v1','',1),self.rfile.read(int(self.headers.get('Content-Length',0))),headers);body=r['body'].encode();status=r['status']
@@ -34,6 +34,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread(target=server.serve_forever,daemon=True).start()
 if os.environ.get('MASS_BASELINE_BROWSER')=='1':
  from baseline_browser import run
+ run('http://127.0.0.1:'+str(server.server_port),local_post,token)
+ server.shutdown()
+ raise SystemExit(0)
+if os.environ.get('MASS_DEPENDENT_BROWSER')=='1':
+ from dependent_browser import run
  run('http://127.0.0.1:'+str(server.server_port),local_post,token)
  server.shutdown()
  raise SystemExit(0)

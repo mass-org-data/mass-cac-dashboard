@@ -159,3 +159,5 @@ The original dashboard now opens without a login gate. Anonymous visitors see **
 For programme-loading errors, see the [Preview loading investigation](docs/diagnostics/2026-10-29-loading/README.md). The original interface can use the installed authenticated baseline read APIs without requiring optional newer RPCs. Missing optional capability discovery is distinguished from authentication, permission and schema failures. Builds expose key-free version/configuration metadata at `/release.json`; successful local tests do not establish that a hosted Preview is fixed.
 
 Calculation workbook reconciliation (3 November 2026): [chart decisions, 29-rule register, staff-quality review and verification handoff](docs/calculations/2026-11-03/HANDOFF.md). The scoped reviewed-chart aggregate is proposal 024 only; production migrations and staff activation remain separately controlled.
+
+Next-phase readiness (4 November 2026): [dependent filters, frontend parity, populated upgrade tests and recovery options](docs/development/2026-11-04/HANDOFF.md). Hosted activation remains gated on a verified recovery arrangement.

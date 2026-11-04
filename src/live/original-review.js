@@ -16,7 +16,7 @@ export async function startOriginalReview(config) {
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
  const readController=new AbortController(),reviewedCache=new Map();let dead=false;
- const clear=()=>{dead=true;reviewedCache.clear();delete globalThis.__massReviewedFor;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
+ const clear=()=>{dead=true;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Checking your session</h1><p role="status">No programme records have been loaded.</p></section></main>';
@@ -99,6 +99,21 @@ export async function startOriginalReview(config) {
   const value=reviewedCalculations(db,centres,state,{profileReadable:!globalThis.__massAggregateMode,assessmentReady:capabilities.periodAssessments,detailsReady:capabilities.operationalDetails});
   reviewedCache.set(key,value);return value;
  };
+ globalThis.__massDependentOptions=(state,selected)=>{
+  if(!globalThis.__massAggregateMode||!state.gender)return null;
+  const read=(shift,gender=state.gender)=>{
+   const facet={...state,shift,gender,grade:'',query:''};
+   if(capabilities.reviewedCharts)return globalThis.__massReviewedFor(facet,selected);
+   if(!capabilities.aggregates||gender==='Unknown')return {unavailable:true};
+   void loadAggregates(facet);return globalThis.__massAggregateFor?.(facet,selected)||{pending:true};
+  };
+  const unfilteredGender=read(state.shift||'','');
+  if(unfilteredGender.pending||unfilteredGender.unavailable)return {pending:true};
+  if(!Number(unfilteredGender.genders?.[state.gender]))return {invalidGender:true};
+  const active=read(state.shift||''),morning=read('Morning'),evening=read('Evening');
+  if([active,morning,evening].some(r=>r.pending||r.unavailable))return {pending:true};
+  return {ready:true,grade:Object.entries(active.grades||{}).filter(([,n])=>Number(n)>0).map(([g])=>g).sort((a,b)=>Number(a)-Number(b)),shift:[['Evening',evening],['Morning',morning]].filter(([,r])=>Number(r.children??r.students)>0).map(([shift])=>shift)};
+ };
  globalThis.__massLoadAggregates=loadAggregates;
  globalThis.__massAggregateFor=(state,selected)=>{
   const rows=db.aggregates[aggregateKey(state)];if(!rows)return null;
@@ -109,7 +124,7 @@ export async function startOriginalReview(config) {
    for(const c of r.changes){const out=result.changes[c.earlier+'|'+c.later]??={n:0,earlier:0,later:0,improved:0,unchanged:0,declined:0};out.n+=Number(c.n);out.earlier+=Number(c.earlier_mean)*Number(c.n);out.later+=Number(c.later_mean)*Number(c.n);for(const k of ['improved','unchanged','declined'])out[k]+=Number(c[k]);}
   }return result;
  };
- globalThis.__massAggregateExport=(state,selected)=>{const a=globalThis.__massAggregateFor(state,selected);if(!a)throw Error('Load the authorized aggregate before exporting.');return [['Centre','Students','Present student-days','Good engagement','Month','Grade','Shift','Gender'],...a.centres.map(r=>[centres.find(c=>c.id===r.centre_id)?.name||'',r.students,r.attendance.p,'Unknown: coverage incomplete',state.month,state.grade,state.shift,state.gender])];};
+ globalThis.__massAggregateExport=(state,selected)=>{if(capabilities.reviewedCharts){const m=globalThis.__massReviewedFor(state,selected);if(!m||m.pending||m.unavailable)throw Error('Load the reviewed aggregate before exporting.');return [['Centre','Students','Enrolments','Present student-days','Good engagement','Month','Grade','Shift','Gender'],...m.centres.map(r=>[centres.find(c=>c.id===r.id)?.name||'',r.children,r.enrolments,r.attendance.p,'Unknown: colour boundaries pending',state.month,state.grade,state.shift,state.gender])];}const a=globalThis.__massAggregateFor(state,selected);if(!a)throw Error('Load the authorized aggregate before exporting.');return [['Centre','Students','Present student-days','Good engagement','Month','Grade','Shift','Gender'],...a.centres.map(r=>[centres.find(c=>c.id===r.centre_id)?.name||'',r.students,r.attendance.p,'Unknown: coverage incomplete',state.month,state.grade,state.shift,state.gender])];};
  let yearChanging=false;globalThis.__massSelectAcademicYear=async(id)=>{if(yearChanging)throw Error('Wait for the academic year load.');const selected=refs.academic_years.find(y=>y.id===id);if(!selected)throw Error('Choose an approved academic year.');yearChanging=true;const previous=year;globalThis.__massDataLoading=true;year=selected;setMonths();try{await refresh();return selected;}catch(error){year=previous;setMonths();throw error;}finally{yearChanging=false;globalThis.__massDataLoading=false;}};
  async function refreshVisitTrends(){
   if(!capabilities.operationalDetails){db.visitTrendsError='Visit backend activation pending.';globalThis.__massOriginalRefresh?.();return;}

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+if [[ "${MASS_POPULATED_UPGRADE:-0}" == 1 && "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'Populated upgrade requires020–023; invalid test combination';exit 1;fi
+if [[ "${MASS_DEPENDENT_BROWSER:-0}" == 1 && "${MASS_REVIEWED_CHARTS:-0}" != 1 ]];then echo 'Dependent browser suite requires reviewed synthetic fixtures';exit 1;fi
 container="mass-release-${RANDOM}-$$"
 trap 'docker rm -fv "$container" >/dev/null 2>&1 || true' EXIT INT TERM
 docker run -d --name "$container" --network none --tmpfs /var/lib/postgresql/data:rw,nosuid,noexec,size=256m -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe >/dev/null
@@ -17,7 +19,9 @@ SQL
 migrate(){ docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U mass_release_deployer -d postgres; }
 for f in "$repo_root"/supabase/migrations/*.sql;do
  if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 && "$(basename "$f")" > 202610290019 ]];then continue;fi
- if [[ "$f" == *202610290021* ]];then
+ if [[ "${MASS_POPULATED_UPGRADE:-0}" == 1 && "$f" == *202610290020* ]];then sql < "$repo_root/tests/release/preactivation.sql";fi
+ if [[ "$(basename "$f")" > 202610290019 ]];then
+  schema_before="$(docker exec "$container" pg_dump -U postgres --schema-only | sed '/^\\restrict /d; /^\\unrestrict /d' | sha256sum | cut -d' ' -f1)"
   failure_log="$(mktemp /tmp/mass-release-rollback.XXXXXX)"
   if python - "$f" <<'PYINJECT' | migrate > "$failure_log" 2>&1
 from pathlib import Path
@@ -27,14 +31,32 @@ print(s.replace('COMMIT;','SELECT 1/0;\nCOMMIT;'))
 PYINJECT
   then echo 'Injected failure unexpectedly committed';exit 1;fi
   rg -q 'division by zero' "$failure_log";rm -f -- "$failure_log"
-  [[ "$(docker exec "$container" psql -X -Atqc "SELECT to_regclass('mass_core.officer_assignments') IS NULL AND to_regprocedure('mass_api.get_visit_assignments()') IS NULL" -U postgres)" == t ]]
-  echo 'PASS: injected migration021 failure rolls back all visit objects; exact file retried.'
+  schema_after="$(docker exec "$container" pg_dump -U postgres --schema-only | sed '/^\\restrict /d; /^\\unrestrict /d' | sha256sum | cut -d' ' -f1)"
+  [[ "$schema_before" == "$schema_after" ]]
+  echo "PASS: injected $(basename "$f") failure preserves schema/ACL/ownership; exact file retried."
  fi
  migrate < "$f"
+ if [[ "${MASS_POPULATED_UPGRADE:-0}" == 1 && "$(basename "$f")" > 202610290019 ]];then sql < "$repo_root/tests/release/verify-preactivation.sql";fi
 done
 if [[ "${MASS_REVIEWED_CHARTS:-0}" == 1 ]];then
 if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'Reviewed proposal requires020–023; invalid test combination';exit 1;fi
  migrate < "$repo_root/supabase/proposals/202611030024_reviewed_chart_metrics.sql"
+fi
+if [[ "${MASS_POPULATED_UPGRADE:-0}" == 1 ]];then
+ sql < "$repo_root/tests/release/verify-preactivation.sql"
+ sql <<'SQL'
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"90000000-0000-4000-8000-000000000001"}',false);
+DO $$DECLARE r jsonb;BEGIN
+ IF (mass_api.get_original_capabilities()->>'aggregate_api')::int<>23 THEN RAISE EXCEPTION 'Upgrade capability missing';END IF;
+ IF to_regprocedure('mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)') IS NOT NULL THEN
+  r:=mass_api.reviewed_chart_metrics(ARRAY['90000000-0000-4000-8000-000000000002']::uuid[],'2026-04-30','2026-04-01','2026-05-01','90000000-0000-4000-8000-000000000003');
+  IF (r->>'children')::int<>1 OR abs((r->'attendance'->>'percentage')::numeric-100.0/3)>0.000001 THEN RAISE EXCEPTION 'Upgraded read changed approved calculation';END IF;
+ END IF;
+END;$$;
+SQL
+ echo 'PASS: populated001–019→020–023 upgrade, all failure rollbacks/retries, original data and optional024 scoped reads.'
+ exit 0
 fi
 sql -Atc "SELECT 'SCHEMA_INVENTORY '||jsonb_build_object('tables',(SELECT count(*) FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r'),'columns',(SELECT count(*) FROM pg_attribute WHERE attrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped),'foreign_keys',(SELECT count(*) FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND contype='f'),'policies',(SELECT count(*) FROM pg_policy WHERE polrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace))))::text;"
 
@@ -83,6 +105,7 @@ if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then
  node --input-type=module - "$repo_root" "$MASS_RELEASE_TEST_OUTPUT" <<'JS'
 import {build} from 'esbuild';import path from 'node:path';
 await build({entryPoints:[path.join(process.argv[2],'tests/release/browser-entry.js')],outfile:path.join(process.argv[3],'fixture.js'),bundle:true,format:'esm',platform:'browser',plugins:[{name:'local-auth-fixture',setup(b){b.onResolve({filter:/^\.\/client\.js$/},()=>({path:path.join(process.argv[2],'tests/release/browser-client.js')}));}}]});
+const {writeSourceZip}=await import(path.join(process.argv[2],'scripts/zip.mjs'));await writeSourceZip(process.argv[2],path.join(process.argv[3],'MASS-CAC-Vercel-Source.zip'));
 JS
  python "$repo_root/tests/release/browser.py"
  unset MASS_RELEASE_REST_SECRET
