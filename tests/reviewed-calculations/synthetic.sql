@@ -44,5 +44,5 @@ RESET ROLE;
 SET ROLE anon;
 SELECT core_test.expect_error($q$SELECT mass_api.reviewed_chart_metrics(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-31','2026-10-01','2026-11-01','20000000-0000-4000-8000-000000000001')$q$,'42501','anonymous reviewed reporting denied');
 RESET ROLE;
-SELECT core_test.assert_true((SELECT proconfig=ARRAY['search_path=pg_catalog'] AND pg_get_userbyid(proowner)='mass_core_owner' AND prosecdef FROM pg_proc WHERE oid='mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)'::regprocedure),'reviewed aggregate fixed owner/search path');
+SELECT core_test.assert_true((SELECT proconfig=ARRAY['search_path=pg_catalog','jit=off'] AND pg_get_userbyid(proowner)='mass_core_owner' AND prosecdef FROM pg_proc WHERE oid='mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)'::regprocedure),'reviewed aggregate fixed owner/search path');
 SELECT core_test.assert_true(NOT has_function_privilege('anon','mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)','EXECUTE') AND NOT has_function_privilege('service_role','mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)','EXECUTE'),'reviewed aggregate least-privilege ACL');

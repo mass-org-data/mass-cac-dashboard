@@ -1,0 +1,462 @@
+{
+  "date": "2026-11-04",
+  "branch": "feature/supabase-frontend",
+  "parent_commit": "962f1e5b8defb6722b49fc8902ce229de705320c",
+  "recovery": "All implementation edits survived; private patch/untracked archive saved before additional edits. Two browser assertions reconstructed. Unrelated Phase3E document preserved.",
+  "node_tests": 71,
+  "demo_workflow_checks": 27,
+  "python_audit_tests": 17,
+  "expanded_browser": {
+    "browser": "Chromium",
+    "checks": 46,
+    "passed": 46,
+    "failed": 0,
+    "persisted_revisions": 2,
+    "local_network_change_read_retries": 0,
+    "scenarios": [
+      "Scoped monthly visit trends load from the isolated API",
+      "CO original page loads",
+      "CO visit saved",
+      "CO correction saved",
+      "Reload retains corrected visit",
+      "History dialog shows revision",
+      "Mobile navigation",
+      "Independent database history matches",
+      "Teacher registration persisted and refreshed",
+      "Teacher profile correction persists",
+      "Stored synthetic markup is escaped in original tables and dialog titles",
+      "Teacher individual attendance persists",
+      "Teacher confirmed bulk attendance persists",
+      "Teacher assessment batch persists",
+      "Attendance P to bulk A to L correction retains independent audit revisions",
+      "Corrected attendance persists after full refresh",
+      "Original Save attendance confirms fresh explicit marks without filling unknowns or creating duplicate revisions",
+      "Assessment correction retains original context and independent audit revisions",
+      "Corrected assessment persists after full refresh",
+      "Assessment revision history is reachable from the original correction dialog",
+      "Historical academic year loads without fabricated scores/dates",
+      "Academic year can return to current verified data",
+      "Back and forward restore non-personal view state",
+      "Teacher cross-centre API request denied independently of UI",
+      "Teacher named activity persists",
+      "Teacher participation persists",
+      "Teacher observed CAC delivery persists",
+      "Unavailable API fails closed without sample fallback or partial data",
+      "Leadership original aggregate-only view has no write/profile navigation",
+      "Leadership analytics do not expose private names",
+      "Sign-in-first screen loads without any programme RPC or anonymous dashboard",
+      "Sign-in is usable on mobile without horizontal overflow",
+      "Anonymous attendance write remains denied independently of the UI",
+      "Failed sign-in clears the password and exposes no programme data",
+      "Recovery request uses the current origin and a neutral account message",
+      "Verified recovery exchange scrubs the one-use code before programme loading",
+      "Refreshing a pending reset cannot turn the recovery session into programme access",
+      "Canceling recovery clears its pending session and returns to sign-in",
+      "Mismatched passwords cannot change the Auth account",
+      "Unexpected Auth errors never echo provider detail or load programme records",
+      "Password update signs out locally and requires fresh programme authentication",
+      "Consumed or invalid recovery code cannot reopen the password form",
+      "Implicit token URL is rejected and scrubbed without adopting a session",
+      "Verified synthetic sign-in opens the original authorized interface",
+      "Existing verified session survives refresh",
+      "Sign-out purges private programme state and returns to sign-in-first"
+    ],
+    "boundary": "Original UI and actual isolated PostgREST/PostgreSQL persistence for three signed fixture roles; not managed Auth or deployed Preview."
+  },
+  "dependent_browser": {
+    "suite": "dependent filters original UI / actual isolated PostgreSQL",
+    "checks": 18,
+    "passed": 18,
+    "failed": 0,
+    "scenarios": [
+      "Morning Grade options equal an independent authorized roster read",
+      "Evening recalculates Grade and clears an invalid previous grade",
+      "A still-valid selected grade survives shift changes in either order",
+      "Restored source download returns the actual code-only ZIP without workbooks or private artifacts",
+      "Filtered table and CSV export contain the same single eligible episode",
+      "KPI and chart filtered population agree with the independently requested scoped SQL aggregate",
+      "Original gender chart quick filters toggle the shared population and clear on repeated click",
+      "Teacher filter options never include another centre",
+      "Academic year reload clears invalid Grade/Shift using actual historical assignment dates",
+      "Reset stays inside selected historical academic year and preserves an accurate empty state",
+      "Academic Year \u2192 Centre \u2192 Shift \u2192 Grade recovers current source-backed options",
+      "Original grouped cohort columns and clickable pass-year selection are restored with verified synthetic source",
+      "Donor \u2192 Centre \u2192 Shift \u2192 Grade keeps original dependent dropdown structure",
+      "Changing donor clears invalid centre/shift/grade without stale values",
+      "Masked Leadership gender\u2192Grade options use only authorized aggregates, never private profile inference",
+      "Clear/reset restores the full authorized filter scope",
+      "Original dropdown styling and responsive shell remain usable on mobile",
+      "Mobile drawer navigation remains clickable above sticky filter controls"
+    ],
+    "boundary": "Synthetic local Auth and isolated PostgREST; not hosted staff writes or Preview evidence."
+  },
+  "baseline_browser": {
+    "suite": "001\u2013019 original-interface compatibility",
+    "checks": 7,
+    "passed": 7,
+    "failed": 0,
+    "scenarios": [
+      "Actual missing capability RPC returns HTTP404/PGRST202; verified baseline reads still render the original UI",
+      "Loaded historical episode IDs exactly match an independent scoped API read",
+      "Undeployed supplements and incomplete dated-only assessment reads are not requested",
+      "Operational controls remain present but unavailable mutations never reach an RPC",
+      "Quarter-inclusive assessment limitation is explicit, not a misleading zero or partial score chart",
+      "Leadership loads scoped counts without private names or fabricated gender counts",
+      "403scope/401session/406schema failures stop loading and show sanitized exact RPC diagnostics"
+    ],
+    "boundary": "Real isolated PG17/PostgREST with synthetic local Auth only; no hosted session/Preview evidence."
+  },
+  "isolated_calculation_cases": 1440,
+  "security_probes_per_schema": {
+    "001\u2013019": 90,
+    "001\u2013023_plus024": 93
+  },
+  "security_schema_versions": [
+    "001\u2013019",
+    "001\u2013023 + proposal024"
+  ],
+  "hosted_function_body_parity": [
+    {
+      "name": "add_enrolment",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "add_morarji_member",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "close_enrolment",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "create_activity",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "record_assessment",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "record_attendance",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "record_morarji",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "record_participation",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    },
+    {
+      "name": "register_student",
+      "body_matches": true,
+      "owner_matches": true,
+      "settings_match": true
+    }
+  ],
+  "advisor_review": {
+    "project": "pbkwpfdpdtelmvbkzgvx",
+    "read_only": true,
+    "advisor_names": [
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "authenticated_security_definer_function_executable",
+      "auth_leaked_password_protection"
+    ],
+    "flagged_functions": [
+      {
+        "schema": "mass_api",
+        "name": "add_enrolment",
+        "arguments": "p_child uuid, p_centre uuid, p_grade text, p_shift text, p_start date, p_status text",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "d85ff9acaf267b1b437ed18b1c87c047f834904065f39274d40e062dcd76dd67"
+      },
+      {
+        "schema": "mass_api",
+        "name": "add_morarji_member",
+        "arguments": "p_enrolment uuid, p_cohort uuid",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "dcb7fd81b54895c01f7a73ca8322f3babdae187273a84defd469d55280f7b452"
+      },
+      {
+        "schema": "mass_api",
+        "name": "close_enrolment",
+        "arguments": "p_id uuid, p_expected bigint, p_ends_before date, p_status text",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "e99245a0c1b5db212f95d5d3fdc6de06158713e324d9247e443617f9312ea664"
+      },
+      {
+        "schema": "mass_api",
+        "name": "create_activity",
+        "arguments": "p_id uuid, p_centre uuid, p_shift text, p_date date, p_name text",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "8773ef90ce52f157d0213a5c689d391cc33c6a46a1df6331b9fe320515adb943"
+      },
+      {
+        "schema": "mass_api",
+        "name": "record_assessment",
+        "arguments": "p_enrolment uuid, p_definition uuid, p_date date, p_score numeric, p_expected bigint",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "0bd3b5b5223b2b1238348983e4ecefb02e3e860d936e086ee0eb1d780ee65214"
+      },
+      {
+        "schema": "mass_api",
+        "name": "record_attendance",
+        "arguments": "p_enrolment uuid, p_date date, p_code text, p_expected bigint",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "4b12abf4a7001dd910a2dcb0d7575bb1e55264ccac5368c48792ce61efb5f379"
+      },
+      {
+        "schema": "mass_api",
+        "name": "record_morarji",
+        "arguments": "p_member uuid, p_applied boolean, p_attended boolean, p_passed boolean, p_school text, p_expected bigint",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "6a1ad223725f2db4446ea1ceb49934df50a49d94cecae52106cd993391158df2"
+      },
+      {
+        "schema": "mass_api",
+        "name": "record_participation",
+        "arguments": "p_enrolment uuid, p_event uuid, p_participated boolean, p_expected bigint",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "c48ea26e8d9ffd737b50403f6da78079e97dde95dc3873a7e6887f0522c51ca4"
+      },
+      {
+        "schema": "mass_api",
+        "name": "register_student",
+        "arguments": "p_centre uuid, p_grade text, p_shift text, p_start date, p_name text, p_gender text",
+        "owner": "mass_core_owner",
+        "settings": [
+          "search_path=pg_catalog"
+        ],
+        "authenticated_execute": true,
+        "anon_execute": false,
+        "service_execute": false,
+        "body_sha256": "3c09570cc44df1eabbf40d10bb1efe6343865c8f4ca715321aaa50036cc8b508"
+      }
+    ],
+    "boundary": "Catalog and advisor inspection only; function ownership/ACLs are not proof of hosted staff-session or DDL execution."
+  },
+  "hosted_read_only_health": [
+    {
+      "inspection_principal": "supabase_read_only_user",
+      "read_only": "on",
+      "migrations": 19,
+      "students": 1458,
+      "attendance": 47323,
+      "assessments": 207,
+      "forced_rls": true,
+      "jit": {
+        "context": "user",
+        "setting": "off"
+      }
+    }
+  ],
+  "populated_upgrade": "All27original-table projections preserved;020\u2013023injected failures/rollback/retry pass;024scoped read after upgrade pass.",
+  "visual": {
+    "screenshots": 40,
+    "original_ref": "0b57ea193e5dd8decb9a451d0b1cea44e22322fb",
+    "chart_numbers": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25
+    ],
+    "differences": [],
+    "overflow_cases": 0,
+    "reference_mobile_drawer": "Original reference has a sticky-filter stacking defect; its navigation is invoked programmatically for screenshots. Current mobile drawer must pass actual clicks.",
+    "boundary": "Offline fictional demo reference/screenshots. Real-data chart contracts and protected workflows verified separately; not pixel identity or deployed Preview certification."
+  },
+  "performance": {
+    "cases": [
+      {
+        "runs": 5,
+        "max_ms": 1322.32,
+        "min_ms": 1179.72,
+        "mean_ms": 1249.47,
+        "case_name": "all92",
+        "jit_setting": "off"
+      },
+      {
+        "runs": 5,
+        "max_ms": 861.35,
+        "min_ms": 750.72,
+        "mean_ms": 797.46,
+        "case_name": "all92",
+        "jit_setting": "on"
+      },
+      {
+        "runs": 5,
+        "max_ms": 30.71,
+        "min_ms": 28.54,
+        "mean_ms": 29.25,
+        "case_name": "grade_shift_gender",
+        "jit_setting": "off"
+      },
+      {
+        "runs": 5,
+        "max_ms": 42.87,
+        "min_ms": 31.91,
+        "mean_ms": 36.55,
+        "case_name": "grade_shift_gender",
+        "jit_setting": "on"
+      },
+      {
+        "runs": 5,
+        "max_ms": 6.34,
+        "min_ms": 5.26,
+        "mean_ms": 5.58,
+        "case_name": "one_centre",
+        "jit_setting": "off"
+      },
+      {
+        "runs": 5,
+        "max_ms": 10.22,
+        "min_ms": 6.83,
+        "mean_ms": 8.02,
+        "case_name": "one_centre",
+        "jit_setting": "on"
+      }
+    ],
+    "centres": 92,
+    "boundary": "Isolated synthetic PG17 timing; not a hosted/network SLA",
+    "assessment_rows": 3000,
+    "attendance_rows": 46500,
+    "synthetic_students": 1500
+  },
+  "performance_boundary": "Recovered synthetic benchmark from the interrupted work; function-local jit=off. Hosted default is already off; no hosted speedup is claimed.",
+  "staff_dry_run": {
+    "rows": 141,
+    "by_status": {
+      "held": 141
+    },
+    "issue_counts": {
+      "centre_verified_required": 141,
+      "current_centre_policy_cannot_grant_unverified_or_shift_limited_scope": 141,
+      "existing_auth_uuid_required": 141,
+      "existing_centre_required": 14,
+      "explicit_profile_capability_required": 141,
+      "identity_verified_required": 141,
+      "one_confirmed_existing_auth_account_required": 141,
+      "opaque_verification_reference_required": 141,
+      "profile_access_verified_required": 141,
+      "role_verified_required": 141,
+      "scope_verified_required": 141,
+      "separately_verified_officer_assignment_dates_required": 11,
+      "unambiguous_existing_email_identity_required": 60,
+      "verified_officer_directory_auth_link_required": 11,
+      "verified_timezone_aware_dates_required": 141,
+      "verified_email_identity_mismatch": 81
+    },
+    "accounts_created": 0,
+    "grants_applied": 0,
+    "sql_generated": false
+  },
+  "proposal_024_sha256": "1f347f031d41cad4844da9c1936b7fb798e577865d6ee761e2a0d037ba28b327",
+  "canonical_migrations_001_023_modified": false,
+  "production_write_or_migration_executed": false,
+  "accounts_or_grants_created": 0,
+  "google_sign_in_implemented": false,
+  "preview_authenticated_runtime_verified_by_agent": false,
+  "build_and_syntax": "passed",
+  "real_sdk_postgrest_checks": 18,
+  "preview_build_status": "To inspect after publishing; GitHub API transport currently Forbidden and no Vercel token/connector available.",
+  "proposal_calculation_body_unchanged": true,
+  "privacy_scan": {
+    "status": "passed",
+    "files": 21,
+    "private_source_literal_matches": 0,
+    "secret_pattern_matches": 0,
+    "private_artifacts_in_release": 0
+  }
+}

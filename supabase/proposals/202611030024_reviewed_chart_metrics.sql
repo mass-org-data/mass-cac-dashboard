@@ -1,9 +1,10 @@
 -- PROPOSAL ONLY: reviewed workbook calculations. Not a hosted migration.
 -- Depends on reviewed020–023. No tables, roles, source data or policies changed.
+-- Bounded monthly read: avoid JIT compilation overhead without changing results.
 BEGIN;
 SET LOCAL ROLE mass_core_owner;
 CREATE FUNCTION mass_api.reviewed_chart_metrics(p_centres uuid[],p_on date,p_from date,p_until date,p_year uuid,p_grade text DEFAULT NULL,p_shift text DEFAULT NULL,p_gender text DEFAULT NULL,p_earlier integer DEFAULT 1,p_later integer DEFAULT 2)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog SET jit=off AS $$
 DECLARE result jsonb;
 BEGIN
  PERFORM mass_core.require_staff_session();

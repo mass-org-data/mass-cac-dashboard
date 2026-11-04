@@ -3,9 +3,10 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 if [[ "${MASS_POPULATED_UPGRADE:-0}" == 1 && "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'Populated upgrade requires020–023; invalid test combination';exit 1;fi
 if [[ "${MASS_DEPENDENT_BROWSER:-0}" == 1 && "${MASS_REVIEWED_CHARTS:-0}" != 1 ]];then echo 'Dependent browser suite requires reviewed synthetic fixtures';exit 1;fi
+if [[ "${MASS_AGGREGATE_PERFORMANCE:-0}" == 1 ]];then MASS_LOCAL_PG_TMPFS_SIZE=512m;fi
 container="mass-release-${RANDOM}-$$"
 trap 'docker rm -fv "$container" >/dev/null 2>&1 || true' EXIT INT TERM
-docker run -d --name "$container" --network none --tmpfs /var/lib/postgresql/data:rw,nosuid,noexec,size=256m -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe >/dev/null
+docker run -d --name "$container" --network none --tmpfs /var/lib/postgresql/data:rw,nosuid,noexec,size=${MASS_LOCAL_PG_TMPFS_SIZE:-256m} -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe >/dev/null
 for ((n=0;n<60;n++));do if docker exec "$container" pg_isready -U postgres >/dev/null 2>&1;then break;fi;sleep 1;done
 sql(){ docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U postgres "$@"; }
 sql < "$repo_root/tests/core/bootstrap.sql"
@@ -58,6 +59,11 @@ SQL
  echo 'PASS: populated001–019→020–023 upgrade, all failure rollbacks/retries, original data and optional024 scoped reads.'
  exit 0
 fi
+if [[ "${MASS_AGGREGATE_PERFORMANCE:-0}" == 1 ]];then
+ if [[ "${MASS_REVIEWED_CHARTS:-0}" != 1 ]];then echo 'Performance suite requires024proposal';exit 1;fi
+ sql < "$repo_root/tests/performance/reviewed.sql"
+ exit 0
+fi
 sql -Atc "SELECT 'SCHEMA_INVENTORY '||jsonb_build_object('tables',(SELECT count(*) FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r'),'columns',(SELECT count(*) FROM pg_attribute WHERE attrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped),'foreign_keys',(SELECT count(*) FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace) AND contype='f'),'policies',(SELECT count(*) FROM pg_policy WHERE polrelid IN (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace,'mass_import'::regnamespace))))::text;"
 
 python - "$repo_root" "${MASS_BASELINE_BROWSER:-0}" <<'PY' | sql
@@ -75,11 +81,24 @@ if [[ "${MASS_BASELINE_BROWSER:-0}" != 1 ]];then
 fi
 if [[ "${MASS_REVIEWED_CHARTS:-0}" == 1 ]];then
  sql < "$repo_root/tests/reviewed-calculations/synthetic.sql"
+ sql < "$repo_root/tests/security/definer-matrix.sql"
  review_output="$(mktemp -d /tmp/mass-reviewed-calculations.XXXXXX)"
  sql -At < "$repo_root/tests/reviewed-calculations/export.sql" > "$review_output/input.json"
  node "$repo_root/tests/reviewed-calculations/cases.mjs" "$review_output/input.json" "$review_output/cases.json" "$review_output/cases.sql"
  sql -At < "$review_output/cases.sql" > "$review_output/sql-results.jsonl"
  node "$repo_root/tests/reviewed-calculations/compare.mjs" "$review_output/input.json" "$review_output/cases.json" "$review_output/sql-results.jsonl"
+fi
+if [[ "${MASS_SECURITY_REVIEW:-0}" == 1 && "${MASS_REVIEWED_CHARTS:-0}" != 1 ]];then sql < "$repo_root/tests/security/definer-matrix.sql";fi
+if [[ -n "${MASS_SECURITY_CATALOG_DIR:-}" ]];then
+ python - "$repo_root" "$MASS_SECURITY_CATALOG_DIR" <<'PATHCHECK'
+from pathlib import Path
+import sys
+if Path(sys.argv[2]).resolve().is_relative_to(Path(sys.argv[1]).resolve()):raise SystemExit('Private catalog output must be outside checkout')
+PATHCHECK
+ mkdir -p "$MASS_SECURITY_CATALOG_DIR"
+ chmod 700 "$MASS_SECURITY_CATALOG_DIR"
+ sql -Atc "SELECT coalesce(jsonb_agg(jsonb_build_object('schema',n.nspname,'name',p.proname,'arguments',pg_get_function_identity_arguments(p.oid),'body',p.prosrc,'owner',pg_get_userbyid(p.proowner),'settings',p.proconfig) ORDER BY n.nspname,p.proname),'[]'::jsonb) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='mass_api' AND p.prosecdef" > "$MASS_SECURITY_CATALOG_DIR/local-functions.private.json"
+ chmod 600 "$MASS_SECURITY_CATALOG_DIR/local-functions.private.json"
 fi
 if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'PASS: isolated001–019sequence and original core checks.';else echo 'PASS: full migration sequence and original core plus release behavioral checks.';fi
 if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then
