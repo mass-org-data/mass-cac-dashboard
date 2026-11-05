@@ -112,20 +112,28 @@ must use genuine user-entered observations; do not fabricate records to pass it.
 
 ## Remaining work and precise boundaries
 
-1. Protected Preview browser verification needs an authenticated Vercel session
-   followed by the existing MASS account. The browser currently reaches Vercel
-   login. Automatic approval review rejected a temporary shareable bypass link;
-   no deployment protection setting or persistent bypass was changed. Do not
-   claim browser/API-over-HTTP save certification from SQL-role tests.
+1. Authenticated Vercel and MASS Leadership browser sessions now work on the
+   configured Preview below. Read-only Overview, Attendance, Learning, Activities,
+   Morarji, Officer and Donor pages and dependent filters were checked. This does
+   not certify all 24 charts or genuine save/reload workflows. Leadership sign-out
+   cleared programme data. Teacher sign-in was declined; the user clarified that
+   a dedicated Teacher account must first be created. Obtain its verified email
+   and centre/shift scope before inviting it. No password should be sent in chat.
+   No deployment protection setting or bypass was changed.
+
+   Preview (commit `0761829`):
+   https://mass-cac-dashboard-l52z6ivcf-mass-data-dashboard.vercel.app/
+
 2. Visits need verified dated Auth-to-staff officer links. Directory names and
    broad test grants cannot establish those links. No link or visit was invented.
 3. Morarji dates/training days/selection/admission/scholarship, assessment absence
    and group comments, and protected follow-up notes still need additive storage,
    revision/access contracts and matching adapters. They are not implemented by
   020–024. Existing unsupported controls remain explicit and do not save locally.
-4. Final staff permissions require verified identities/scope/dates; new staff
-   accounts remain outside the user's authorization. Existing test grants are
-   intentionally retained. Google Sign-In stays last; no OAuth/Auth config changed.
+4. Final staff permissions require verified identities/scope/dates. The user now
+   requests one dedicated Teacher account; its email and assignment remain needed.
+   Existing test grants are intentionally retained. Google Sign-In stays last; no
+   OAuth/Auth config changed.
 
 Security advisor status is not all-green:24 signed-in SECURITY DEFINER notices
 now describe the intentional scoped/gated API, plus the pre-existing disabled
@@ -134,3 +142,15 @@ Review details at the official linter/password guidance; no paid Auth feature or
 existing test-account configuration was changed to silence warnings.
 
 No main merge or Production deployment occurred.
+
+## Approved quarterly reference configuration
+
+The existing April 2026 academic year now has all four quarterly assessment
+periods and four maximum-25 definitions. Existing Q1/Q2 definitions were retained;
+Q3/Q4 reference rows were added without invented dates or results. The separate
+idempotent DML script is `supabase/configuration/2026-four-quarter-definitions.sql`;
+it does not add a migration receipt. The provider rehearsal runs it twice.
+After hosted configuration, fingerprints of all original rows in the 27 original
+tables still match the pre-installation snapshot, including original audit rows.
+New configuration audit rows are intentional additions. No programme observation
+or existing account/grant was changed.

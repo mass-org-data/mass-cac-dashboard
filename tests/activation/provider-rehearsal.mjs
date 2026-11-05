@@ -44,6 +44,9 @@ for(const [i,entry] of manifest.entries()){
 }
 await db.exec(read('supabase/activation/postflight.sql'));
 await db.exec(read('tests/activation/enabled.sql'));
-console.log('PASS provider-owned transaction rehearsal; NOT proof of hosted transport atomicity.');
+await db.exec('RESET ROLE; CREATE TEMP TABLE existing_periods AS SELECT * FROM mass_core.assessment_periods; CREATE TEMP TABLE existing_definitions AS SELECT * FROM mass_core.assessment_definitions;');
+for(let i=0;i<2;i++)await db.exec(read('supabase/configuration/2026-four-quarter-definitions.sql'));
+await db.exec("SELECT core_test.assert_true((SELECT count(*)=4 FROM mass_core.assessment_periods),'all four approved quarters configured'); SELECT core_test.assert_true(NOT EXISTS(SELECT * FROM existing_periods EXCEPT SELECT * FROM mass_core.assessment_periods),'original periods unchanged'); SELECT core_test.assert_true(NOT EXISTS(SELECT * FROM existing_definitions EXCEPT SELECT * FROM mass_core.assessment_definitions),'original definitions unchanged');");
+console.log('PASS provider transaction replay and idempotent four-quarter configuration; hosted transport/session checks remain separate.');
 await db.close();
 fs.rmSync(output,{recursive:true,force:true});

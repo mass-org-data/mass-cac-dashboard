@@ -119,7 +119,7 @@
     "frozenFunctionBodiesMatchingAfterGuardRemoval": 74,
     "syntax": true,
     "build": true,
-    "hostedBrowser": "blocked_by_vercel_sign_in",
+    "hostedBrowser": "managed Leadership sign-in and read-only dashboard/filter/chart checks passed; Teacher saves pending account",
     "managedJwtPositiveSaves": "not_tested_no_fabricated_observations",
     "nativeConcurrency": "not_rerun_in_this_environment"
   },
@@ -138,10 +138,23 @@
   "remaining": [
     "Verified dated Auth-to-officer assignments before visit entry activation",
     "Morarji extra fields, assessment absence/group comments and protected follow-up storage/adapters",
-    "Managed Vercel/MASS authenticated browser and genuine observation save verification",
-    "Verified staff permission finalization; no new staff accounts authorized",
+    "Dedicated Teacher invitation requires verified email and centre scope; genuine observation save verification pending",
+    "Verified staff permission finalization; user now requests one dedicated Teacher account; existing accounts unchanged",
     "Google Sign-In last"
   ],
   "mainMerged": false,
-  "productionDeployed": false
+  "productionDeployed": false,
+  "preview": {
+    "url": "https://mass-cac-dashboard-l52z6ivcf-mass-data-dashboard.vercel.app/",
+    "commit": "076182930976bd7c94bc7680f6c512c929a626eb",
+    "production": false
+  },
+  "quarterConfiguration": {
+    "academicYear": "2026-27",
+    "quarters": 4,
+    "maximumScore": 25,
+    "existing27TableRowsPreserved": true,
+    "newAssessmentObservations": 0,
+    "idempotentRehearsalPassed": true
+  }
 }
