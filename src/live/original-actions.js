@@ -1,5 +1,6 @@
 import {operationAllowed} from './backend-capabilities.js';
 import {BackendError} from './api.js';
+import {selectedMorarjiMembership} from './morarji.js';
 export function createOriginalActions({client,api,refs,context,refresh,signOut,capabilities}) {
  const rpc=async(name,args)=>{let r;try{r=await client.schema('mass_api').rpc(name,args).retry(false);}catch{throw new BackendError({message:'network'},0,true);}if(r.error)throw new BackendError(r.error,r.status,true);return r.data;};
  return async function handle(el,t){
@@ -90,7 +91,7 @@ export function createOriginalActions({client,api,refs,context,refresh,signOut,c
   modal('Add Morarji student','Choose an existing verified student and source-backed cohort.',`${drop('Student','student',t.children().map(s=>[s.id,s.name+' · '+s.studentId]),'')}${drop('Cohort','cohort',refs.programme_cohorts.map(c=>[c.id,c.label]),'')}`,async f=>{const s=student(f.student);await done(()=>api.addMorarjiMember({enrolment:s.enrolmentId,cohort:f.cohort}));});return;
  }
  if(el.dataset.morarji){
-  const s=student(el.dataset.morarji),old=db.morarji[s.id]||db.morarjiHistory.find(r=>r.s.id===s.id&&r.cohort===state.morarjiYear);if(!old)return blocked('No verified Morarji cohort membership exists for this student.');
+  const s=student(el.dataset.morarji),old=selectedMorarjiMembership(db,s.id,state.morarjiYear,el.dataset.morarjiMembership||'');
   modal('Morarji follow-up',`${s.name} · ${old.cohort}`,`<div class="form-grid">${['applied','attended','passed'].map(k=>drop(k,k,[['','Unknown'],['true','Yes'],['false','No']],old[k]===null?'':String(old[k]))).join('')}${field('Source-backed school name','school',old.school||'')}<label class="field"><span>Training date</span><input type="date" disabled aria-label="Training date: backend support pending"></label><label class="field"><span>Entrance exam date</span><input type="date" disabled aria-label="Entrance exam date: backend support pending"></label></div><p>Separate training and entrance-exam dates are required; saving them needs a backend API update. These disabled fields do not save. Training days, selection, admission and scholarship outcomes are not inferred.</p>`,async f=>done(()=>api.recordMorarji({member:old.membershipId,applied:f.applied===''?null:f.applied==='true',attended:f.attended===''?null:f.attended==='true',passed:f.passed===''?null:f.passed==='true',school:f.school||null,expected:old.row_version||0})));return;
  }
  return blocked('This control requires an approved correction/removal, sensitive-note, guidance or cohort workflow. No local-only change is permitted.');
