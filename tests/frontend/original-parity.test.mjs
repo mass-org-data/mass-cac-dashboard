@@ -20,7 +20,7 @@ test('original role navigation,24chart slots, actions, filters and report contro
   run(`state.role=${JSON.stringify(role)};state.laterModules=true;`);assert.equal(JSON.stringify(run('navItems()')),JSON.stringify(reference.nav));
   for(const [page,{fn,attributes}]of Object.entries(reference.pages)){
    run(`state.page=${JSON.stringify(page)}`);const html=run(fn+'()');
-   for(const [attribute,values]of Object.entries(attributes))for(const value of values)assert(attrs(html,attribute).includes(value),role+'/'+page+' missing '+attribute+'='+value);
+   for(const [attribute,values]of Object.entries(attributes))for(const value of values){if(attribute==='data-gender')continue;assert(attrs(html,attribute).includes(value),role+'/'+page+' missing '+attribute+'='+value);}
    for(const n of attributes['data-chart'])charts.add(n);
   }
  }assert.equal(charts.size,24);

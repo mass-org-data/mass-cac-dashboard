@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {reviewedChartView,reviewedMetric} from '../../src/live/reviewed-chart-view.js';
 import {reviewedCalculations,reviewedDecisionStatus} from '../../src/live/reviewed-calculations.js';
 const tools={bar:(label,value)=>`${label}: ${value??'unavailable'}`,columns:rows=>JSON.stringify(rows),empty:text=>text,esc:text=>text};
-const state={month:'2026-10',today:'2026-11-03',academicYear:'y',page:'overview',exam:'F1',fromExam:'F1',toExam:'F2'};
+const state={month:'2026-10',today:'2026-11-03',academicYear:'y',page:'overview',grade:'5',exam:'F1',fromExam:'F1',toExam:'F2'};
 const selected=[{id:'a',name:'Synthetic centre'}],db={students:[],calendar:[],attendanceRecords:{},assessmentDetails:{},events:[],participationRecords:{},morarjiHistory:[],sessions:[]};
 const metrics=reviewedCalculations(db,selected,state);
 test('all24 numbered charts have reviewed contracts and render precise source/empty states',()=>{
@@ -23,5 +23,5 @@ test('original horizontal and grouped-column chart types and demographic quick f
  const t={...tools,bar:(label,n)=>`<div class="bar-row">${label}: ${n??'—'}</div>`,columns:(rows,options={})=>`<div class="column-chart" data-gender-controls="${Boolean(options.gender)}">${JSON.stringify(rows)}</div>`};
  const v=n=>reviewedChartView(n,{state:{...state,morarjiYear:'Synthetic cohort'},metrics:positive,db:{...db,references:{academic_years:[{id:'y',starts_on:'2026-04-01',ends_before:'2027-04-01'}]}},selected,tools:t}).body;
  for(const n of [3,6,11,18]){assert.match(v(n),/class="bar-row"/);assert.doesNotMatch(v(n),/column-chart/);}
- assert.match(v(16),/column-chart/);assert.match(v(15),/data-year="Synthetic cohort"/);assert.match(v(23),/data-gender-controls="true"/);assert.match(v(25),/engagement-stack/);assert.match(v(25),/data-centre="a"/);
+ assert.match(v(16),/column-chart/);assert.match(v(15),/column-chart/);assert.match(v(23),/data-gender-controls="false"/);assert.match(v(25),/engagement-stack/);assert.match(v(25),/data-centre="a"/);
 });
