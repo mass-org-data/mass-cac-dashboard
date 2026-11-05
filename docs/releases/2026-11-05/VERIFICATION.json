@@ -119,8 +119,8 @@
     "frozenFunctionBodiesMatchingAfterGuardRemoval": 74,
     "syntax": true,
     "build": true,
-    "hostedBrowser": "managed Leadership sign-in and read-only dashboard/filter/chart checks passed; Teacher saves pending account",
-    "managedJwtPositiveSaves": "not_tested_no_fabricated_observations",
+    "hostedBrowser": "Prior Leadership read-only verification; Teacher session observed before refresh; new post-cleanup sign-in attempt rejected",
+    "managedJwtPositiveSaves": "User confirmed frontend saves; five audit-verified managed authenticated insertions, subsequently removed by separately authorized cleanup",
     "nativeConcurrency": "not_rerun_in_this_environment"
   },
   "advisors": [
@@ -156,5 +156,41 @@
     "existing27TableRowsPreserved": true,
     "newAssessmentObservations": 0,
     "idempotentRehearsalPassed": true
+  },
+  "attendanceTestCleanup": {
+    "providerVersion": "20261105150407",
+    "providerName": "mass_20261105_attendance_test_cleanup",
+    "removed": 5,
+    "codes": {
+      "P": 2,
+      "A": 2,
+      "L": 1
+    },
+    "attendanceDate": "2026-11-05",
+    "totalBefore": 47328,
+    "totalAfter": 47323,
+    "originalAuditRowsRetained": 5,
+    "privateImmutableReceipts": 5,
+    "unrelatedProgrammeRowsUnchanged": true,
+    "originalGuardRestoredByteForByte": true,
+    "originalGuardAclUnchanged": true,
+    "rlsDisabled": false,
+    "persistentDeletionEndpoint": false,
+    "isolatedScenariosPassed": 7,
+    "dayReadApiRows": 0,
+    "novemberApiPAL": [
+      0,
+      0,
+      0
+    ],
+    "novemberApiRate": null,
+    "hostedBrowser": "Fresh session sign-in rejected with generic session-verification message; post-cleanup chart display not yet certified"
+  },
+  "teacherProvisioning": {
+    "newCentreGrants": 1,
+    "role": "Teacher",
+    "scope": "one approved centre, both shifts",
+    "profileCapability": false,
+    "existing276GrantsUnchanged": true
   }
 }

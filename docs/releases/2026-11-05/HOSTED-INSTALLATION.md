@@ -154,3 +154,17 @@ After hosted configuration, fingerprints of all original rows in the 27 original
 tables still match the pre-installation snapshot, including original audit rows.
 New configuration audit rows are intentional additions. No programme observation
 or existing account/grant was changed.
+
+## Later authorized operations on 5 November
+
+The dedicated Teacher identity supplied by the user was verified against managed
+Auth and received one centre-scoped Teacher grant for Aralimatti, both shifts,
+effective immediately with no expiry; private-profile capability stays false.
+The existing 276 broad test-account grants remain byte-identical.
+
+The user then verified frontend attendance saving and explicitly requested removal
+of five disposable observations. This has completed with immutable private
+receipts and byte-for-byte restoration of the normal guard. See
+[ATTENDANCE-TEST-CLEANUP.md](ATTENDANCE-TEST-CLEANUP.md) for exact transaction,
+verification and browser limitations. This supersedes earlier statements in this
+installation report that no dedicated Teacher account had yet been supplied.

@@ -20,7 +20,8 @@
     "test:students": "python tests/students/test_staging.py && bash tests/students/run-local.sh && bash tests/students/run-current-core.sh",
     "check:preview": "node scripts/preview-config.mjs",
     "test:activation": "python -m unittest discover -s tests/activation -p 'test_*.py' && node tests/activation/provider-rehearsal.mjs",
-    "test:sql:portable": "node tests/release/portable-sql.mjs"
+    "test:sql:portable": "node tests/release/portable-sql.mjs",
+    "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0"
