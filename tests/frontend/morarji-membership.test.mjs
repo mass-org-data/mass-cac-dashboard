@@ -36,6 +36,8 @@ test('follow-up submits the selected cohort membership and its expected revision
     field: () => '', drop: () => '', toast: () => {},
   });
   assert.equal(calls.length, 0);
+  await assert.rejects(submit({applied: 'false', attended: 'true', passed: '', school: ''}), /Attended cannot/);
+  assert.equal(calls.length, 0);
   await submit({applied: '', attended: '', passed: '', school: ''});
   assert.deepEqual(calls, [{member: 'old', applied: null, attended: null, passed: null, school: null, expected: 3}]);
 });

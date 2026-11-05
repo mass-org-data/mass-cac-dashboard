@@ -1,3 +1,4 @@
+import {validateMorarjiFacts} from './morarji.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const OPTIONS = {
   grade: Array.from({length: 10}, (_, i) => String(i + 1)),
@@ -109,6 +110,7 @@ export function createApi(client) {
       return write('add_morarji_member', {p_enrolment: uuid(enrolment), p_cohort: uuid(cohort)});
     },
     recordMorarji({member, applied, attended, passed, school, expected}) {
+      validateMorarjiFacts({applied, attended, passed});
       if (school !== null && (typeof school !== 'string' || school.length > 160)) throw new Error('School must be at most 160 characters.');
       return write('record_morarji', {p_member: uuid(member), p_applied: nullableBoolean(applied), p_attended: nullableBoolean(attended), p_passed: nullableBoolean(passed), p_school: school, p_expected: revision(expected)});
     },
