@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-05",
+  "project": "pbkwpfdpdtelmvbkzgvx",
+  "originalFeedbackPoints": 13,
+  "statuses": {
+    "Already Supported": 4,
+    "Done": 2,
+    "Needs Decision": 3,
+    "Not Recommended": 4
+  },
+  "documents": {
+    "response": {
+      "url": "https://docs.google.com/document/d/12Iwcm975CwZA7CLEMm9c7ACRruZLNkZDPhRYfygf5iw",
+      "updatedInPlace": true,
+      "originalContentAndFormattingUnchanged": true,
+      "originalImageObjectsPreserved": true,
+      "originalImageCount": 9,
+      "responseHeadings": 13,
+      "statusLabels": 13,
+      "all13OriginalFeedbackIncluded": true,
+      "commitLinked": true
+    },
+    "model": {
+      "url": "https://drive.google.com/file/d/1OQv7zA0IUbniuCFac2HZcw97Ob73qYCP/view?usp=drivesdk",
+      "fileId": "1OQv7zA0IUbniuCFac2HZcw97Ob73qYCP",
+      "updatedInPlace": true,
+      "byteForByteReadback": true,
+      "sha256": "bfa5b08bf3f2e70a4cd5c3ad02f64c8d7df44947032a1aba34e4b0f0338c8ca6",
+      "tables": 35,
+      "columns": 249,
+      "pages": 7,
+      "arrows": 0
+    }
+  },
+  "implementationCommit": "1da007eceee8772644912c232eb84a1ef7a94ee7",
+  "applicationChanges": [
+    "Clarify inclusive Start date and excluded First inactive date without date conversion",
+    "Display Delivered while preserving existing Held RPC/storage value",
+    "Reject contradictory confirmed Morarji facts in form and API client; preserve independently unknown facts"
+  ],
+  "tests": {
+    "frontendPassed": 86,
+    "frontendFailed": 0,
+    "existingWorkflowChecksPassed": 27,
+    "morarjiNullableCombinationsCovered": 27,
+    "build": true
+  },
+  "hostedReview": {
+    "readOnly": true,
+    "attendance": 47323,
+    "testDateRows": 0,
+    "cleanupReceipts": 5,
+    "guardRestored": true,
+    "assessmentResults": 207,
+    "periods": 4,
+    "definitions": 4,
+    "maxScore": 25,
+    "calendarRows": 0,
+    "deliveryRows": 0,
+    "morarjiOutcomeRows": 0,
+    "sourceFiles": 4,
+    "sourceSheets": 37,
+    "importReceipts": 51904,
+    "unforcedRlsTables": 0
+  },
+  "decisions": [
+    "Actual assessment instrument/components/scoring and absence rules",
+    "Last active versus first inactive convention only if an End date input is required",
+    "Morarji stage vocabulary/transitions and distinct selection/admission/scholarship outcomes"
+  ],
+  "notImmediateBlocker": "Future provenance archive needs a retention/dependency/recovery decision; no deletion proposed",
+  "serverMorarjiEnforcement": "Not added; existing write gate stays disabled pending reviewed server contract",
+  "mainMerged": false,
+  "productionDeployed": false,
+  "postCleanupBrowserCharts": "Not certified: successful fresh sign-in still pending"
+}

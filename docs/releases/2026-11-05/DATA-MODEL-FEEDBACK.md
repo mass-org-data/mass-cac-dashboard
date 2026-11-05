@@ -177,7 +177,7 @@ Model: https://drive.google.com/file/d/1OQv7zA0IUbniuCFac2HZcw97Ob73qYCP/view?us
 **Original feedback**
 
 > We’re only saving each student’s final score on an assessment; we aren’t recording the subject, topic, or the specific skills and competencies being assessed. Without that information, the data become far less actionable. You’ll know which students are performing well, or poorly, but you won’t know in which subjects they excel or struggle.
-> 
+>
 > Consider what level of granularity you need for tracking assessment scores. Aashini Goyalplease check
 
 **Explanation / answer:** This feedback identifies a real functional gap. The live database and frontend record one overall quarterly score per student/definition, not subject/item/skill breakdowns. Four quarterly exams and maximum score 25 are approved; the actual assessment instrument, component maxima, weights and skill mapping have not been supplied. Overall totals cannot reveal subject strengths.
@@ -195,14 +195,14 @@ Model: https://drive.google.com/file/d/1OQv7zA0IUbniuCFac2HZcw97Ob73qYCP/view?us
 **Original feedback**
 
 > On the MORAJ outcomes table, using three columns, **applied**, **attended**, and **passed**, to track status is problematic because the statuses are interdependent. A student cannot attend the exam without first applying, and they cannot pass it without attending.
-> 
+>
 > If you create three Boolean columns, you could mark **attended** as true while **applied** remains false, which is misleading. How could a student attend the scholarship exam without having applied?
-> 
+>
 > Instead, use a single status field that progresses through the stages:
-> applied  
-> attended  
-> passed (or failed)  
-> 
+> applied
+> attended
+> passed (or failed)
+>
 > This single field accurately reflects the student's journey.
 
 **Explanation / answer:** The concern is valid: independently nullable applied/attended/passed flags can express contradictory confirmed facts. They originally preserved independently incomplete source outcomes; NULL means unverified, not No. A single stage can improve entry but cannot safely reconstruct missing earlier stages or distinguish failed, absent and result pending without a reviewed mapping. There are currently zero stored outcomes.
@@ -220,15 +220,15 @@ Model: https://drive.google.com/file/d/1OQv7zA0IUbniuCFac2HZcw97Ob73qYCP/view?us
 **Original feedback**
 
 > The source‑provenance section should be evaluated for necessity. It proved valuable on a project like ProjectKHEL, which involved 50–60 different data sources shared with us. In that case we needed to trace data back to the original sheet from which it was migrated.
-> 
+>
 > If Mass does not have many Google Sheets, we should avoid creating numerous tables merely to track data migration. At most, we might record only:
-> - file name  
-> - sheet name  
-> - row number  
-> - column name  
-> 
+> - file name
+> - sheet name
+> - row number
+> - column name
+>
 > These four fields would indicate where the data was originally migrated from.
-> 
+>
 > This is also a temporary use case. Once MASS fully adopts the system, the tables will become redundant and should eventually be removed.
 
 **Explanation / answer:** The hosted provenance is actively referenced: four imported source files, 37 source sheets and 51,904 private target receipts. The broader discovery audit and the currently imported subset are different inventories. The tables implement import retry identity, source/target reconciliation, quarantined exceptions and immutable fingerprints; file/sheet/row/column labels alone cannot replace these guarantees. Ongoing audit history is also distinct from migration provenance.
