@@ -5,8 +5,8 @@ import {createReadApi} from './reads.js';
 import {createDirectoryApi,directoryCentres} from './directory.js';
 import {createSessionController} from './session.js';
 import {liveToday,monthWindow,roster,matches,filteredFacts,attendanceTotals,quarterLabel,quarterWindow,emptyCentre,eligibleEpisode,activeOn,combineCentres} from './model.js';
+import {escapeHtml as esc} from './html.js';
 
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const empty=text=>`<div class="empty">${esc(text)}</div>`;
 const action=(label,name,attributes='',primary=false)=>`<button class="btn ${primary?'primary':''}" data-work-action="${name}" ${attributes}>${['new-student','new-activity','new-morarji'].includes(name)?icon('plus'):name==='manage'?icon('check'):name==='collapse'?icon('menu'):''}${label}</button>`;
 const metric=(label,value,foot='')=>`<div class="card metric"><div class="metric-top">${label}</div><div class="metric-value">${esc(value)}</div><div class="metric-foot">${esc(foot)}</div></div>`;

@@ -10,6 +10,7 @@ import {loadVisitTrends} from './visit-trends.js';
 import {discoverCapabilities,BASELINE_READ_NOTICE,safeDiagnosticText} from './backend-capabilities.js';
 import {baselineAggregates} from './baseline-aggregates.js';
 import {reviewedCalculations} from './reviewed-calculations.js';
+import {createAccessVerificationGate,isAuthorizationFailure} from './access-verification.js';
 
 export async function startOriginalReview(config) {
  globalThis.__massReviewToday=liveToday();
@@ -141,16 +142,13 @@ export async function startOriginalReview(config) {
  globalThis.__massLoadVisitMonth=loadVisits;
  await refresh();globalThis.__massMorarjiCohort=Object.values(db.morarji)[0]?.cohort||db.morarjiHistory[0]?.cohort||'';globalThis.__massLiveReviewData=db;
  globalThis.__massOriginalActions=createOriginalActions({client,api,refs,context,refresh,capabilities,signOut:async()=>{clear();try{await client.auth.signOut({scope:'local'});}finally{clearStoredSession(config);window.location.reload();}}});
- const fingerprint=JSON.stringify(context.centres);let verificationBlocked=false,verifying=false;
- const authorizationFailure=error=>[401,403].includes(Number(error?.status));
+ const fingerprint=JSON.stringify(context.centres);let verifying=false;
  const endSession=()=>{clear();login();};
- const blockForVerification=()=>{if(dead||verificationBlocked)return;verificationBlocked=true;root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Rechecking your access</h1><p role="status">The connection could not be verified. Protected records are hidden while the application retries.</p><button type="button" id="retry-access-verification">Retry now</button></section></main>';};
- const restoreAfterVerification=()=>{if(!verificationBlocked)return;verificationBlocked=false;globalThis.__massOriginalRefresh?.();};
- client.auth.onAuthStateChange((event,session)=>queueMicrotask(async()=>{if(!session||session.user?.id!==context.user_id){endSession();return;}if(event==='TOKEN_REFRESHED'){try{const current=await reads.context(readController.signal);if(current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){endSession();return;}restoreAfterVerification();}catch(error){if(authorizationFailure(error))endSession();else blockForVerification();}}}));
+ const verification=createAccessVerificationGate({root,onRestore:()=>globalThis.__massOriginalRefresh?.(),onRetry:()=>void verifyScope()});
+ client.auth.onAuthStateChange((event,session)=>queueMicrotask(async()=>{if(!session||session.user?.id!==context.user_id){endSession();return;}if(event==='TOKEN_REFRESHED'){try{const current=await reads.context(readController.signal);if(current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){endSession();return;}verification.restore();}catch(error){if(isAuthorizationFailure(error))endSession();else if(!dead)verification.block();}}}));
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void verifyScope();});
- root.addEventListener('click',event=>{if(event.target.closest('#retry-access-verification'))void verifyScope();});
- async function verifyScope(){if(dead||verifying)return;verifying=true;try{const [current,auth]=await Promise.all([reads.context(readController.signal),client.auth.getUser()]);if(auth.error){if(authorizationFailure(auth.error)){endSession();return;}throw auth.error;}if(auth.data?.user?.id!==context.user_id||current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){endSession();return;}restoreAfterVerification();}catch(error){if(authorizationFailure(error))endSession();else blockForVerification();}finally{verifying=false;}}
+ async function verifyScope(){if(dead||verifying)return;verifying=true;try{const [current,auth]=await Promise.all([reads.context(readController.signal),client.auth.getUser()]);if(auth.error){if(isAuthorizationFailure(auth.error)){endSession();return;}throw auth.error;}if(auth.data?.user?.id!==context.user_id||current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){endSession();return;}verification.restore();}catch(error){if(isAuthorizationFailure(error))endSession();else if(!dead)verification.block();}finally{verifying=false;}}
  const timer=setInterval(()=>{if(dead)clearInterval(timer);else void verifyScope();},30000);
  await import('../app.js');
- }catch(error){clear();root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Programme data could not be loaded</h1><p role="alert"></p><button onclick="location.reload()">Retry verified load</button></section></main>';root.querySelector('[role=alert]').textContent=[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ');}
+ }catch(error){clear();root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Programme data could not be loaded</h1><p role="alert"></p><button type="button" id="retry-verified-load">Retry verified load</button></section></main>';root.querySelector('[role=alert]').textContent=[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ');root.querySelector('#retry-verified-load').addEventListener('click',()=>window.location.reload());}
 }
