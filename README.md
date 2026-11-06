@@ -20,9 +20,10 @@ Use Node 24.x (the SDK requires Node 22+). `npm ci` installs the official Supaba
 - `MASS_DIRECTORY_API=directory-v1`: separately opt in only after 017 is applied and verified, with live + frontend-reads-v1. Defaults to off; adds donor filtering/drilldown and scoped staff/shift directory, never financial reporting.
 - `MASS_APP_MODE=demo npm run build`: original manager-approved sample app and its browser-local removal/undo/reset behavior. It never initializes Supabase or uploads local records.
 
-An unconfigured live build shows a configuration screen without network calls or demo data. No real key is committed. No programme records are persisted to browser storage; Auth session material uses sessionStorage. Current Vercel production and the backend baseline remain unchanged.
+An unconfigured live build shows a configuration screen without network calls or demo data. No real key is committed. No programme records are persisted to browser storage. Auth session material intentionally uses a project-scoped `localStorage` key so staff remain signed in across browser restarts; sign-out clears that key. Use explicit sign-out on shared devices.
 
 ```sh
+npm run lint
 npm run check
 npm test
 npm run test:api
@@ -66,7 +67,7 @@ The [migration 007 Auth correction and resume handoff](docs/MIGRATION-007-AUTH-R
 - [Core implementation handover](docs/PHASE-3B-CORE-HANDOVER.md)
 - [Deployment gates and the approval-dependent apply sequence](docs/PHASE-3C-DEPLOYMENT-READINESS.md)
 
-The current manifest covers 19 files; [the current import handoff](docs/STUDENT-HISTORICAL-IMPORT-HANDOFF.md) supersedes original-install counts. The schema is 27 tables, 183 columns, 35 foreign keys and 108 RLS policies, including private import receipts and insert-only administrative policies. SQL under `supabase/migrations/` is authoritative and stays in filename order. Never run `tests/core/bootstrap.sql`, test fixtures or local role stubs on hosted Supabase. The frontend source-download ZIP is frontend-only; database migrations/tests are delivered through Git. Changes to SQL require reviewing schema documentation and running `bash tests/schema/run-local.sh --write` followed by the default check; this command still uses only a new local database.
+The current manifest covers 19 files; [the current import handoff](docs/STUDENT-HISTORICAL-IMPORT-HANDOFF.md) supersedes original-install counts. The schema is 27 tables, 183 columns, 35 foreign keys and 108 RLS policies, including private import receipts and insert-only administrative policies. SQL under `supabase/migrations/` is authoritative and stays in filename order. Never run `tests/core/bootstrap.sql`, test fixtures or local role stubs on hosted Supabase. Application source and database migrations are distributed through the access-controlled GitHub repository, not from the deployed dashboard. Changes to SQL require reviewing schema documentation and running `bash tests/schema/run-local.sh --write` followed by the default check; this command still uses only a new local database.
 
 ## Deploy through the existing Vercel project
 
@@ -111,14 +112,13 @@ With no live configuration, the default build displays the configuration gate. T
 - `src/dropout.js`: derived CAC dropout classification.
 - `src/style.css`: full responsive styles and print styles.
 - `src/mass-logo.jpg`: locally bundled MASS logo. Other bundled JPEGs are preview assets.
-- `scripts/build.mjs`: bundles the selected frontend and validated public environment configuration into `dist/`, and generates the source-download ZIP.
-- `scripts/zip.mjs`: dependency-free ZIP writer for that download.
+- `scripts/build.mjs`: bundles the selected frontend and validated public environment configuration into `dist/`.
 - `scripts/serve.mjs`: dependency-free local static server.
 - `vercel.json`, `package.json`, `package-lock.json`: deployment/build configuration.
 - `docs/PROJECT-NOTES-HISTORY.md`: original accumulated project notes; older entries can describe superseded versions. Source files are authoritative for current behaviour.
 - `docs/EXPORT.md`: scope and verification of this export.
 
-The Git checkout excludes generated `dist/`. The app’s existing “Download Vercel-ready source” action is preserved: the build produces a code-only archive from source inputs, without runtime configuration or recursively embedded ZIP files. Rebuild the archive with approved environment configuration before serving it.
+The Git checkout excludes generated `dist/`. Deployed builds do not publish a source archive; use the access-controlled GitHub repository for source review.
 
 ## Data and integration boundaries
 
@@ -128,9 +128,9 @@ Explicit **demo mode** uses fictional sample records from `src/data.js` and brow
 
 ## Validation
 
-`npm run check` checks JavaScript syntax; it is not a type checker or linter. No frontend type-check or lint suite is configured. The separate automated database suites are described above. Migration verification additionally exercised the actual local server in Chromium; results and remaining deployment checks are recorded in [docs/MIGRATION.md](docs/MIGRATION.md).
+`npm run check` checks JavaScript syntax. `npm run lint` applies ESLint safety rules, and GitHub Actions runs lint, syntax, unit, build, dependency-audit, and portable-SQL checks for pull requests and `main`. The separate automated database suites are described above. Migration verification additionally exercised the actual local server in Chromium; results and remaining deployment checks are recorded in [docs/MIGRATION.md](docs/MIGRATION.md).
 
-Keep `dist/`, `node_modules/`, `.vercel/`, and environment files out of Git. The build intentionally generates a publicly downloadable source archive to preserve the existing prototype feature. Never put credentials or private data in `src/`, `scripts/`, `docs/`, or other archive inputs.
+Keep `dist/`, `node_modules/`, `.vercel/`, and environment files out of Git. The build does not publish a source archive. Never put credentials or private data in `src/`, `scripts/`, or `docs/`.
 
 ## Original-interface integration release — 29 October2026
 
@@ -154,7 +154,7 @@ The supported `npm run test:browser` runs the original-interface suite against a
 
 ## Revised final-release access and activation
 
-The original dashboard now opens without a login gate. Anonymous visitors see **Access approval pending** for protected charts/filters; no programme records or demo values are fetched. Existing verified accounts can authorize operational access separately, with unchanged server-enforced centre permissions. Attendance/assessment corrections and Cluster Officer visit entry/history remain required release features. See the [access and activation handoff](docs/releases/2026-10-29/final-access/README.md), [24-chart publication matrix](docs/releases/2026-10-29/final-access/PUBLICATION-APPROVAL-MATRIX.csv), and [historical visit reconciliation](docs/releases/2026-10-29/final-access/OFFICER-SOURCE-RECONCILIATION.md). Migrations020–023 are unchanged and remain unapplied hosted; recoverability, permissions and hosted UAT are still release gates. The public frontend download excludes internal audit documentation.
+The original dashboard now opens without a login gate. Anonymous visitors see **Access approval pending** for protected charts/filters; no programme records or demo values are fetched. Existing verified accounts can authorize operational access separately, with unchanged server-enforced centre permissions. Attendance/assessment corrections and Cluster Officer visit entry/history remain required release features. See the [access and activation handoff](docs/releases/2026-10-29/final-access/README.md), [24-chart publication matrix](docs/releases/2026-10-29/final-access/PUBLICATION-APPROVAL-MATRIX.csv), and [historical visit reconciliation](docs/releases/2026-10-29/final-access/OFFICER-SOURCE-RECONCILIATION.md). Migrations020–023 are unchanged and remain unapplied hosted; recoverability, permissions and hosted UAT are still release gates. The deployed frontend no longer provides a public source download; source review uses the access-controlled GitHub repository.
 
 For programme-loading errors, see the [Preview loading investigation](docs/diagnostics/2026-10-29-loading/README.md). The original interface can use the installed authenticated baseline read APIs without requiring optional newer RPCs. Missing optional capability discovery is distinguished from authentication, permission and schema failures. Builds expose key-free version/configuration metadata at `/release.json`; successful local tests do not establish that a hosted Preview is fixed.
 

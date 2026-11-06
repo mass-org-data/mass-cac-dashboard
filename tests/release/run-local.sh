@@ -77,6 +77,7 @@ print(s)
 PY
 if [[ "${MASS_BASELINE_BROWSER:-0}" != 1 ]];then
  sql < "$repo_root/tests/release/visits.sql"
+ sql < "$repo_root/tests/release/indexes.sql"
  source "$repo_root/tests/release/concurrency.sh"
 fi
 if [[ "${MASS_REVIEWED_CHARTS:-0}" == 1 ]];then
