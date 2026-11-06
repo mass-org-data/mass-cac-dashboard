@@ -25,12 +25,14 @@ await build({
     builder.onLoad({filter:/.*/,namespace:'public-config'},()=>({contents:`export const runtimeConfig=${JSON.stringify(config)};`,loader:'js'}));
   }}],
 });
-let commit=process.env.VERCEL_GIT_COMMIT_SHA||'',dirty=null;
+let commit=process.env.VERCEL_GIT_COMMIT_SHA||'',dirty=null,trackedChanges=null;
 try {
   if(!commit)commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
-  dirty=Boolean(execFileSync('git',['status','--porcelain','--untracked-files=no'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim());
+  trackedChanges=execFileSync('git',['diff','--name-only','-z','HEAD','--'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).split('\0').filter(Boolean).sort();
+  dirty=trackedChanges.length>0;
+  if(dirty)console.warn('Build checkout differs from its commit in tracked paths:',trackedChanges.join(', '));
 } catch { /* A source archive may legitimately have no Git metadata. */ }
-const release={format:1,commit:/^[0-9a-f]{40}$/.test(commit)?commit:null,dirty,
+const release={format:1,commit:/^[0-9a-f]{40}$/.test(commit)?commit:null,dirty,trackedChanges,
   deploymentEnvironment:['preview','production','development'].includes(process.env.VERCEL_ENV)?process.env.VERCEL_ENV:null,
   mode:config.mode,project:config.project||null,url:config.url||null,readApi:config.readApi||null,directoryApi:config.directoryApi||null};
 // Intentionally excludes ALL keys, tokens, identity and programme records.

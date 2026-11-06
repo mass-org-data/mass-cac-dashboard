@@ -5,7 +5,7 @@
   "type": "module",
   "description": "MASS Children\u2019s Activity Centres integrated frontend prototype",
   "engines": {
-    "node": ">=22"
+    "node": "24.x"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
