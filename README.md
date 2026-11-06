@@ -150,7 +150,7 @@ python tests/release/test_history_headers.py
 
 The database runner requires Docker and uses pinned images, ephemeral tmpfs and internal networking. Browser tests require Python Playwright and `/usr/bin/chromium`. Signed fixture identities stand in for managed Auth only inside the test bundle; they are never bundled into the application. No production connection string is accepted. Existing tests retain their historical migration baselines; `tests/students/run-current-core.sh` tests the current schema. Production backup, verified officer links, hosted Auth and deployed Preview UAT remain separately documented gates.
 
-The supported `npm run test:browser` now runs the original-interface suite against an ephemeral local database. The legacy mock workspace browser file is retained as historical reference. The publicly downloadable frontend source archive is governed by `source-archive.manifest.json`; update that reviewed allowlist when adding public source files. Untracked/private working notes are excluded.
+The supported `npm run test:browser` runs the original-interface suite against an ephemeral local database. The legacy mock workspace browser file is retained as historical reference. Application source is distributed through the access-controlled GitHub repository rather than from the deployed dashboard.
 
 ## Revised final-release access and activation
 

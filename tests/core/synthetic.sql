@@ -2,7 +2,7 @@
 INSERT INTO auth.users(id) SELECT ('00000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid FROM generate_series(1,8)n;
 SET ROLE mass_core_admin;
 INSERT INTO mass_core.centres(id,label) VALUES
- ('10000000-0000-4000-8000-000000000001','Synthetic centre A'),('10000000-0000-4000-8000-000000000002','Synthetic centre B');
+ ('10000000-0000-4000-8000-000000000001','Synthetic <img src=x onerror="window.__fixtureCentreXSSRan=true">'),('10000000-0000-4000-8000-000000000002','Synthetic centre B');
 INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,ends_at,verified_by,verified_at,can_read_profiles) VALUES
  ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','Teacher','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',true),
  ('00000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','Teacher','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',false),

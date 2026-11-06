@@ -2,7 +2,7 @@
 Real RLS/HTTP is separately tested by run-database.sh; these mocks prove UI behavior.
 """
 from pathlib import Path
-import base64, json, os, subprocess, threading, time, uuid, io, zipfile
+import base64, json, os, subprocess, threading, time, uuid
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
@@ -206,11 +206,6 @@ with sync_playwright() as p:
     page.evaluate("for(const key of Object.keys(sessionStorage)){if(key.startsWith('mass-auth-')&&!key.endsWith('-user')){const value=JSON.parse(sessionStorage[key]);if(value?.access_token){value.expires_at=Math.floor(Date.now()/1000)-60;sessionStorage[key]=JSON.stringify(value);}}}")
     page.reload();expect(page.locator('.content')).to_contain_text('Synthetic learner')
     check(any('/token' in path and 'refresh_token' in str(body) for path,method,body,headers in backend.calls),'official SDK refreshes an expired stored session')
-    response=context.request.get(base+'MASS-CAC-Vercel-Source.zip');assert response.ok
-    with zipfile.ZipFile(io.BytesIO(response.body())) as archive:
-        names=archive.namelist()
-        check(any(n.endswith('/src/live/workspace.js') for n in names) and any(n.endswith('/.env.example') for n in names),'source download contains live adapters and configuration example')
-        check(not any(n.endswith(('.xlsx','.xls','.dump','.backup')) or '/supabase/' in n for n in names),'source download excludes private workbooks, backups and backend SQL')
     backend.revoked=True;choose_date(page)
     expect(page.locator('.content')).to_contain_text('not authorized')
     check('Synthetic learner' not in page.locator('.content').inner_text() and 'private provider detail' not in page.locator('.content').inner_text(),'scope failure clears private data and sanitizes provider errors')

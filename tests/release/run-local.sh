@@ -112,6 +112,10 @@ if [[ "${MASS_ACTIVATION_DISABLED_BROWSER:-0}" == 1 ]];then
 fi
 if [[ "${MASS_BASELINE_BROWSER:-0}" == 1 ]];then echo 'PASS: isolated001–019sequence and original core checks.';else echo 'PASS: full migration sequence and original core plus release behavioral checks.';fi
 if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then
+ if [[ "${MASS_ACTIVATION_DISABLED_BROWSER:-0}" != 1 ]];then
+  { echo 'BEGIN;';cat "$repo_root/supabase/activation/control.sql" "$repo_root/supabase/activation/seal.sql";echo 'COMMIT;'; } | migrate
+  sql -c "SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated browser persistence coverage' WHERE feature IN ('visit_entry','registration','attendance_entry','assessment_entry');"
+ fi
  network="${container}-network";rest="${container}-rest";client="${container}-http-client"
  cleanup(){ docker rm -fv "$client" "$rest" "$container" >/dev/null 2>&1 || true;docker network rm "$network" >/dev/null 2>&1 || true; }
  trap cleanup EXIT INT TERM
@@ -134,7 +138,6 @@ if [[ "${MASS_RELEASE_BROWSER:-0}" == 1 ]];then
  node --input-type=module - "$repo_root" "$MASS_RELEASE_TEST_OUTPUT" <<'JS'
 import {build} from 'esbuild';import path from 'node:path';
 await build({entryPoints:[path.join(process.argv[2],'tests/release/browser-entry.js')],outfile:path.join(process.argv[3],'fixture.js'),bundle:true,format:'esm',platform:'browser',plugins:[{name:'local-auth-fixture',setup(b){b.onResolve({filter:/^\.\/client\.js$/},()=>({path:path.join(process.argv[2],'tests/release/browser-client.js')}));}}]});
-const {writeSourceZip}=await import(path.join(process.argv[2],'scripts/zip.mjs'));await writeSourceZip(process.argv[2],path.join(process.argv[3],'MASS-CAC-Vercel-Source.zip'));
 JS
  python "$repo_root/tests/release/browser.py"
  unset MASS_RELEASE_REST_SECRET
