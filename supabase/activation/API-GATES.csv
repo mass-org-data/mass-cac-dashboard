@@ -1,0 +1,22 @@
+rpc,feature,default,historical_overwrite,underlying_authorization
+record_attendance,attendance_entry / attendance_corrections,disabled,prohibited; constrained hard-off,writable enrolment centre; expected=0 insert only; existing row conflicts
+record_attendance_batch,attendance_entry + per-row gate,disabled,not permitted by this phase,every selected enrolment/date; atomic batch
+record_assessment,assessment_entry / assessment_corrections,disabled,prohibited; constrained hard-off,writable enrolment; configured definition/quarter/scale; expected=0 insert only
+record_assessment_batch,assessment_entry + per-row gate,disabled,not permitted by this phase,every selected enrolment/definition; atomic batch
+record_visit,visit_entry / visit_corrections,disabled,prohibited; constrained hard-off,active CO write scope + verified dated officer link; creator-only correction
+transfer_student,transfers,disabled,prohibited; constrained hard-off,source child/profile capability; source and destination write scope
+correct_profile,profiles,disabled,prohibited; constrained hard-off,can_write_child AND can_read_profile; both depend on verified centre relationships
+correct_student,profiles,disabled,prohibited; constrained hard-off,same child/enrolment plus profile and optional closure permissions
+add_enrolment,enrolments,disabled,prohibited; constrained hard-off,existing child write scope and destination write scope
+close_enrolment,enrolments,disabled,prohibited; constrained hard-off,writable enrolment; cannot invalidate recorded history
+register_student,registration,disabled,not permitted by this phase,assigned centre write scope
+register_student_once,registration,disabled,not permitted by this phase,assigned centre write scope; request identity/idempotency
+record_calendar,calendar,disabled,prohibited; constrained hard-off,assigned centre write scope; approved calendar reference
+create_activity,activities,disabled,prohibited; constrained hard-off,assigned centre/enrolment write scope; immutable original context
+record_activity_detail,activities,disabled,prohibited; constrained hard-off,assigned centre/enrolment write scope; immutable original context
+record_participation,activities,disabled,prohibited; constrained hard-off,assigned centre/enrolment write scope; immutable original context
+record_participation_batch,activities,disabled,prohibited; constrained hard-off,assigned centre/enrolment write scope; immutable original context
+record_cac_delivery,activities,disabled,prohibited; constrained hard-off,assigned centre/enrolment write scope; immutable original context
+add_morarji_member,morarji,disabled,prohibited; constrained hard-off,writable enrolment/cohort context
+record_morarji,morarji,disabled,prohibited; constrained hard-off,existing member enrolment write scope
+reviewed_chart_metrics,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; bounded month/year/filters

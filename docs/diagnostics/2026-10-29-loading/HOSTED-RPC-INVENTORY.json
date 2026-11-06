@@ -1,0 +1,90 @@
+[
+  {
+    "name": "add_enrolment",
+    "arguments": "p_child uuid, p_centre uuid, p_grade text, p_shift text, p_start date, p_status text"
+  },
+  {
+    "name": "add_morarji_member",
+    "arguments": "p_enrolment uuid, p_cohort uuid"
+  },
+  {
+    "name": "attendance_summary",
+    "arguments": "p_centre uuid, p_from date, p_until date"
+  },
+  {
+    "name": "close_enrolment",
+    "arguments": "p_id uuid, p_expected bigint, p_ends_before date, p_status text"
+  },
+  {
+    "name": "create_activity",
+    "arguments": "p_id uuid, p_centre uuid, p_shift text, p_date date, p_name text"
+  },
+  {
+    "name": "get_centre_directory",
+    "arguments": "p_centre uuid, p_donor uuid, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "get_centre_staff",
+    "arguments": "p_centre uuid, p_shift text, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "get_context",
+    "arguments": ""
+  },
+  {
+    "name": "get_references",
+    "arguments": ""
+  },
+  {
+    "name": "list_students",
+    "arguments": "p_centre uuid, p_on date"
+  },
+  {
+    "name": "read_activities",
+    "arguments": "p_centre uuid, p_from date, p_until date, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "read_assessments",
+    "arguments": "p_centre uuid, p_from date, p_until date, p_child uuid, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "read_attendance",
+    "arguments": "p_centre uuid, p_from date, p_until date, p_child uuid, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "read_calendar",
+    "arguments": "p_centre uuid, p_from date, p_until date, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "read_morarji",
+    "arguments": "p_centre uuid, p_cohort uuid, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "read_participation",
+    "arguments": "p_centre uuid, p_from date, p_until date, p_event uuid, p_child uuid, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "read_students",
+    "arguments": "p_centre uuid, p_on date, p_limit integer, p_offset integer"
+  },
+  {
+    "name": "record_assessment",
+    "arguments": "p_enrolment uuid, p_definition uuid, p_date date, p_score numeric, p_expected bigint"
+  },
+  {
+    "name": "record_attendance",
+    "arguments": "p_enrolment uuid, p_date date, p_code text, p_expected bigint"
+  },
+  {
+    "name": "record_morarji",
+    "arguments": "p_member uuid, p_applied boolean, p_attended boolean, p_passed boolean, p_school text, p_expected bigint"
+  },
+  {
+    "name": "record_participation",
+    "arguments": "p_enrolment uuid, p_event uuid, p_participated boolean, p_expected bigint"
+  },
+  {
+    "name": "register_student",
+    "arguments": "p_centre uuid, p_grade text, p_shift text, p_start date, p_name text, p_gender text"
+  }
+]

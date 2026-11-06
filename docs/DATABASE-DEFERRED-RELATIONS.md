@@ -1,5 +1,7 @@
 # Deferred relations and proposal reconciliation
 
+> Directory 017 update: donors, staff_members and centre_staff_assignments are now implemented locally as a minimal source-backed directory. Existing centres gains a single donor association. The older staff/staff_assignments proposal below still describes deferred Auth linkage and dated responsibility history; it is not a request to add that hierarchy. Per the current user instruction, no centre_funding table or financial facts are implemented. See [017 handoff](MIGRATION-017-DEPLOYMENT-HANDOFF.md).
+
 Phase 3C, 27 October 2026. The preserved Phase 2E proposal has 43 named relations. **23 names now have local implementations; 20 remain deferred.** This is not a decision to discard source history or implement the other 20. See [implemented dictionary](DATABASE-DATA-DICTIONARY.md) and the unchanged [43-relation proposal snapshot](DATABASE-PROPOSED-DATA-DICTIONARY-PHASE-2E.md).
 
 | Proposed relation not implemented | Track / classification | Gate and required treatment |

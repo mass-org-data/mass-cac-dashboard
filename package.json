@@ -5,14 +5,29 @@
   "type": "module",
   "description": "MASS Children\u2019s Activity Centres integrated frontend prototype",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
-    "check": "node --check src/app.js && node --check src/data.js && node --check src/dropout.js"
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/frontend/*.test.mjs && node tests/entry-workflows.mjs",
+    "test:api": "bash tests/frontend/run-database.sh",
+    "test:browser": "MASS_RELEASE_BROWSER=1 bash tests/release/run-local.sh",
+    "test:directory": "python tests/directory/reconcile_test.py && bash tests/directory/run-local.sh",
+    "test:imports": "bash tests/imports/run-local.sh",
+    "test:students": "python tests/students/test_staging.py && bash tests/students/run-local.sh && bash tests/students/run-current-core.sh",
+    "check:preview": "node scripts/preview-config.mjs",
+    "test:activation": "python -m unittest discover -s tests/activation -p 'test_*.py' && node tests/activation/provider-rehearsal.mjs",
+    "test:sql:portable": "node tests/release/portable-sql.mjs",
+    "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "esbuild": "^0.28.2"
+  }
 }

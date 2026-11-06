@@ -1,0 +1,30 @@
+rule,question,source_row,raw_status,effective_status,resolved_by_charts,resolution_or_specific_remaining_gap
+1,Confirm P/A/L denominator and absence treatment,2,Approved,Resolved,"1,4,20",P/(P+A+L); missing unknown. Approved chart1 and prior Phase2E.
+2,Define daily scheduled calendar authority for centre/shift,3,Pending,Source/activation gap,3,Calendar authority and actual centre/shift schedules still required. No guessed holidays.
+3,Define monthly completeness thresholds and missing day policy,4,Pending,Specific source gap,3,Conservative complete explicit daily calendar+marks only; partial periods remain unclassified. No invented percentage completeness threshold.
+4,Approve attendance-band cutoffs,5,Pending,Resolved,3,Original band cutoffs retained under Approved-as-written clarification.
+5,Define engagement good/review/low/incomplete thresholds,6,Pending,Partially resolved,25,Counts approved and implemented; only remaining colour-band boundaries need confirmation.
+6,Confirm WO/MM/holidays/other code handling,7,Pending,Resolved,"1,4,20",WO/MM/confirmed holidays excluded; P/A/L only denominator; unknown preserved.
+7,Define how late or partial attendance contributes,8,Pending,Existing rule retained; no new weighting,1,"Workbook uncertainty says L=late, but no approved comment changes stored meaning. MASS Phase2E and hosted definition say Leave. No recoding or late weighting."
+8,Approve rounding and fractional-score band assignment,9,Pending,Resolved existing treatment,6,"Existing integer bins retained; fractional scores stay in means and unbanded review, never rounded into a new boundary."
+9,Confirm paper comparability by quarter/year,10,Pending,Resolved for configured selected pair,9,Authoritative comment approves same-child selected-exam comparison. Remove blanket comparability blocker within verified year; no cross-year/causal claim.
+10,Confirm legacy F1–F4 mapping to academic period,11,Pending,Resolved mapping; source exceptions retained,"6,8,9","Use verified academic periods F1–F4=>Q1–Q4, April–March. Unmatched historical period metadata remains quarantined, not inferred."
+11,Approve score clearing/absence correction semantics,12,Pending,Specific operational gap,6,Missing is not zero does not define score void/clearing/absence semantics. Preserve existing corrections; no new delete or synthetic zero.
+12,Define missing score versus zero treatment,13,Pending,Resolved,6,"Available recorded zero included, missing excluded, explicit unavailable state."
+13,Confirm selected-quarter current performance reference,14,Pending,Resolved,"6,7",Selected configured quarter controls current performance and mean.
+14,Approve historical enrolment-date assumption displays,15,Pending,Previously resolved,"22,24",Preserve documented assumed FY2026–27 enrolment dates from approved import; never describe them as observed.
+15,Resolve ambiguous concurrent assignments and episode counts,16,Pending,Resolved counting; source conflicts held,"22,23,24",Distinct child grade/gender versus enrolment count explicit. Conflicting active grades held without invented precedence.
+16,Confirm historical donor-to-centre attribution,17,Pending,Resolved current attribution,"20,21",Use current directory donor association as approved comments; historical funding periods unsupported and not inferred.
+17,Define eligible activity event categories,18,Pending,Resolved counting; source coverage needed,11,"Each child once/category, known controlled categories retained, null Uncategorised. No invented event/category history."
+18,Define observed Held/Planned/Cancelled criteria,19,Pending,Resolved,5,Held/Planned/Cancelled stay separate observed statuses.
+19,Approve participation denominator and event coverage,20,Pending,Resolved formula; coverage disclosed,"2,12,21","Distinct monthly participating child / eligible distinct children; incomplete observations disclosed, no missing=>absent."
+20,Confirm which sessions count towards CAC delivery,21,Pending,Resolved,5,"Observed delivery Held count distinct from schedule, Planned and Cancelled."
+21,Confirm applicable 92-centre target scope by month,22,Pending,Specific source applicability gap,14,2+2 standard approved; verify single-shift and monthly scope before official target achievement. No blanket92-centre assumption.
+22,Validate undated visit rows before historical reporting,23,Pending,Resolved exclusion; historical verification pending,"13,14",200 undated observations and7 examples cannot become completed dated events; obtain source evidence for later reconciliation.
+23,Confirm staff-to-centre and shift dated links,24,Pending,Staff activation gap,"13,14","Incomplete staff workbook is analysis only; verified identities, effective dates, centre/shift scope and profile capability needed before grants."
+24,Approve historical cohort/student identity linkage,25,Pending,Source linkage gap,"15,16","Use verified Grade5 cohort identity/year linkage, never name-only merging; no operational memberships currently available."
+25,Approve pass and attended outcome definitions,26,Pending,Resolved flags/count,"15,18",Separate applied/attended/passed; pass count/year Grade5. Optional rate omitted so no denominator assumption.
+26,Clarify selection/admission/scholarship outcome sources,27,Pending,Source dependent,18,Selection/admission/scholarship need independent evidence; do not infer from passed.
+27,Approve school performance source and measures,28,Pending,Source dependent,10,School-report source/scale/baseline not provided.
+28,Approve course/guidance choices and retention,29,Pending,Source/privacy dependent,19,Course choices/catalogue/retention not supplied; unavailable state.
+29,Approve public Preview audience/detail/small group handling,30,Pending,Resolved protected experience; no anonymous approval,all,"Current manager-approved baseline is sign-in-first with scoped reads. No anonymous personal data, detailed public breakdowns or small-group threshold invented."

@@ -15,8 +15,8 @@ WITH tables AS (
  UNION ALL SELECT 'columns',155,count(*) FROM pg_attribute WHERE attrelid IN (SELECT oid FROM tables) AND attnum>0 AND NOT attisdropped
  UNION ALL SELECT 'foreign_keys',27,count(*) FROM pg_constraint WHERE conrelid IN (SELECT oid FROM tables) AND contype='f'
  UNION ALL SELECT 'unvalidated_constraints',0,count(*) FROM pg_constraint WHERE conrelid IN (SELECT oid FROM tables) AND NOT convalidated
- UNION ALL SELECT 'policies',71,count(*) FROM pg_policy WHERE polrelid IN (SELECT oid FROM tables)
- UNION ALL SELECT 'api_functions',11,count(*) FROM pg_proc WHERE pronamespace='mass_api'::regnamespace
+ UNION ALL SELECT 'policies',72,count(*) FROM pg_policy WHERE polrelid IN (SELECT oid FROM tables)
+ UNION ALL SELECT 'api_functions',20,count(*) FROM pg_proc WHERE pronamespace='mass_api'::regnamespace
  UNION ALL SELECT 'api_relations',0,count(*) FROM pg_class WHERE relnamespace='mass_api'::regnamespace
  UNION ALL SELECT 'disabled_user_triggers',0,count(*) FROM pg_trigger WHERE tgrelid IN (SELECT oid FROM tables) AND NOT tgisinternal AND tgenabled<>'O'
  UNION ALL SELECT 'invalid_indexes',0,count(*) FROM pg_index WHERE indrelid IN (SELECT oid FROM tables) AND (NOT indisvalid OR NOT indisready)

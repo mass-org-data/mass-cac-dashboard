@@ -1,0 +1,196 @@
+{
+  "project": "pbkwpfdpdtelmvbkzgvx",
+  "date": "2026-11-05",
+  "startingCommit": "2a6990ff9ee59efa62aa81f23746a02e29bb54da",
+  "installed": [
+    {
+      "source": "supabase/migrations/202610290020_original_workflows.sql",
+      "source_sha256": "00b99ca682e662e1d1abdcbf7c3cab685d5a426e2e2ad35919348e27b65ca125",
+      "envelope": "202610290020_original_workflows.sql",
+      "envelope_sha256": "6ef7cb418b3bfe0d0d423315ad999b7248f5a47e2813dca18931b71237376e9e",
+      "separate_proposal": false,
+      "provider_name": "mass_020_original_workflows_sealed",
+      "ledger_owner": "provider",
+      "requires_atomic_provider_transaction": true,
+      "actual_version": "20261105131813"
+    },
+    {
+      "source": "supabase/migrations/202610290021_cluster_officer_visits.sql",
+      "source_sha256": "0dac03e5a04eb8b82d035b0097a6da9aadf90e0aa909932a46e557ee36ecbb39",
+      "envelope": "202610290021_cluster_officer_visits.sql",
+      "envelope_sha256": "d32e80040a6fc09253755b81715c94b1b03109eb83fb2410fbd484281a180203",
+      "separate_proposal": false,
+      "provider_name": "mass_021_cluster_officer_visits_sealed",
+      "ledger_owner": "provider",
+      "requires_atomic_provider_transaction": true,
+      "actual_version": "20261105131906"
+    },
+    {
+      "source": "supabase/migrations/202610290022_activity_delivery.sql",
+      "source_sha256": "a784dfb1263e9bdd7be4187ff193b3a903f8c2684b6b7069c8739b47c42e8d9c",
+      "envelope": "202610290022_activity_delivery.sql",
+      "envelope_sha256": "d25b9ce0bface0bac64e3c24fc73c913bb2f902ccf4e0703024357e535ccc8f9",
+      "separate_proposal": false,
+      "provider_name": "mass_022_activity_delivery_sealed",
+      "ledger_owner": "provider",
+      "requires_atomic_provider_transaction": true,
+      "actual_version": "20261105131957"
+    },
+    {
+      "source": "supabase/migrations/202610290023_programme_aggregates.sql",
+      "source_sha256": "20973a85d26d85c446c7d1a486fa74afc0b797be9d48597032e39efa7f8bf0bc",
+      "envelope": "202610290023_programme_aggregates.sql",
+      "envelope_sha256": "28ef4832716d6797d3e270fc1aaaee4b477a14e5564a704da68a3317a7bbeb3b",
+      "separate_proposal": false,
+      "provider_name": "mass_023_programme_aggregates_sealed",
+      "ledger_owner": "provider",
+      "requires_atomic_provider_transaction": true,
+      "actual_version": "20261105132040"
+    },
+    {
+      "source": "supabase/proposals/202611030024_reviewed_chart_metrics.sql",
+      "source_sha256": "1f347f031d41cad4844da9c1936b7fb798e577865d6ee761e2a0d037ba28b327",
+      "envelope": "202611030024_reviewed_chart_metrics.sql",
+      "envelope_sha256": "b100724a8557b179fcd9ca6abbea293715847c36b89488bce4edc7664d38e4de",
+      "separate_proposal": true,
+      "provider_name": "mass_024_reviewed_chart_metrics_sealed",
+      "ledger_owner": "provider",
+      "requires_atomic_provider_transaction": true,
+      "actual_version": "20261105132154"
+    }
+  ],
+  "preservation": {
+    "originalTableFingerprints": 27,
+    "allMatchedAfterEveryStage": true,
+    "allMatchedAfterActivation": true,
+    "originalLedgerRowsUnchanged": 19,
+    "testAccountsUnchanged": 2,
+    "grantsUnchanged": 276,
+    "programmeTestWrites": 0
+  },
+  "inventory": {
+    "programmeTables": 32,
+    "programmeColumns": 230,
+    "validatedForeignKeys": 45,
+    "programmePolicies": 115,
+    "privateActivationTables": 2,
+    "privateActivationPolicies": 2,
+    "unforcedRls": 0,
+    "sealedRpcCount": 21
+  },
+  "enabled": [
+    "attendance_entry",
+    "assessment_entry",
+    "reviewed_reads"
+  ],
+  "disabled": [
+    "attendance_corrections",
+    "assessment_corrections",
+    "visit_entry",
+    "visit_corrections",
+    "transfers",
+    "profiles",
+    "enrolments",
+    "registration",
+    "calendar",
+    "activities",
+    "morarji"
+  ],
+  "verification": {
+    "frontendTests": 83,
+    "demoWorkflowChecks": 27,
+    "offlineBuilderTests": 7,
+    "providerStageRehearsals": 5,
+    "isolatedCalculationCases": {
+      "passed": 1440,
+      "failed": 0
+    },
+    "hostedReadOnlyCalculationCases": {
+      "passed": 544,
+      "failed": 0,
+      "months": [
+        "2026-07",
+        "2026-08",
+        "2026-09",
+        "2026-10"
+      ]
+    },
+    "hostedDisabledRpcDenialsBeforeActivation": 21,
+    "frozenFunctionBodiesMatchingAfterGuardRemoval": 74,
+    "syntax": true,
+    "build": true,
+    "hostedBrowser": "Prior Leadership read-only verification; Teacher session observed before refresh; new post-cleanup sign-in attempt rejected",
+    "managedJwtPositiveSaves": "User confirmed frontend saves; five audit-verified managed authenticated insertions, subsequently removed by separately authorized cleanup",
+    "nativeConcurrency": "not_rerun_in_this_environment"
+  },
+  "advisors": [
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "count": 24,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "remaining": [
+    "Verified dated Auth-to-officer assignments before visit entry activation",
+    "Morarji extra fields, assessment absence/group comments and protected follow-up storage/adapters",
+    "Dedicated Teacher invitation requires verified email and centre scope; genuine observation save verification pending",
+    "Verified staff permission finalization; user now requests one dedicated Teacher account; existing accounts unchanged",
+    "Google Sign-In last"
+  ],
+  "mainMerged": false,
+  "productionDeployed": false,
+  "preview": {
+    "url": "https://mass-cac-dashboard-l52z6ivcf-mass-data-dashboard.vercel.app/",
+    "commit": "076182930976bd7c94bc7680f6c512c929a626eb",
+    "production": false
+  },
+  "quarterConfiguration": {
+    "academicYear": "2026-27",
+    "quarters": 4,
+    "maximumScore": 25,
+    "existing27TableRowsPreserved": true,
+    "newAssessmentObservations": 0,
+    "idempotentRehearsalPassed": true
+  },
+  "attendanceTestCleanup": {
+    "providerVersion": "20261105150407",
+    "providerName": "mass_20261105_attendance_test_cleanup",
+    "removed": 5,
+    "codes": {
+      "P": 2,
+      "A": 2,
+      "L": 1
+    },
+    "attendanceDate": "2026-11-05",
+    "totalBefore": 47328,
+    "totalAfter": 47323,
+    "originalAuditRowsRetained": 5,
+    "privateImmutableReceipts": 5,
+    "unrelatedProgrammeRowsUnchanged": true,
+    "originalGuardRestoredByteForByte": true,
+    "originalGuardAclUnchanged": true,
+    "rlsDisabled": false,
+    "persistentDeletionEndpoint": false,
+    "isolatedScenariosPassed": 7,
+    "dayReadApiRows": 0,
+    "novemberApiPAL": [
+      0,
+      0,
+      0
+    ],
+    "novemberApiRate": null,
+    "hostedBrowser": "Fresh session sign-in rejected with generic session-verification message; post-cleanup chart display not yet certified"
+  },
+  "teacherProvisioning": {
+    "newCentreGrants": 1,
+    "role": "Teacher",
+    "scope": "one approved centre, both shifts",
+    "profileCapability": false,
+    "existing276GrantsUnchanged": true
+  }
+}

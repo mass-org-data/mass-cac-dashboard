@@ -1,4 +1,4 @@
-export const TODAY='2026-10-20';
+export const TODAY=globalThis.__massReviewToday||'2026-10-20';
 export const centres=[
 {id:'C01',name:'Aralimatti',officer:'Meera',donor:'McCafe'},
 {id:'C02',name:'Avaradi',officer:'Meera',donor:'McCafe'},
@@ -8,7 +8,7 @@ export const centres=[
 {id:'C06',name:'Timmapur',officer:'Kavya',donor:'Learning Partners'}];
 const first=['Asha','Ravi','Sneha','Kiran','Pooja','Manoj','Divya','Arun','Nisha','Vijay','Anita','Rohan','Deepa','Sagar','Kavita','Naveen','Geeta','Akash','Rekha','Prakash','Latha','Varun','Suma','Ajay'];
 const last=['Patil','Naik','Gowda','Kulkarni','Joshi','Hegde'];
-export function operatingDates(month,elapsed=true){let a=[];const [y,m]=month.split('-').map(Number);for(let d=1;d<=31;d++){const dt=new Date(Date.UTC(y,m-1,d));if(dt.getUTCMonth()!==m-1)break;const iso=dt.toISOString().slice(0,10);if(dt.getUTCDay()!==0&&(!elapsed||iso<=TODAY))a.push(iso);}return a.slice(0,24);}
+export function operatingDates(month,elapsed=true){if(globalThis.__massReviewObservedDates){const rows=globalThis.__massReviewObservedDates[month]||[];return elapsed?rows.filter(d=>d<=TODAY):rows;}let a=[];const [y,m]=month.split('-').map(Number);for(let d=1;d<=31;d++){const dt=new Date(Date.UTC(y,m-1,d));if(dt.getUTCMonth()!==m-1)break;const iso=dt.toISOString().slice(0,10);if(dt.getUTCDay()!==0&&(!elapsed||iso<=TODAY))a.push(iso);}return a.slice(0,24);}
 export function seed(){const students=[],attendance={},participation={},scores={},events=[],visits=[],morarji={},guidance=[];
 centres.forEach((c,ci)=>{for(let i=0;i<12;i++){const n=ci*12+i,id=`CAC-${String(n+1).padStart(3,'0')}`;students.push({id,name:first[n%24]+' '+last[(Math.floor(n/24)+ci)%last.length],centre:c.id,shift:i<6?'Morning':'Evening',grade:String([1,2,3,4,3,4,5,6,7,8,9,10][i]),gender:n%2===0?'Girl':'Boy',enrolled:'2026-04-01',active:true,note:''});scores[id]={F1:Math.max(2,7+(n*3)%16),F2:n%17===0?null:Math.min(25,8+(n*5)%18),F3:null,F4:null};
 for(const month of ['2026-09','2026-10']){let days=operatingDates(month);const present=Math.max(0,[23,21,20,14,15,18,22,12,24,19,16,21][i]-(ci%3));for(let j=0;j<days.length;j++){if(month==='2026-10'&&days[j]===TODAY&&i%3===0)continue;if(ci===5&&i<3&&j===days.length-2)continue;attendance[`${id}|${days[j]}`]=j<present?'P':'A';}}

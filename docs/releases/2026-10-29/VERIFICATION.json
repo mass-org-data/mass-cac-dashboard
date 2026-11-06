@@ -1,0 +1,121 @@
+{
+  "frontend_unit": 28,
+  "original_demo_workflows": 27,
+  "sql_behavioral_assertions_current_release": 146,
+  "injected_021_failure_and_retry": "PASS",
+  "restricted_pg17_deployment_principal": "PASS,local model only",
+  "visit_concurrency": "PASS",
+  "browser": {
+    "browser": "Chromium",
+    "checks": 27,
+    "passed": 27,
+    "failed": 0,
+    "persisted_revisions": 2,
+    "scenarios": [
+      "CO original page loads",
+      "CO visit saved",
+      "CO correction saved",
+      "Reload retains corrected visit",
+      "History dialog shows revision",
+      "Mobile navigation",
+      "Independent database history matches",
+      "Teacher registration persisted and refreshed",
+      "Teacher profile correction persists",
+      "Stored synthetic markup is escaped in original tables and dialog titles",
+      "Teacher individual attendance persists",
+      "Teacher confirmed bulk attendance persists",
+      "Teacher assessment batch persists",
+      "Historical academic year loads without fabricated scores/dates",
+      "Academic year can return to current verified data",
+      "Back and forward restore non-personal view state",
+      "Teacher cross-centre API request denied independently of UI",
+      "Teacher named activity persists",
+      "Teacher participation persists",
+      "Teacher observed CAC delivery persists",
+      "Unavailable API fails closed without sample fallback or partial data",
+      "Leadership original aggregate-only view has no write/profile navigation",
+      "Leadership analytics do not expose private names",
+      "Fresh signed-out session shows only authentication",
+      "Original sign-in form enters verified synthetic session",
+      "Existing synthetic session survives refresh",
+      "Sign-out clears programme view and returns to authentication"
+    ],
+    "boundary": "Original UI and actual isolated PostgREST/PostgreSQL persistence for three signed fixture roles; not managed Auth or deployed Preview."
+  },
+  "population": {
+    "tested": 36432,
+    "failed": 0,
+    "passed": 36432,
+    "boundary": "Actual shared UI population function versus independent private administrative export; not hosted staff Auth or browser certification."
+  },
+  "header_tests": 2,
+  "historical_regressions": [
+    {
+      "command": "npm run check",
+      "exit_code": 0,
+      "seconds": 0.8
+    },
+    {
+      "command": "bash tests/foundation/run-local.sh",
+      "exit_code": 0,
+      "seconds": 7.6
+    },
+    {
+      "command": "bash tests/core/run-local.sh",
+      "exit_code": 0,
+      "seconds": 7.3
+    },
+    {
+      "command": "npm run test:api",
+      "exit_code": 0,
+      "seconds": 10.2
+    },
+    {
+      "command": "npm run test:directory",
+      "exit_code": 0,
+      "seconds": 9.1
+    },
+    {
+      "command": "npm run test:imports",
+      "exit_code": 0,
+      "seconds": 9.7
+    },
+    {
+      "command": "npm run test:students",
+      "exit_code": 0,
+      "seconds": 18.0
+    },
+    {
+      "command": "bash tests/deployment/run-role-probe.sh",
+      "exit_code": 0,
+      "seconds": 6.4
+    },
+    {
+      "command": "bash tests/deployment/run-auth-probe.sh",
+      "exit_code": 0,
+      "seconds": 8.4
+    }
+  ],
+  "hosted": [
+    {
+      "inspected_at": "2026-10-29 05:41:22.8598+00",
+      "inspector": "supabase_read_only_user",
+      "read_only": "on",
+      "children": 1458,
+      "profiles": 1458,
+      "enrolments": 1458,
+      "grade1": 99,
+      "attendance": 47323,
+      "assessments": 207,
+      "grants": 276,
+      "migrations": 19,
+      "new_versions_recorded": 0
+    }
+  ],
+  "local_schema": {
+    "tables": 32,
+    "columns": 230,
+    "policies": 115,
+    "foreign_keys": 45
+  }
+}

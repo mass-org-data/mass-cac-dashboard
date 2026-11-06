@@ -75,6 +75,8 @@ assert '22012' in failure,failure
 FAILURE
 [[ "$(sql -Atqc "SELECT to_regnamespace('mass_core') IS NULL AND NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname LIKE 'mass\_core\_%' ESCAPE '\') AND to_regclass('mass_foundation.source_files') IS NOT NULL")" == t ]]
 for migration in "$repo_root"/supabase/migrations/*.sql;do
+ # Historical 001–016 acceptance; 017 has tests/directory/run-local.sh.
+ [[ "$(basename "$migration")" > 202610280016_frontend_reads.sql ]] && continue
  [[ "$(basename "$migration")" < 202610270007_auth_scope.sql ]] && continue
  docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U mass_test_migrator -d postgres < "$migration"
 done
@@ -85,7 +87,7 @@ SELECT count(*)=23 AND bool_and(relrowsecurity AND relforcerowsecurity)
 SELECT count(*)=155 FROM pg_attribute WHERE attrelid IN
  (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace) AND relkind='r') AND attnum>0 AND NOT attisdropped;
 SELECT count(*)=27 FROM pg_constraint WHERE connamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace) AND contype='f';
-SELECT count(*)=71 FROM pg_policy WHERE polrelid IN
+SELECT count(*)=72 FROM pg_policy WHERE polrelid IN
  (SELECT oid FROM pg_class WHERE relnamespace IN ('mass_core'::regnamespace,'mass_foundation'::regnamespace));
 -- PG17 may retain separate automatic-ADMIN and explicit-SET/INHERIT rows
 -- from different grantors. Verify effective rights and explicit grant coverage.
@@ -116,5 +118,5 @@ RESET ROLE;
 SET LOCAL ROLE mass_core_owner;
 ROLLBACK;
 SWITCH
-echo 'PASS: corrected core bootstrap failure rolls back roles/grants/schema; retry completes all 15 files.'
-echo 'PASS: restricted PG17 principal with default creator settings switches both owners; 23 tables/155 columns/27 FKs/71 policies; owner membership isolated to deployer. Managed Supabase unverified.'
+echo 'PASS: corrected core bootstrap failure rolls back roles/grants/schema; retry completes all 16 files.'
+echo 'PASS: restricted PG17 principal with default creator settings switches both owners; 23 tables/155 columns/27 FKs/72 policies; owner membership isolated to deployer. Managed Supabase unverified.'

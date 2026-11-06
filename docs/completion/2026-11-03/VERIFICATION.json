@@ -1,0 +1,148 @@
+{
+  "date": "2026-11-03",
+  "status": "LOCAL_PASS_HOSTED_RELEASE_BLOCKED",
+  "base_commit": "44a66250dc8c0f4c77dfce52f14937d49ac5e0ef",
+  "decision_file_received": false,
+  "staff_file_received": false,
+  "live_entry": "sign-in-first",
+  "frontend_unit_tests": 42,
+  "demo_workflow_checks": 27,
+  "full_backend_browser": {
+    "browser": "Chromium",
+    "checks": 44,
+    "passed": 44,
+    "failed": 0,
+    "persisted_revisions": 2,
+    "local_network_change_read_retries": 0,
+    "scenarios": [
+      "Scoped monthly visit trends load from the isolated API",
+      "CO original page loads",
+      "CO visit saved",
+      "CO correction saved",
+      "Reload retains corrected visit",
+      "History dialog shows revision",
+      "Mobile navigation",
+      "Independent database history matches",
+      "Teacher registration persisted and refreshed",
+      "Teacher profile correction persists",
+      "Stored synthetic markup is escaped in original tables and dialog titles",
+      "Teacher individual attendance persists",
+      "Teacher confirmed bulk attendance persists",
+      "Teacher assessment batch persists",
+      "Attendance P to bulk A to L correction retains independent audit revisions",
+      "Corrected attendance persists after full refresh",
+      "Assessment correction retains original context and independent audit revisions",
+      "Corrected assessment persists after full refresh",
+      "Historical academic year loads without fabricated scores/dates",
+      "Academic year can return to current verified data",
+      "Back and forward restore non-personal view state",
+      "Teacher cross-centre API request denied independently of UI",
+      "Teacher named activity persists",
+      "Teacher participation persists",
+      "Teacher observed CAC delivery persists",
+      "Unavailable API fails closed without sample fallback or partial data",
+      "Leadership original aggregate-only view has no write/profile navigation",
+      "Leadership analytics do not expose private names",
+      "Sign-in-first screen loads without any programme RPC or anonymous dashboard",
+      "Sign-in is usable on mobile without horizontal overflow",
+      "Anonymous attendance write remains denied independently of the UI",
+      "Failed sign-in clears the password and exposes no programme data",
+      "Recovery request uses the current origin and a neutral account message",
+      "Verified recovery exchange scrubs the one-use code before programme loading",
+      "Refreshing a pending reset cannot turn the recovery session into programme access",
+      "Canceling recovery clears its pending session and returns to sign-in",
+      "Mismatched passwords cannot change the Auth account",
+      "Unexpected Auth errors never echo provider detail or load programme records",
+      "Password update signs out locally and requires fresh programme authentication",
+      "Consumed or invalid recovery code cannot reopen the password form",
+      "Implicit token URL is rejected and scrubbed without adopting a session",
+      "Verified synthetic sign-in opens the original authorized interface",
+      "Existing verified session survives refresh",
+      "Sign-out purges private programme state and returns to sign-in-first"
+    ],
+    "boundary": "Original UI and actual isolated PostgREST/PostgreSQL persistence for three signed fixture roles; not managed Auth or deployed Preview."
+  },
+  "baseline_browser": {
+    "suite": "001\u2013019 original-interface compatibility",
+    "checks": 7,
+    "passed": 7,
+    "failed": 0,
+    "scenarios": [
+      "Actual missing capability RPC returns HTTP404/PGRST202; verified baseline reads still render the original UI",
+      "Loaded historical episode IDs exactly match an independent scoped API read",
+      "Undeployed supplements and incomplete dated-only assessment reads are not requested",
+      "Operational controls remain present but unavailable mutations never reach an RPC",
+      "Quarter-inclusive assessment limitation is explicit, not a misleading zero or partial score chart",
+      "Leadership loads scoped counts without private names or fabricated gender counts",
+      "403scope/401session/406schema failures stop loading and show sanitized exact RPC diagnostics"
+    ],
+    "boundary": "Real isolated PG17/PostgREST with synthetic local Auth only; no hosted session/Preview evidence."
+  },
+  "database_regression_suites": [
+    {
+      "command": "bash tests/foundation/run-local.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "bash tests/core/run-local.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:api",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:directory",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:imports",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run test:students",
+      "exit_code": 0
+    },
+    {
+      "command": "bash tests/deployment/run-role-probe.sh",
+      "exit_code": 0
+    },
+    {
+      "command": "bash tests/deployment/run-auth-probe.sh",
+      "exit_code": 0
+    }
+  ],
+  "current_sql_assertions": 146,
+  "population_reconciliation": {
+    "asOf": "2026-11-03",
+    "tested": 36432,
+    "failed": 0,
+    "passed": 36432,
+    "boundary": "Actual shared UI population function versus independent private administrative export; not hosted staff Auth or browser certification."
+  },
+  "baseline_summary_reconciliation": {
+    "asOf": "2026-11-03",
+    "checked": 12144,
+    "failed": 0,
+    "passed": 12144,
+    "boundary": "New baseline summaries versus independent private administrative source rows; not hosted staff Auth or Preview verification."
+  },
+  "syntax": "PASS",
+  "live_mode_build": "PASS, approved project and publishable key only; no hosted Auth calls or deployment",
+  "public_source_archive_privacy": "PASS",
+  "canonical_migration_hashes_verified": 23,
+  "migrations_changed": false,
+  "production_schema_or_data_changes": false,
+  "staff_provisioned": 0,
+  "real_passwords_changed": 0,
+  "real_recovery_emails_sent": 0,
+  "hosted_auth_write_uat": "NOT_RUN",
+  "production_backup_created": false,
+  "production_recovery_verified": false,
+  "preview_deployment": "NOT_PERFORMED",
+  "preview_source_and_real_data_load_verified": false,
+  "code_review_passes": [
+    "authentication/privacy",
+    "functional continuity/recovery lifecycle"
+  ]
+}

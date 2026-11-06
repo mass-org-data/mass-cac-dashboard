@@ -23,6 +23,8 @@ sql() { docker exec -i "$container" psql -X -v ON_ERROR_STOP=1 -U postgres -d ma
 sql -Atc 'SELECT version();'
 sql -q < "$repo_root/tests/core/bootstrap.sql"
 for migration in "$repo_root"/supabase/migrations/*.sql; do
+ # Historical 001–016 acceptance; 017 has tests/directory/run-local.sh.
+ [[ "$(basename "$migration")" > 202610280016_frontend_reads.sql ]] && continue
  echo "Applying locally: $(basename "$migration")"
  sql -q < "$migration"
 done

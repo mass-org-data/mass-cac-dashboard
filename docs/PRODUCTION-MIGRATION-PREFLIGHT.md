@@ -1,5 +1,7 @@
 # Final production migration preflight
 
+> Historical 001–015 installation/resume assessment. The user subsequently confirmed all 15 applied. For additive 016 only, use [the current deployment handoff](MIGRATION-016-DEPLOYMENT-HANDOFF.md); current manifest/postflight include 016. Do not replay the original installation sequence.
+
 Updated 28 October 2026 (India). **NO-GO for production apply until the corrected release is reviewed and separately authorized.** See the [PostgreSQL 17 role-membership correction](POSTGRES17-ROLE-MEMBERSHIP-FIX.md) for the user-reported failed attempt and retry prerequisites. Local validation passes; actual managed Supabase permissions, isolated hosted compatibility and a production recovery point/restore rehearsal remain unverified. This phase prepares and commits safe local documentation/checks only. It does not connect to the hosted database or take its backup.
 
 Target supplied by MASS: `pbkwpfdpdtelmvbkzgvx` — Mass CAC Dashboard — Mumbai (`ap-south-1`). Review: [PR #1](https://github.com/mass-org-data/mass-cac-dashboard/pull/1), feature branch `feature/source-data-discovery`. Do not merge or deploy Vercel as part of this procedure.

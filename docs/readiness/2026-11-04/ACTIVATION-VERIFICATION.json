@@ -1,0 +1,123 @@
+{
+  "base_commit": "86afb31d231ca6ec109c9471093302897f5fec8c",
+  "status": "locally tested proposal; no hosted installation or activation",
+  "hosted_grant_audit": {
+    "status": "blocked",
+    "http_status": 401,
+    "current_user_by_api_mapping_completed": false,
+    "actual_hosted_grant_topology_reproduced": false,
+    "last_verified_active_grants": 276
+  },
+  "isolated_grants": {
+    "synthetic_rows": 276,
+    "actual_personal_identifiers": false,
+    "coverage": [
+      "Teacher",
+      "Cluster Officer",
+      "Leadership",
+      "mixed Leadership veto",
+      "expired",
+      "future",
+      "foreign centre"
+    ]
+  },
+  "node_tests": 74,
+  "demo_workflow_checks": 27,
+  "python_audit_tests": 20,
+  "offline_builder_tests": 3,
+  "transactional_stages_tested": 5,
+  "injected_failure_rollbacks": 5,
+  "unexpected_overload_rollbacks": 5,
+  "canonical_old_table_projections_preserved": 27,
+  "scope_grants_changed_by_installation": 0,
+  "controlled_rpcs_after_023": 20,
+  "controlled_rpcs_after_separate_024": 21,
+  "direct_sql_denial_checks_across_stages": 93,
+  "sql_assertions": 177,
+  "function_body_and_metadata_integrity": "passed: original body plus entry guard; owner/ACL/signature/security/config unchanged; capability body intentionally replaced",
+  "browser_reports": [
+    {
+      "cases": 1440,
+      "passed": 1440,
+      "failed": 0,
+      "firstFailures": [],
+      "boundary": "Independent JavaScript calculation module versus authenticated scoped SQL proposal on synthetic isolated PG17; not hosted deployment."
+    },
+    {
+      "cases": 1440,
+      "passed": 1440,
+      "failed": 0,
+      "firstFailures": [],
+      "boundary": "Independent JavaScript calculation module versus authenticated scoped SQL proposal on synthetic isolated PG17; not hosted deployment."
+    },
+    {
+      "suite": "dependent filters original UI / actual isolated PostgreSQL",
+      "checks": 18,
+      "passed": 18,
+      "failed": 0,
+      "scenarios": [
+        "Morning Grade options equal an independent authorized roster read",
+        "Evening recalculates Grade and clears an invalid previous grade",
+        "A still-valid selected grade survives shift changes in either order",
+        "Restored source download returns the actual code-only ZIP without workbooks or private artifacts",
+        "Filtered table and CSV export contain the same single eligible episode",
+        "KPI and chart filtered population agree with the independently requested scoped SQL aggregate",
+        "Original gender chart quick filters toggle the shared population and clear on repeated click",
+        "Teacher filter options never include another centre",
+        "Academic year reload clears invalid Grade/Shift using actual historical assignment dates",
+        "Reset stays inside selected historical academic year and preserves an accurate empty state",
+        "Academic Year \u2192 Centre \u2192 Shift \u2192 Grade recovers current source-backed options",
+        "Original grouped cohort columns and clickable pass-year selection are restored with verified synthetic source",
+        "Donor \u2192 Centre \u2192 Shift \u2192 Grade keeps original dependent dropdown structure",
+        "Changing donor clears invalid centre/shift/grade without stale values",
+        "Masked Leadership gender\u2192Grade options use only authorized aggregates, never private profile inference",
+        "Clear/reset restores the full authorized filter scope",
+        "Original dropdown styling and responsive shell remain usable on mobile",
+        "Mobile drawer navigation remains clickable above sticky filter controls"
+      ],
+      "boundary": "Synthetic local Auth and isolated PostgREST; not hosted staff writes or Preview evidence."
+    },
+    {
+      "suite": "installed but disabled gate / original UI / actual isolated PostgREST",
+      "checks": 12,
+      "passed": 12,
+      "failed": 0,
+      "scenarios": [
+        "Real PostgREST reports installed reads separately from default-disabled operations",
+        "Direct HTTP API blocked while disabled: record_attendance",
+        "Direct HTTP API blocked while disabled: record_attendance_batch",
+        "Direct HTTP API blocked while disabled: record_assessment",
+        "Direct HTTP API blocked while disabled: record_assessment_batch",
+        "Direct HTTP API blocked while disabled: record_visit",
+        "Direct HTTP API blocked while disabled: transfer_student",
+        "Original protected dashboard loads actual isolated data with all writes disabled",
+        "Attendance control cannot submit a mutation when disabled",
+        "Save Attendance still refreshes explicit records without writing or changing unknowns",
+        "Assessment form activation requires explicit authorization metadata",
+        "Visit entry remains unavailable despite installed visit tables and RPCs"
+      ],
+      "boundary": "Synthetic identities only. Actual hosted grant snapshot unavailable (401); no managed Auth or production write evidence."
+    }
+  ],
+  "calculation_modules_and_chart_layout_changed": false,
+  "canonical_001_023_files_changed": false,
+  "proposal_024_source_changed": false,
+  "build_and_syntax": "passed",
+  "privacy_scan": {
+    "status": "passed",
+    "files": 25,
+    "private_source_matches": 0,
+    "secret_matches": 0
+  },
+  "source_activation_flags": 14,
+  "default_enabled_flags": 0,
+  "private_control_tables": 2,
+  "private_control_columns": 10,
+  "private_control_policies": 2,
+  "hard_historical_overwrite_hold": true,
+  "new_hosted_sql_or_writes_executed": false,
+  "accounts_provisioned": 0,
+  "staff_grants_applied": 0,
+  "google_sign_in_activated": false,
+  "production_or_preview_deployment_performed": false
+}

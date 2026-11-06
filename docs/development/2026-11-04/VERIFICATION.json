@@ -1,0 +1,259 @@
+{
+  "date": "2026-11-04",
+  "branch": "feature/supabase-frontend",
+  "parent_commit": "45cd4d3cd72ba1c61a59f86e6d74d0c30a1d0a74",
+  "user_reported_existing_preview_accepted": true,
+  "hosted_health": {
+    "tables": 27,
+    "policies": 108,
+    "students": 1458,
+    "enrolments": 1458,
+    "attendance": 47323,
+    "assessments": 207,
+    "forced_rls": true,
+    "invalid_constraints": 0,
+    "reviewed_rpc": false
+  },
+  "hosted_migration_count": 19,
+  "hosted_extra_counts": {
+    "activity_events": 0,
+    "activity_participation": 0,
+    "cohorts": 0,
+    "cohort_memberships": 0,
+    "morarji_outcomes": 0,
+    "deployer_can_set_owner": true,
+    "deployer_inherits_owner": true
+  },
+  "hosted_backup_created": false,
+  "hosted_restore_rehearsal": false,
+  "listed_backups": 0,
+  "pitr_enabled": false,
+  "operator_assigned": false,
+  "production_data_imported": false,
+  "accounts_or_grants_created": 0,
+  "canonical_001_023_migrations_changed": false,
+  "canonical_manifest_sha256": "fab6b7be27c2317f240c04f58f6663f9be7957deb7cc44896447c3a5cd7d2d5d",
+  "proposal_024_sha256": "509ca71502e9c729bae764c0bc91c8bf93460aefb8cfe466d1af02784ca2b4f4",
+  "live_calculations": {
+    "cases": 880,
+    "passed": 880,
+    "failed": 0,
+    "contexts": {
+      "all": 1,
+      "centre": 92,
+      "donor": 8,
+      "officer": 11
+    },
+    "months": [
+      "2026-04",
+      "2026-10"
+    ],
+    "boundary": "Privileged read-only SQL versus frontend math; not a staff-session or protected Preview test.",
+    "firstFailures": []
+  },
+  "live_filter_options": {
+    "cases": 5376,
+    "passed": 5376,
+    "failed": 0,
+    "scopes": 112,
+    "months": [
+      "2023-04",
+      "2026-04",
+      "2026-10",
+      "2026-11"
+    ],
+    "filters": "All/Morning/Evening \u00d7 All/Girl/Boy/Unknown, each centre/donor/officer/all scope; historical and current snapshots.",
+    "boundary": "Privileged read-only SQL facets versus shared UI function; no hosted Auth/Preview or writes.",
+    "firstFailures": []
+  },
+  "isolated_calculation_cases": 1440,
+  "frontend_tests": 68,
+  "entry_workflow_checks": 27,
+  "staff_audit_tests": 3,
+  "original_browser": {
+    "browser": "Chromium",
+    "checks": 44,
+    "passed": 44,
+    "failed": 0,
+    "persisted_revisions": 2,
+    "local_network_change_read_retries": 0,
+    "scenarios": [
+      "Scoped monthly visit trends load from the isolated API",
+      "CO original page loads",
+      "CO visit saved",
+      "CO correction saved",
+      "Reload retains corrected visit",
+      "History dialog shows revision",
+      "Mobile navigation",
+      "Independent database history matches",
+      "Teacher registration persisted and refreshed",
+      "Teacher profile correction persists",
+      "Stored synthetic markup is escaped in original tables and dialog titles",
+      "Teacher individual attendance persists",
+      "Teacher confirmed bulk attendance persists",
+      "Teacher assessment batch persists",
+      "Attendance P to bulk A to L correction retains independent audit revisions",
+      "Corrected attendance persists after full refresh",
+      "Assessment correction retains original context and independent audit revisions",
+      "Corrected assessment persists after full refresh",
+      "Historical academic year loads without fabricated scores/dates",
+      "Academic year can return to current verified data",
+      "Back and forward restore non-personal view state",
+      "Teacher cross-centre API request denied independently of UI",
+      "Teacher named activity persists",
+      "Teacher participation persists",
+      "Teacher observed CAC delivery persists",
+      "Unavailable API fails closed without sample fallback or partial data",
+      "Leadership original aggregate-only view has no write/profile navigation",
+      "Leadership analytics do not expose private names",
+      "Sign-in-first screen loads without any programme RPC or anonymous dashboard",
+      "Sign-in is usable on mobile without horizontal overflow",
+      "Anonymous attendance write remains denied independently of the UI",
+      "Failed sign-in clears the password and exposes no programme data",
+      "Recovery request uses the current origin and a neutral account message",
+      "Verified recovery exchange scrubs the one-use code before programme loading",
+      "Refreshing a pending reset cannot turn the recovery session into programme access",
+      "Canceling recovery clears its pending session and returns to sign-in",
+      "Mismatched passwords cannot change the Auth account",
+      "Unexpected Auth errors never echo provider detail or load programme records",
+      "Password update signs out locally and requires fresh programme authentication",
+      "Consumed or invalid recovery code cannot reopen the password form",
+      "Implicit token URL is rejected and scrubbed without adopting a session",
+      "Verified synthetic sign-in opens the original authorized interface",
+      "Existing verified session survives refresh",
+      "Sign-out purges private programme state and returns to sign-in-first"
+    ],
+    "boundary": "Original UI and actual isolated PostgREST/PostgreSQL persistence for three signed fixture roles; not managed Auth or deployed Preview."
+  },
+  "dependent_browser": {
+    "suite": "dependent filters original UI / actual isolated PostgreSQL",
+    "checks": 18,
+    "passed": 18,
+    "failed": 0,
+    "scenarios": [
+      "Morning Grade options equal an independent authorized roster read",
+      "Evening recalculates Grade and clears an invalid previous grade",
+      "A still-valid selected grade survives shift changes in either order",
+      "Restored source download returns the actual code-only ZIP without workbooks or private artifacts",
+      "Filtered table and CSV export contain the same single eligible episode",
+      "KPI and chart filtered population agree with the independently requested scoped SQL aggregate",
+      "Original gender chart quick filters toggle the shared population and clear on repeated click",
+      "Teacher filter options never include another centre",
+      "Academic year reload clears invalid Grade/Shift using actual historical assignment dates",
+      "Reset stays inside selected historical academic year and preserves an accurate empty state",
+      "Academic Year \u2192 Centre \u2192 Shift \u2192 Grade recovers current source-backed options",
+      "Original grouped cohort columns and clickable pass-year selection are restored with verified synthetic source",
+      "Donor \u2192 Centre \u2192 Shift \u2192 Grade keeps original dependent dropdown structure",
+      "Changing donor clears invalid centre/shift/grade without stale values",
+      "Masked Leadership gender\u2192Grade options use only authorized aggregates, never private profile inference",
+      "Clear/reset restores the full authorized filter scope",
+      "Original dropdown styling and responsive shell remain usable on mobile",
+      "Mobile drawer navigation remains clickable above sticky filter controls"
+    ],
+    "boundary": "Synthetic local Auth and isolated PostgREST; not hosted staff writes or Preview evidence."
+  },
+  "baseline_browser": {
+    "suite": "001\u2013019 original-interface compatibility",
+    "checks": 7,
+    "passed": 7,
+    "failed": 0,
+    "scenarios": [
+      "Actual missing capability RPC returns HTTP404/PGRST202; verified baseline reads still render the original UI",
+      "Loaded historical episode IDs exactly match an independent scoped API read",
+      "Undeployed supplements and incomplete dated-only assessment reads are not requested",
+      "Operational controls remain present but unavailable mutations never reach an RPC",
+      "Quarter-inclusive assessment limitation is explicit, not a misleading zero or partial score chart",
+      "Leadership loads scoped counts without private names or fabricated gender counts",
+      "403scope/401session/406schema failures stop loading and show sanitized exact RPC diagnostics"
+    ],
+    "boundary": "Real isolated PG17/PostgREST with synthetic local Auth only; no hosted session/Preview evidence."
+  },
+  "populated_upgrade": {
+    "old_tables_preserved": 27,
+    "migrations_tested": [
+      "020",
+      "021",
+      "022",
+      "023"
+    ],
+    "failure_rollback_and_safe_retry_each": true,
+    "proposal_024_scoped_read_after_upgrade": true,
+    "hosted_proof": false
+  },
+  "visual_parity": {
+    "screenshots": 40,
+    "original_ref": "0b57ea193e5dd8decb9a451d0b1cea44e22322fb",
+    "chart_numbers": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25
+    ],
+    "differences": [],
+    "overflow_cases": 0,
+    "reference_mobile_drawer": "Original reference has a sticky-filter stacking defect; its navigation is invoked programmatically for screenshots. Current mobile drawer must pass actual clicks.",
+    "boundary": "Offline fictional demo reference/screenshots. Real-data chart contracts and protected workflows verified separately; not pixel identity or deployed Preview certification."
+  },
+  "staff_summary": {
+    "source_rows": 141,
+    "valid_email_rows": 60,
+    "missing_email_rows": 72,
+    "invalid_email_rows": 9,
+    "duplicate_email_groups": 6,
+    "existing_auth_email_matches": 0,
+    "authorization_ready_rows": 0
+  },
+  "preview_deployed_this_phase": false,
+  "preview_url_access": "Tunnel403",
+  "go_no_go": "NO-GO hosted activation until verified recovery; GO code review/isolated tests",
+  "production_mutation_sql_executed": false,
+  "production_read_only_sql_executed": true,
+  "build": "passed",
+  "syntax": "passed",
+  "migration_checksums": "23 canonical + separately frozen024proposal verified",
+  "final_permission_catalog": [
+    {
+      "evidence": {
+        "migration_count": 19,
+        "owner_memberships": [
+          {
+            "role": "mass_core_owner",
+            "can_set": true,
+            "inherits": true
+          },
+          {
+            "role": "mass_foundation_owner",
+            "can_set": true,
+            "inherits": true
+          }
+        ],
+        "api_roles_can_assume_owner": false,
+        "private_schema_in_authenticator_exposure": false
+      }
+    }
+  ],
+  "publication_privacy_scan": {
+    "files": 28,
+    "private_or_secret_matches": 0
+  }
+}

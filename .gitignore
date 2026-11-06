@@ -1,6 +1,8 @@
 node_modules/
 .vercel/
 .env*
+!.env.example
+!.env.preview.example
 dist/
 .DS_Store
 supabase/.temp/
@@ -12,3 +14,11 @@ supabase/.branches/
 backups/
 .pgpass
 .pg_service.conf
+
+__pycache__/
+*.pyc
+
+# Real source/staging workbooks and private operational release packages.
+*.xlsx
+*.xlsm
+*.private.*
