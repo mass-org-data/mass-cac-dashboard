@@ -2,7 +2,7 @@
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',false);
 SELECT core_test.assert_true(jsonb_array_length(mass_api.get_context()->'centres')=1,'context exposes only own assigned centre');
-SELECT core_test.assert_true(mass_api.get_context()#>>'{centres,0,label}'='Synthetic centre A','centre labels are server-sourced');
+SELECT core_test.assert_true(mass_api.get_context()#>>'{centres,0,label}'='Synthetic <img src=x onerror="window.__fixtureCentreXSSRan=true">','centre labels are server-sourced without being treated as browser markup');
 SELECT core_test.assert_true((mass_api.get_context()#>>'{centres,0,can_write}')::boolean,'teacher capability is server-computed');
 SELECT core_test.assert_true(jsonb_array_length(mass_api.get_references()->'attendance_codes')=5,'only existing controlled attendance definitions returned');
 SELECT core_test.assert_true((SELECT count(*)=3 FROM mass_api.read_students('10000000-0000-4000-8000-000000000001')),'historical episodes preserved in bounded read');

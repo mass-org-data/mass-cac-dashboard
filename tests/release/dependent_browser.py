@@ -1,5 +1,5 @@
 """Dependent filters in the original UI against actual isolated PostgREST."""
-import csv,io,json,os,pathlib,zipfile
+import csv,io,json,os,pathlib
 from playwright.sync_api import sync_playwright
 A='10000000-0000-4000-8000-000000000001';B='10000000-0000-4000-8000-000000000002'
 DA='Synthetic donor A';DB='Synthetic donor B'
@@ -29,11 +29,8 @@ def run(origin,post,token):
   choose('shift','Morning');choose('grade','6')
   page.wait_for_function("document.querySelector('.metric-value')?.textContent==='1'")
   page.locator('[data-nav=children]').first.click();choose('shift','Morning');choose('grade','6');assert page.locator('tbody tr').count()==1
-  page.locator('[data-action=guide]').first.click();page.get_by_role('dialog').wait_for();assert page.locator('a[download]').count()==1
-  with page.expect_download() as source:page.locator('a[download]').click()
-  with zipfile.ZipFile(source.value.path()) as archive:
-   names=archive.namelist();assert any(n.endswith('src/app.js') for n in names);assert not any(n.endswith(('.xlsx','.private.json','.private.sql')) or '/.env' in n and not n.endswith('.example') for n in names)
-  checks.append('Restored source download returns the actual code-only ZIP without workbooks or private artifacts')
+  page.locator('[data-action=guide]').first.click();page.get_by_role('dialog').wait_for();assert page.locator('a[download]').count()==0
+  checks.append('Public source archive is not exposed from the application')
   with page.expect_download() as downloaded:page.locator('[data-action=export]').first.click()
   page.locator('[data-action=close]').first.click()
   rows=list(csv.reader(io.StringIO(pathlib.Path(downloaded.value.path()).read_text())));assert len(rows)==2 and rows[1][3:5]==['Morning','6'];checks.append('Filtered table and CSV export contain the same single eligible episode')
