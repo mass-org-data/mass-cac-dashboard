@@ -4,6 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import {randomUUID} from 'node:crypto';
 import {build} from 'esbuild';
 import {fixture,centre,user} from './fixture.mjs';
 const {chromium:playwright}=await import(process.env.MASS_PLAYWRIGHT_MODULE||'playwright');
@@ -11,6 +12,16 @@ let executablePath=process.env.MASS_CHROMIUM_EXECUTABLE;
 let launchArgs=[];
 if(process.env.MASS_CHROMIUM_MODULE){const {default:chromium}=await import(process.env.MASS_CHROMIUM_MODULE);executablePath=await chromium.executablePath();launchArgs=chromium.args;}
 const {db,rpc}=await fixture();
+if(process.env.MASS_TEST_MULTI_ROLE==='1'){
+ await db.query("INSERT INTO mass_core.staff_operational_access(user_id,approval_reference,approved_by) VALUES($1,'Synthetic browser multi-role approval',$2)",[user(8),user(6)]);
+ await db.exec('SET ROLE mass_core_admin;');
+ await db.query("INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,verified_by,verified_at) VALUES($1,$2,'Cluster Officer','2026-01-01',$3,now())",[user(8),centre,user(6)]);await db.exec('RESET ROLE;SET ROLE mass_core_owner;');
+ const staff=randomUUID(),directory=randomUUID();
+ await db.query("INSERT INTO mass_core.staff_members(id,display_name,source_name,auth_user_id) VALUES($1,'Synthetic operational account','Synthetic Auth account',$2)",[staff,user(8)]);
+ await db.query("INSERT INTO mass_core.centre_staff_assignments(id,centre_id,staff_member_id,role_code,verification_reference) VALUES($1,$2,$3,'Cluster Officer','Synthetic verified Auth assignment')",[directory,centre,staff]);
+ await db.query("INSERT INTO mass_core.officer_assignments(scope_grant_id,directory_assignment_id,starts_on,shift_scope,verification_reference) SELECT id,$1,'2026-01-01','Both shifts','Synthetic browser assignment' FROM mass_core.user_scope_grants WHERE user_id=$2 AND centre_id=$3 AND role_code='Cluster Officer'",[directory,user(8),centre]);await db.exec('RESET ROLE;');
+}
+
 const root=path.resolve(new URL('../..',import.meta.url).pathname),output=await fs.mkdtemp(path.join(os.tmpdir(),'mass-register-browser-'));
 await build({entryPoints:[path.join(root,'tests/release/browser-entry.js')],outfile:path.join(output,'fixture.js'),bundle:true,format:'esm',platform:'browser',plugins:[{name:'local-fixture-auth',setup(b){b.onResolve({filter:/^\.\/client\.js$/},()=>({path:path.join(root,'tests/release/browser-client.js')}));}}]});
 const calls=[];
@@ -94,6 +105,26 @@ try{
  await page.goto(origin+'/?actor=4');await page.locator('[data-nav=attendance]').first().waitFor();await page.locator('[data-nav=attendance]').first().click();await page.getByRole('heading',{name:'Attendance register',exact:true}).waitFor();check(await page.getByRole('button',{name:'Add Attendance',exact:true}).count()===0);check(await page.locator('[data-register-edit]').count()===0);
  await page.goto(origin+'/?actor=1');await page.locator('[data-nav=attendance]').first().waitFor();await page.setViewportSize({width:390,height:844});await page.locator('[data-nav=attendance]').last().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
  if(screenshots)await page.screenshot({path:path.join(screenshots,'attendance-popup-mobile.png'),fullPage:true});
- check(errors.length===0);check(await page.locator('[data-register-mark]').count()>0);
+ if(process.env.MASS_TEST_MULTI_ROLE==='1'){
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto(origin+'/?actor=8');await page.locator('#role:not([disabled])').waitFor();
+  check(await page.locator('#role').inputValue()==='Cluster Officer');
+  await page.locator('[data-nav=attendance]').first().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();
+  const key=await page.locator('[data-register-mark]').first().getAttribute('data-register-mark');
+  await page.locator(`[data-register-mark="${key.split('|')[0]}|P"]`).click();await page.getByRole('button',{name:'Save Attendance',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});checks++;
+  await page.locator('[data-nav=learning]').first().click();await page.locator('[data-filter=centre]').selectOption(centre);await page.locator('[data-filter=exam]').selectOption('F1');
+  const learner=await page.evaluate(centre=>globalThis.__massLiveReviewData.students.find(s=>s.centre===centre&&s.enrolled<='2026-05-15'&&!s.exitDate&&!globalThis.__massLiveReviewData.assessmentDetails[s.id+'|F1'])?.id,centre);
+  check(Boolean(learner));await page.locator('[data-action=enter-marks]').click();await page.locator(`[name="score_${learner}"]`).fill('22');await page.locator('[name=batchDate]').fill('2026-05-15');await page.locator('#dialog-form [type=submit]').click();await page.getByRole('dialog').waitFor({state:'detached'});
+  check(await page.evaluate(id=>globalThis.__massLiveReviewData.scores[id].F1===22,learner));
+  await page.locator('[data-nav=visits]').first().click();await page.locator('[data-action=new-visit]').click();await page.locator('[name=status]').selectOption('Completed');await page.locator('[name=feedback]').fill('Synthetic explicitly authorized mixed-role visit');await page.locator('#dialog-form [type=submit]').click();await page.getByRole('dialog').waitFor({state:'detached'});checks++;
+  await page.locator('#role').selectOption('Leadership');await page.locator('[data-nav=attendance]').first().click();check(await page.getByRole('button',{name:'Add Attendance',exact:true}).count()===0);
+  await page.locator('#role').selectOption('Teacher');await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-context=centre]').waitFor();
+  check(await page.locator('[data-register-context=centre] option').count()===1);check(await page.locator('[data-register-context=centre]').inputValue()==='10000000-0000-4000-8000-000000000002');
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.locator('[data-nav=learning]').first().click();await page.locator('[data-filter=exam]').selectOption('F1');
+  const teacherLearner=await page.evaluate(()=>globalThis.__massLiveReviewData.students.find(s=>s.centre==='10000000-0000-4000-8000-000000000002'&&s.enrolled<='2026-05-15'&&!s.exitDate&&!globalThis.__massLiveReviewData.assessmentDetails[s.id+'|F1'])?.id);
+  check(Boolean(teacherLearner));await page.locator('[data-action=enter-marks]').click();await page.locator(`[name="score_${teacherLearner}"]`).fill('20');await page.locator('[name=batchDate]').fill('2026-05-15');await page.locator('#dialog-form [type=submit]').click();await page.getByRole('dialog').waitFor({state:'detached'});checks++;
+
+ }
+ check(errors.length===0);check(process.env.MASS_TEST_MULTI_ROLE==='1'?await page.locator('#role:not([disabled])').count()===1:await page.locator('[data-register-mark]').count()>0);
  console.log(`PASS ${checks} browser assertions: chart-first landing, draft-only clicks, atomic Save, refreshed summary, correction, reload persistence, discard, audited deletion, scoped CO and read-only Leadership, mobile layout.`);
 }catch(error){console.error(error);for(const page of browser.contexts().flatMap(c=>c.pages()))console.error('Page error:',await page.locator('#form-error').textContent().catch(()=>''));process.exitCode=1;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));await db.close();await fs.rm(output,{recursive:true,force:true});}
