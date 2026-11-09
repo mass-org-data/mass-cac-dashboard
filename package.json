@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MASS Children\u2019s Activity Centres integrated frontend prototype",
+  "description": "MASS Children’s Activity Centres integrated frontend prototype",
   "engines": {
     "node": "24.x"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "lint": "eslint src scripts --max-warnings=0",
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "eslint": "^10.14.0"
   }
 }

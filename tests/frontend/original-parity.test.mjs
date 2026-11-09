@@ -5,10 +5,11 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import * as data from '../../src/data.js';
 import {cacDropout} from '../../src/dropout.js';
+import {escapeHtml as esc} from '../../src/live/html.js';
 // Frozen from the manager source, not generated from the implementation under test.
 // No network or old Git object is required by the normal unit-test suite.
 const original=JSON.parse(fs.readFileSync(new URL('../parity/original-inventory.json',import.meta.url),'utf8'));
-const ctx=vm.createContext({...data,cacDropout,console,localStorage:{getItem(){return null},setItem(){}},document:{addEventListener(){}},window:{}});
+const ctx=vm.createContext({...data,cacDropout,esc,console,localStorage:{getItem(){return null},setItem(){}},document:{addEventListener(){}},window:{}});
 vm.runInContext(fs.readFileSync(new URL('../../src/app.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace(/render\(\);\s*$/,''),ctx);
 vm.runInContext('shortColumns=(body)=>body;modal=(title,sub,body)=>{globalThis.form=body};toast=()=>{};close=()=>{};',ctx);
 const run=text=>vm.runInContext(text,ctx),attrs=(html,name)=>[...new Set([...html.matchAll(new RegExp(name+'="([^"]+)"','g'))].map(m=>m[1]))].sort();
