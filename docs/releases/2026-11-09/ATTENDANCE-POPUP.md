@@ -35,3 +35,17 @@ The red Delete Attendance panel requires a reason and typing DELETE. It removes 
 `npm test`, `npm run lint`, `npm run check`, `npm run build`, `npm run test:sql:portable`, `npm run test:attendance`.
 
 With Playwright/Chromium available: `npm run test:attendance:browser`. Optional test-only variables: `MASS_PLAYWRIGHT_MODULE`, `MASS_CHROMIUM_EXECUTABLE`, `MASS_CHROMIUM_MODULE`, `MASS_ATTENDANCE_SCREENSHOTS`. All fixtures use an isolated local database and signed-in identity stubs, never production credentials.
+
+## Follow-up: ratios, clear, names and deletion confirmation
+
+The present count now displays present/enrolled for the selected date, grade and gender (for example 1/17). The percentage includes its exact approved P/(P+A+L) fraction, for example 5.9% (1/17). If unmarked students remain, the count still uses the enrolled roster while the rate uses recorded P/A/L only; incomplete attendance is explicitly labelled. Confirmed MM/WO marks do not falsely make coverage incomplete.
+
+Clear is now available for saved marks. It changes only the local draft until Save Attendance, then removes that individual observation through the atomic register API. The previous row is retained in the immutable action snapshot; missing is never changed into absence. A clear mixed with an invalid mark rolls back the entire transaction. Direct client DELETE and unrelated write operations remain blocked.
+
+Names and IDs are both returned in the writable attendance roster for authorized Teachers/Cluster Officers. This explicitly approved operational name access is limited to the attendance endpoint: broader profile permissions, ordinary student reads, role grants and Leadership restrictions are unchanged. If a source name is absent the form says Name not recorded and retains the student ID.
+
+The previous Delete Attendance button opened a second confirmation requiring a typed DELETE and final footer submission. It now reveals a checkbox and a visible Confirm deletion button in the red panel, with the correction/deletion reason retained. The save footer is hidden while deletion is being confirmed.
+
+Source migration: `20261109070814_attendance_register_clear_names_totals.sql`; hosted receipt `20261109072249`. It installs a backward-compatible v2 summary endpoint and updates the scoped save/name contracts. All 47,325 live attendance rows and staff-grant fingerprints are preserved. Real hosted delete and individual-clear paths were additionally exercised inside transactions that were explicitly rolled back; postflight fingerprint matches and no action receipts or attendance changes persisted.
+
+Validation: 93 frontend tests, 27 workflow checks, 52 register SQL checks, existing SQL/security suites, 1,440 independent calculation comparisons, and 22 browser assertions. Browser coverage includes saved-clear draft isolation and persistence, both roster names and IDs, ratios, correction/deletion, and mobile layout. Managed signed-in Preview testing still belongs to staff review.

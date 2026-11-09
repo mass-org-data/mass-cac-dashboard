@@ -74,15 +74,22 @@ try{
  check((await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).marks.find(m=>m.enrolment===first).code==='A');
  await page.reload();await page.locator('[data-nav=attendance]').first().waitFor();await page.locator('[data-nav=attendance]').first().click();await page.locator('[data-filter=month]').selectOption('2026-05');
  await page.locator(`[data-register-edit="${centre}|Morning|2026-05-14"]`).click();await page.locator(`[data-register-mark="${first}|A"][aria-pressed=true]`).waitFor();checks++;
+ const beforeClear=writes().length;
+ await page.locator(`[data-register-clear="${first}"]`).click();
+ check(writes().length===beforeClear);
+ check((await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).marks.some(m=>m.enrolment===first&&m.code==='A'));
+ await page.locator('[name=reason]').fill('Clear saved mark');await page.getByRole('button',{name:'Save Attendance',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
+ check(!(await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).marks.some(m=>m.enrolment===first));
+ await page.locator(`[data-register-edit="${centre}|Morning|2026-05-14"]`).click();await page.locator(`[data-register-clear="${first}"]`).waitFor();
  // Discarding an unsaved draft does not affect Supabase or the table.
  await page.locator(`[data-register-mark="${first}|P"]`).click();const beforeCancel=writes().length;await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});check(writes().length===beforeCancel);
  if(screenshots)await page.screenshot({path:path.join(screenshots,'attendance-page-desktop.png'),fullPage:true});
  await page.locator(`[data-register-edit="${centre}|Morning|2026-05-14"]`).click();await page.locator('[data-register-delete]').waitFor();
- await page.locator('[data-register-delete]').click();await page.locator('[name=reason]').fill('Synthetic browser deletion');await page.locator('[name=confirmDelete]').fill('DELETE');
- await page.locator('.modal-actions [type=submit]').click();await page.getByRole('dialog').waitFor({state:'detached'});await page.locator(`[data-register-edit="${centre}|Morning|2026-05-14"]`).waitFor({state:'detached'});
+ await page.locator('[data-register-delete]').click();await page.locator('[name=reason]').fill('Synthetic browser deletion');await page.locator('[name=confirmDelete]').check();
+ await page.getByRole('button',{name:'Confirm deletion',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});await page.locator(`[data-register-edit="${centre}|Morning|2026-05-14"]`).waitFor({state:'detached'});
  check((await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).recorded===0);
  // CO uses the same workflow with masked student labels; Leadership only sees aggregates.
- await page.goto(origin+'/?actor=3');await page.locator('[data-nav=attendance]').first().waitFor();await page.locator('[data-nav=attendance]').first().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();check(!(await page.locator('#register-roster').innerText()).includes('Synthetic record'));
+ await page.goto(origin+'/?actor=3');await page.locator('[data-nav=attendance]').first().waitFor();await page.locator('[data-nav=attendance]').first().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();check((await page.locator('#register-roster').innerText()).includes('Synthetic corrected profile'));check((await page.locator('#register-roster .subtext').count())>0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
  await page.goto(origin+'/?actor=4');await page.locator('[data-nav=attendance]').first().waitFor();await page.locator('[data-nav=attendance]').first().click();await page.getByRole('heading',{name:'Attendance register',exact:true}).waitFor();check(await page.getByRole('button',{name:'Add Attendance',exact:true}).count()===0);check(await page.locator('[data-register-edit]').count()===0);
  await page.goto(origin+'/?actor=1');await page.locator('[data-nav=attendance]').first().waitFor();await page.setViewportSize({width:390,height:844});await page.locator('[data-nav=attendance]').last().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));

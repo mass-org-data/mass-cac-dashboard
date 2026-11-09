@@ -15,9 +15,21 @@ try {
  let summary=await rpc('attendance_register_summary',{p_centres:[centre],p_from:'2026-05-14',p_until:'2026-05-15'});
  ok(summary.length===1&&summary[0].present===1&&Number(summary[0].percentage)===50);
  await error('PT409',()=>rpc('save_attendance_register',{...args,p_request:randomUUID()}));
+ const detailedSummary=await rpc('attendance_register_summary_v2',{p_centres:[centre],p_from:'2026-05-14',p_until:'2026-05-15'});
+ ok(Number(detailedSummary[0].total)===register.roster.length&&Number(detailedSummary[0].eligible)===2);
+ let clearing=await rpc('read_attendance_register',context);
+ const clearArgs={...args,p_request:randomUUID(),p_token:clearing.token,p_rows:[{enrolment:ids[0],code:null}],p_reason:'Clear incorrect mark'};
+ assert.equal(await rpc('save_attendance_register',clearArgs),1);checks++;
+ assert.equal(await rpc('save_attendance_register',clearArgs),1);checks++;
+ clearing=await rpc('read_attendance_register',context);
+ ok(clearing.recorded===1&&!clearing.marks.some(r=>r.enrolment===ids[0]));
+ await error('23514',()=>rpc('save_attendance_register',{...clearArgs,p_request:randomUUID(),p_token:clearing.token,p_rows:[{enrolment:ids[0]}]}));
+ await rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:clearing.token,p_rows:[{enrolment:ids[0],code:'P'}]});
+
  register=await rpc('read_attendance_register',context);
  args={...args,p_request:randomUUID(),p_token:register.token,p_rows:[{enrolment:ids[0],code:'A'},{enrolment:ids[1],code:'invalid'}]};
  await error('23514',()=>rpc('save_attendance_register',args));
+ await error('23514',()=>rpc('save_attendance_register',{...args,p_rows:[{enrolment:ids[0],code:null},{enrolment:ids[1],code:'invalid'}]}));
  ok((await rpc('read_attendance_register',context)).token===register.token);
  await error('22023',()=>rpc('save_attendance_register',{...args,p_rows:[{enrolment:ids[0],code:'A'},{enrolment:ids[0],code:'P'}]}));
  await error('23514',()=>rpc('save_attendance_register',{...args,p_rows:[{enrolment:ids[0],code:'WO'}]}));
@@ -32,7 +44,8 @@ try {
   await error('42501',()=>rpc('delete_attendance_register',deletion,user(actor)));
  }
  for(const role of ['anon','service_role'])await error('42501',()=>rpc('delete_attendance_register',deletion,user(1),role));
- const masked=await rpc('read_attendance_register',context,user(3));ok(masked.roster.every(s=>s.name===null));
+ const officer=await rpc('read_attendance_register',context,user(3));ok(officer.roster.every(s=>s.name&&s.student_id));
+ const ordinaryRead=await rpc('read_students',{p_centre:centre},user(3));ok(ordinaryRead.every(s=>s.full_name===null));
  await error('PT409',()=>rpc('delete_attendance_register',{...deletion,p_token:'stale'}));
  await error('22023',()=>rpc('delete_attendance_register',{...deletion,p_reason:''}));
  await error('42501',()=>db.exec("SET ROLE authenticated; DELETE FROM mass_core.attendance_records;"));await db.exec('RESET ROLE;');
@@ -59,5 +72,5 @@ try {
  await db.exec('SET ROLE mass_core_owner; UPDATE mass_core.attendance_register_control SET enabled=false;RESET ROLE;');
  await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:empty.token}));
  await error('42501',()=>rpc('delete_attendance_register',{...deletion,p_request:randomUUID()}));
- console.log(`PASS ${checks} attendance register SQL checks: atomic save/rollback, correction, idempotency, conflict detection, scope, masked names, exact deletion, retained history.`);
+ console.log(`PASS ${checks} attendance register SQL checks: atomic save/rollback, correction, idempotency, conflict detection, scope, scoped roster names, exact deletion, retained history.`);
 } catch(e) {console.error(e.message,e.code,e.where);process.exitCode=1;} finally{await db.close();}

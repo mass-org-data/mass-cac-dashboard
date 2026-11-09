@@ -24,7 +24,7 @@ export async function fixture() {
  await db.exec('RESET ROLE; BEGIN;'+read('supabase/activation/control.sql')+read('supabase/activation/seal.sql')+'COMMIT;');
  await db.exec("SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated register test' WHERE feature IN ('attendance_entry','assessment_entry','reviewed_reads'); UPDATE mass_core.attendance_register_control SET enabled=true,approval_reference='isolated approved register test'; RESET ROLE;");
  async function rpc(name,args={},actor=user(1),role='authenticated') {
-  if(!/^[a-z_]+$/.test(name)||Object.keys(args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid test RPC');
+  if(!/^[a-z_][a-z0-9_]*$/.test(name)||Object.keys(args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid test RPC');
   return db.transaction(async tx=>{
    await tx.exec('SET LOCAL ROLE '+role);
    await tx.query("SELECT set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:actor,role})]);
