@@ -22,7 +22,9 @@
     "check:preview": "node scripts/preview-config.mjs",
     "test:activation": "python -m unittest discover -s tests/activation -p 'test_*.py' && node tests/activation/provider-rehearsal.mjs",
     "test:sql:portable": "node tests/release/portable-sql.mjs",
-    "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs"
+    "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs",
+    "test:attendance": "node tests/attendance/register.mjs",
+    "test:attendance:browser": "node tests/attendance/browser.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0"

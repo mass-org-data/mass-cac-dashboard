@@ -1,11 +1,12 @@
 export const isAuthorizationFailure = error => [401, 403].includes(Number(error?.status));
 
-export function createAccessVerificationGate({root, onRestore, onRetry}) {
+export function createAccessVerificationGate({root, onRestore, onRetry, onBlock}) {
   let blocked = false;
   return Object.freeze({
     block() {
       if (blocked) return;
       blocked = true;
+      onBlock?.();
       const main = document.createElement('main');
       main.className = 'auth-page';
       const section = document.createElement('section');

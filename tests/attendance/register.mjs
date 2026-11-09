@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {fixture,centre,user} from './fixture.mjs';
+const {db,rpc}=await fixture();let checks=0;
+const ok=(value)=>{assert.ok(value);checks++;};
+const error=async(code,work)=>{await assert.rejects(work,e=>e.code===code);checks++;};
+const context={p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'};
+try {
+ let register=await rpc('read_attendance_register',context);
+ ok(register.roster.length>=2&&register.recorded===0);
+ const ids=register.roster.slice(0,2).map(s=>s.id);
+ let args={...context,p_request:randomUUID(),p_token:register.token,p_rows:[{enrolment:ids[0],code:'P'},{enrolment:ids[1],code:'L'}],p_reason:'Synthetic initial register'};
+ assert.equal(await rpc('save_attendance_register',args),2);checks++;
+ assert.equal(await rpc('save_attendance_register',args),2);checks++;
+ let summary=await rpc('attendance_register_summary',{p_centres:[centre],p_from:'2026-05-14',p_until:'2026-05-15'});
+ ok(summary.length===1&&summary[0].present===1&&Number(summary[0].percentage)===50);
+ await error('PT409',()=>rpc('save_attendance_register',{...args,p_request:randomUUID()}));
+ register=await rpc('read_attendance_register',context);
+ args={...args,p_request:randomUUID(),p_token:register.token,p_rows:[{enrolment:ids[0],code:'A'},{enrolment:ids[1],code:'invalid'}]};
+ await error('23514',()=>rpc('save_attendance_register',args));
+ ok((await rpc('read_attendance_register',context)).token===register.token);
+ await error('22023',()=>rpc('save_attendance_register',{...args,p_rows:[{enrolment:ids[0],code:'A'},{enrolment:ids[0],code:'P'}]}));
+ await error('23514',()=>rpc('save_attendance_register',{...args,p_rows:[{enrolment:ids[0],code:'WO'}]}));
+ args={...args,p_request:randomUUID(),p_rows:[{enrolment:ids[0],code:'A'}],p_reason:'Synthetic correction'};
+ assert.equal(await rpc('save_attendance_register',args),1);checks++;
+ register=await rpc('read_attendance_register',context);
+ ok(register.marks.find(r=>r.enrolment===ids[0]).version===2);
+ const deletion={...context,p_request:randomUUID(),p_token:register.token,p_reason:'Synthetic approved removal'};
+ for(const actor of [2,4,5,7,8]){
+  await error('42501',()=>rpc('read_attendance_register',context,user(actor)));
+  await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:register.token},user(actor)));
+  await error('42501',()=>rpc('delete_attendance_register',deletion,user(actor)));
+ }
+ for(const role of ['anon','service_role'])await error('42501',()=>rpc('delete_attendance_register',deletion,user(1),role));
+ const masked=await rpc('read_attendance_register',context,user(3));ok(masked.roster.every(s=>s.name===null));
+ await error('PT409',()=>rpc('delete_attendance_register',{...deletion,p_token:'stale'}));
+ await error('22023',()=>rpc('delete_attendance_register',{...deletion,p_reason:''}));
+ await error('42501',()=>db.exec("SET ROLE authenticated; DELETE FROM mass_core.attendance_records;"));await db.exec('RESET ROLE;');
+ const countBefore=Number((await db.query('SELECT count(*) n FROM mass_core.attendance_records')).rows[0].n);
+ assert.equal(await rpc('delete_attendance_register',deletion),2);checks++;
+ assert.equal(await rpc('delete_attendance_register',deletion),2);checks++;
+ const after=Number((await db.query('SELECT count(*) n FROM mass_core.attendance_records')).rows[0].n);
+ ok(countBefore-after===2);
+ ok((await rpc('read_attendance_register',context)).recorded===0);
+ await db.exec('SET ROLE mass_core_owner;');const history=(await db.query("SELECT * FROM mass_core.attendance_register_actions WHERE operation='DELETE'")).rows;
+ // PGlite query accepts one statement; query history separately below.
+ ok(history.length===1&&history[0].before_records.length===2&&history[0].actor_user_id===user(1));
+ await db.exec('RESET ROLE;');
+ await error('42501',()=>db.exec('SET ROLE authenticated; SELECT * FROM mass_core.attendance_register_actions;'));await db.exec('RESET ROLE;');
+ const empty=await rpc('read_attendance_register',context);
+ await rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:empty.token});
+ await error('PT409',()=>rpc('delete_attendance_register',{...deletion,p_request:randomUUID()}));
+ ok((await rpc('read_attendance_register',context)).recorded===1);
+ await error('42501',()=>rpc('record_attendance',{p_enrolment:ids[0],p_date:context.p_date,p_code:'P',p_expected:1}));
+ let current=await rpc('read_attendance_register',context,user(3));
+ assert.equal(await rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:current.token,p_rows:[{enrolment:ids[0],code:'P'}]},user(3)),1);checks++;
+ current=await rpc('read_attendance_register',context,user(3));
+ assert.equal(await rpc('delete_attendance_register',{...deletion,p_request:randomUUID(),p_token:current.token},user(3)),1);checks++;
+ await db.exec('SET ROLE mass_core_owner; UPDATE mass_core.attendance_register_control SET enabled=false;RESET ROLE;');
+ await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:empty.token}));
+ await error('42501',()=>rpc('delete_attendance_register',{...deletion,p_request:randomUUID()}));
+ console.log(`PASS ${checks} attendance register SQL checks: atomic save/rollback, correction, idempotency, conflict detection, scope, masked names, exact deletion, retained history.`);
+} catch(e) {console.error(e.message,e.code,e.where);process.exitCode=1;} finally{await db.close();}

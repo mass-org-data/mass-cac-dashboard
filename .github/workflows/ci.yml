@@ -40,3 +40,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:sql:portable
+      - run: npm run test:attendance

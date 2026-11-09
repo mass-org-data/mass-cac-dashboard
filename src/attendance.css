@@ -1,0 +1,25 @@
+/* Attendance registers use local drafts inside the shared modal. */
+.attendance-register{margin-bottom:24px}.register-definition{padding:0 24px 18px;max-width:900px}
+.register-context{grid-template-columns:2fr 1fr 1fr;margin-bottom:20px}
+.register-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:16px 0;flex-wrap:wrap}
+.register-toolbar #register-count{font-size:12px;color:var(--muted,#64748b)}
+.register-students{max-height:48vh;overflow:auto;border:1px solid var(--border,#e2e8f0);border-radius:10px}
+.register-students thead{position:sticky;top:0;background:var(--surface,#fff);z-index:1}
+.register-students .mark-group{display:flex;gap:5px;align-items:center}
+.register-students .mark-btn{border:1px solid #cbd5e1;border-radius:7px;background:white;min-width:36px;min-height:36px;cursor:pointer;font-weight:600;color:#475569}
+.register-students .mark-btn.selected{background:#173f35;color:white;border-color:#173f35;box-shadow:0 0 0 2px #d1e7df}
+.register-students .mark-btn.a.selected{background:#b42318;border-color:#b42318}.register-students .mark-btn.l.selected{background:#92400e;border-color:#92400e}
+.register-reason{margin-top:20px}.register-danger{margin-top:24px;padding:18px;border:1px solid #f4b4b4;border-radius:10px;background:#fff4f4;color:#8d201b}
+.register-danger h3{margin:0 0 8px}.register-danger p{font-size:13px;line-height:1.6;margin-bottom:14px}
+.btn.danger{color:#fff;background:#b42318;border-color:#b42318}.btn.danger:hover{background:#912018}
+.register-danger [hidden],.register-clear[hidden]{display:none!important}
+.modal:has([data-attendance-editor]) .modal-actions{position:sticky;bottom:0;z-index:3;margin:0;padding:16px 24px;background:white;border-top:1px solid #e2e8f0}
+.content [data-chart] strong{overflow-wrap:anywhere}
+@media(max-width:640px){.register-context{grid-template-columns:1fr}.register-students .mark-group{flex-wrap:wrap;min-width:210px}.register-definition{padding:0 16px 16px}}
+@media(max-width:640px){
+ .register-students{max-height:34vh}.register-students table,.register-students tbody{display:block;width:100%;min-width:0}
+ .register-students thead{display:none}.register-students tr{display:grid;grid-template-columns:minmax(0,1fr) auto;border-bottom:1px solid #e2e8f0}
+ .register-students td{display:block;padding:10px;white-space:normal;border:0}.register-students td:nth-child(3){grid-column:1/-1;padding-top:0}
+ .register-students .mark-group{min-width:0;flex-wrap:wrap}.register-students td:first-child{overflow-wrap:anywhere}
+ .modal:has([data-attendance-editor]) .modal-actions{padding:12px 18px}
+}
