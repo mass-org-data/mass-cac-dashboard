@@ -14,7 +14,7 @@ Depends on Phase E / PR #14.
 - Browser scenarios now follow the two-step assessment workflow introduced in Phase C: select an observed date, verify its derived F1–F4 round, enter marks, and save the batch.
 - Directory import reconciliation ignores `staff_members.auth_user_id` and `centre_staff_assignments.verification_reference` when comparing immutable workbook mappings. Those fields are managed by separate reviewed Auth and operational-verification workflows. Imports neither overwrite nor erase them, and tests retain strict comparison of every source-managed field.
 - The current-schema student replay expects all 28 RLS-protected `mass_core` tables in migrations 001–027. A separate catalog check measured 34 protected application and import tables across `mass_core` and `mass_foundation`. The historical replay still verifies its original 17-table baseline.
-- `playwright` 1.55 is declared in `devDependencies`, so the Node browser suite no longer depends on an undeclared local package.
+- Patched `playwright` 1.55.1 is declared in `devDependencies`, so the Node browser suite no longer depends on an undeclared local package and passes the high-severity dependency audit.
 
 ## Data and security
 
