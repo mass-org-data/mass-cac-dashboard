@@ -98,3 +98,7 @@ User instructions and three screenshot references on 10 November requested large
 - No unrelated assessment requirement is inferred from screenshots of Overview charts. Further assessment-specific screenshots can extend the same PR if needed.
 
 No hosted schema, marks, grants, feature gates or production frontend was changed for this follow-up. Holiday saving, Notes, attribution and server profile paging require the included migration before hosted acceptance; the current Preview keeps the capability-aware fallback.
+
+### Size adjustment after preview review
+
+Restored the original typography, scorecard/chart scale, spacing and mobile card density at the user’s request. Kept scorecard alignment, inline ID/name searches, Overview Export, attendance changes and the visible Sign out bar.

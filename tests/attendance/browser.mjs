@@ -137,7 +137,7 @@ try{
  if(process.env.MASS_TEST_MULTI_ROLE==='1'){
   await page.setViewportSize({width:1440,height:1000});
   const detailReads=calls.filter(c=>c.name==='read_students').length;await page.goto(origin+'/?actor=8');await page.locator('#role:not([disabled])').waitFor();check(calls.filter(c=>c.name==='read_students').length===detailReads);
-  check(await page.locator('#role').inputValue()==='Leadership');check(await page.locator('[data-action=export-explain]').count()>0);check(await page.locator('.metric-top').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=15));check(await page.locator('.metric-value').evaluateAll(nodes=>nodes.slice(0,3).every(n=>Math.abs(n.getBoundingClientRect().y-nodes[0].getBoundingClientRect().y)<2)));
+  check(await page.locator('#role').inputValue()==='Leadership');check(await page.locator('[data-action=export-explain]').count()>0);check(await page.locator('.metric-top').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize)===11));check(await page.locator('.metric-value').evaluateAll(nodes=>nodes.slice(0,3).every(n=>Math.abs(n.getBoundingClientRect().y-nodes[0].getBoundingClientRect().y)<2)));
   check(await page.locator('[data-nav=overview].active').count()>0);if(screenshots)await page.screenshot({path:path.join(screenshots,'leadership-overview-desktop.png'),fullPage:true});
   await page.locator('#role').selectOption('Cluster Officer');await page.locator('#role:not([disabled])').waitFor();check(await page.locator('[data-action=export-explain]').count()>0);
   await page.locator('[data-nav=attendance]').first().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();
