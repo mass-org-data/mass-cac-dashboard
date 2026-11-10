@@ -1,7 +1,7 @@
 import vm from 'node:vm';import fs from 'node:fs';import assert from 'node:assert/strict';
-import * as data from '../src/data.js';import {cacDropout} from '../src/dropout.js';import {escapeHtml as esc} from '../src/live/html.js';
+import * as data from '../src/data.js';import {cacDropout} from '../src/dropout.js';import {escapeHtml as esc} from '../src/live/html.js';import {profileRows} from '../src/live/profile-list.js';
 let code=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace(/render\(\);\s*$/,'');
-const ctx=vm.createContext({...data,cacDropout,esc,console,localStorage:{getItem(){return null},setItem(){}},document:{addEventListener(){}},window:{}});vm.runInContext(code,ctx);
+const ctx=vm.createContext({...data,cacDropout,esc,profileRows,console,localStorage:{getItem(){return null},setItem(){}},document:{addEventListener(){}},window:{}});vm.runInContext(code,ctx);
 vm.runInContext(`modal=(title,sub,body,cb)=>{globalThis.testModal={title,sub,body,cb};};toast=()=>{};render=()=>{};close=()=>{};persist=()=>{db.lastSaved=String(Date.now());};state.role='Teacher';`,ctx);
 let checks=0;function run(s){return vm.runInContext(s,ctx)}function ok(s){assert.ok(run(s),s);checks++}
 for(const kind of ['Attendance','Exam results','Activities','CAC sessions','Students','Morarji']){run(`recordKind=${JSON.stringify(kind)};globalThis.before=JSON.stringify(db);globalThis.key=managedRecords()[0]?.key;`);ok('!!key');run('removeRecord(key);testModal.cb({});');ok('JSON.stringify(db)!==before');run('undoRemoval();');ok('JSON.stringify({...db,lastSaved:null})===JSON.stringify({...JSON.parse(before),lastSaved:null})');}
