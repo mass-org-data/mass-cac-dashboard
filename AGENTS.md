@@ -212,3 +212,12 @@ If catalog counts change through a reviewed migration, measure the current schem
 - D01 answered.
 - D02-D08 need programme decisions as described above.
 - No Supabase schema/data/grant change was required for Phases A-F; they reused existing protected APIs and aggregates. Phase B included read-only hosted verification of officer assignments and visit history.
+
+
+## Single-PR acceptance follow-up (10 November)
+
+Continue the corrections in PR #16 (`fix/frontend-acceptance`); do not create a duplicate PR. PR #10 is now merged; #11–#15 and #16 must be rechecked before any release. Current user approval is implementation and one PR, with production frontend held.
+
+Initial Overview loading uses the aggregate APIs for every role. Operational modules load on demand through `__massEnsureView`; Profiles, Assessments and Activities request only their needed facts. Explicit individual student detail loads the supporting modules. Keep root rendering safe against nested blur/change callbacks. Assessment and participation entry rosters use `data-paginate="false"`.
+
+The pending metadata migration also includes bounded server profile paging and the existing nullable Morarji contradiction rule at the server boundary. Do not claim hosted installation from a local test. Keep the feature gates unchanged and report the actual hosted migration state in the PR.

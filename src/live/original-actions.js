@@ -1,3 +1,4 @@
+import {rosterTable} from './roster-table.js';
 import {operationAllowed} from './backend-capabilities.js';
 import {BackendError} from './api.js';
 import {selectedMorarjiMembership,validateMorarjiFacts} from './morarji.js';
@@ -115,7 +116,7 @@ export function createOriginalActions({client,api,refs,context,refresh,signOut,c
  if(el.dataset.event){
   const event=db.events.find(x=>x.id===el.dataset.event);if(!event)throw Error('Reload this activity.');
   const list=db.students.filter(s=>s.centre===event.centre&&s.shift===event.shift&&s.enrolled<=event.date&&(!s.exitDate||event.date<s.exitDate));
-  modal('Session participation',`${event.name} · ${event.date}`,`<div class="bulk-actions"><button type="button" class="btn tiny" data-participation-all="Attended">Mark all participated</button><button type="button" class="btn tiny" data-participation-all="Not attended">Mark all did not participate</button></div><div class="table-scroll"><table><thead><tr><th>Student</th><th>Grade / shift</th><th>Participation</th></tr></thead><tbody>${list.map(s=>`<tr><td>${esc(s.name)}</td><td>${s.grade} · ${s.shift}</td><td>${t.participationButtons(s,db.participation[s.id+'|'+event.id]||'')}</td></tr>`).join('')}</tbody></table></div>`,async f=>{
+  modal('Session participation',`${event.name} · ${event.date}`,`<div class="bulk-actions"><button type="button" class="btn tiny" data-participation-all="Attended">Mark all participated</button><button type="button" class="btn tiny" data-participation-all="Not attended">Mark all did not participate</button></div>${rosterTable(['Student','Grade / shift','Participation'],list.map(s=>`<tr><td>${esc(s.name)}<div class="subtext">${esc(s.studentId)}</div></td><td>${esc(s.grade)} · ${esc(s.shift)}</td><td>${t.participationButtons(s,db.participation[s.id+'|'+event.id]||'')}</td></tr>`),'register-students')}`,async f=>{
    if(event.status!=='Held'&&list.some(s=>f['p_'+s.id]))throw Error('Only a verified Held activity accepts observed participation.');
    const rows=list.filter(s=>f['p_'+s.id]||db.participationRecords[s.id+'|'+event.id]).map(s=>({enrolment:s.enrolmentId,event:event.id,participated:f['p_'+s.id]?f['p_'+s.id]==='Attended':null,expected:db.participationRecords[s.id+'|'+event.id]?.row_version||0}));if(!rows.length)throw Error('No participation changes selected.');await done(()=>rpc('record_participation_batch',{p_rows:rows}));
   },true);document.querySelector('#dialog-form').dataset.liveParticipation='true';return;

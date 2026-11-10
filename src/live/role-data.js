@@ -10,13 +10,16 @@ export function defaultAuthorizedRole(context) {
   return roles[0] || null;
 }
 
-export function roleDataPlan(context, role, {aggregateApi = true} = {}) {
+export function roleDataPlan(context, role, {aggregateApi = true, view = 'details'} = {}) {
   const roles = authorizedRoles(context);
   if (!roles.includes(role)) throw new Error('Choose an authorized role.');
   const centres = context.centres.filter(centre => centre.roles.includes(role));
-  const aggregateMode = role === 'Leadership' || centres.some(centre => !centre.can_read_profiles);
+  const overviewOnly = aggregateApi && ['overview','donor','visits'].includes(view);
+  const aggregateMode = overviewOnly || role === 'Leadership' || centres.some(centre => !centre.can_read_profiles);
   let detailedCentres = [];
-  if (role === 'Leadership') {
+  if (overviewOnly) {
+    detailedCentres = [];
+  } else if (role === 'Leadership') {
     if (!aggregateApi) detailedCentres = centres;
   } else if (context.operational_roles_enabled === true) {
     detailedCentres = centres.filter(centre => centre.can_write);

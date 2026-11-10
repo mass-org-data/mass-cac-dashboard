@@ -20,7 +20,7 @@ export async function startOriginalReview(config) {
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
  const readController=new AbortController(),reviewedCache=new Map();let dead=false;
- const clear=()=>{dead=true;delete globalThis.__massOperationalRoles;delete globalThis.__massSelectRole;delete globalThis.__massAttendance;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
+ const clear=()=>{dead=true;delete globalThis.__massOperationalRoles;delete globalThis.__massSelectRole;delete globalThis.__massEnsureView;delete globalThis.__massOverviewOnly;delete globalThis.__massProfilePages;delete globalThis.__massAttendance;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Checking your session</h1><p role="status">No programme records have been loaded.</p></section></main>';
@@ -38,7 +38,8 @@ export async function startOriginalReview(config) {
  if(context?.user_id!==identity.data.user.id||!context.centres?.length)throw Error('No verified centre scope is available. Contact the administrator.');
  globalThis.__massOperationalRoles=context.operational_roles_enabled===true;globalThis.__massActualRoles=authorizedRoles(context);globalThis.__massActualRole=defaultAuthorizedRole(context);
  if(!globalThis.__massActualRole)throw Error('No verified role is available. Contact the administrator.');
- const setRoleRuntime=role=>{const plan=roleDataPlan(context,role,{aggregateApi:capabilities.aggregates||capabilities.reviewedCharts});globalThis.__massActualRole=role;globalThis.__massAggregateMode=plan.aggregateMode;return plan;};
+ let detailsReady=false,loadedView='overview';
+ const setRoleRuntime=role=>{const plan=roleDataPlan(context,role,{aggregateApi:capabilities.aggregates||capabilities.reviewedCharts,view:detailsReady?loadedView:'overview'});globalThis.__massActualRole=role;globalThis.__massAggregateMode=plan.aggregateMode;globalThis.__massOverviewOnly=!detailsReady&&(capabilities.aggregates||capabilities.reviewedCharts);return plan;};
  setRoleRuntime(globalThis.__massActualRole);
  let year=refs.academic_years.find(y=>y.starts_on<=liveToday()&&liveToday()<y.ends_before)||[...refs.academic_years].sort((a,b)=>b.starts_on.localeCompare(a.starts_on))[0];
  if(!year)throw Error('No approved academic year is configured.');
@@ -60,8 +61,8 @@ export async function startOriginalReview(config) {
   if(error||auth?.user?.id!==context.user_id||scope.user_id!==context.user_id||JSON.stringify(scope.centres)!==JSON.stringify(context.centres)){clear();throw Error('Your authorized scope changed. Sign in again.');}
   // Aggregate-capable accounts never need centre-level profile/fact downloads
   // to render programme reporting. Older baselines retain their local fallback.
-  const plan=roleDataPlan(context,globalThis.__massActualRole,{aggregateApi:capabilities.aggregates||capabilities.reviewedCharts}),loadCentres=plan.detailedCentres;
-  const results=[];let index=0;async function worker(){while(index<loadCentres.length){const c=loadCentres[index++];const [rows,staff,delivery,activityDetails,basis]=await Promise.all([reads.centre({centre:c.id,from:reportYear.starts_on,until:reportYear.ends_before,includeAssessments:capabilities.periodAssessments,signal:readController.signal}),directory.staff({centre:c.id,signal:readController.signal}),capabilities.operationalDetails?reads.rows('read_delivery',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal):Promise.resolve([]),capabilities.operationalDetails?reads.rows('read_activity_details',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal):Promise.resolve(null),capabilities.aggregates?reads.rows('read_enrolment_basis',{p_centre:c.id},readController.signal):Promise.resolve([])]);const namedStudents=plan.role!=='Leadership'&&c.can_write?await hydrateRosterNames(rows.students,c.id,args=>rpc('read_attendance_register',args),liveToday()):rows.students;results.push({c,rows:{...rows,students:namedStudents,activities:activityDetails??rows.activities},staff,delivery,basis});const label=document.querySelector('#mass-load-status');if(label)label.textContent=`Loaded ${results.length}/${loadCentres.length} ${plan.role} centres`;}}
+  const plan=roleDataPlan(context,globalThis.__massActualRole,{aggregateApi:capabilities.aggregates||capabilities.reviewedCharts,view:detailsReady?loadedView:'overview'}),loadCentres=plan.detailedCentres;
+  const results=[];let index=0;async function worker(){while(index<loadCentres.length){const c=loadCentres[index++];const [rows,staff,delivery,activityDetails,basis]=await Promise.all([reads.centre({centre:c.id,from:reportYear.starts_on,until:reportYear.ends_before,includeAssessments:capabilities.periodAssessments,view:loadedView,signal:readController.signal}),Promise.resolve([]),capabilities.operationalDetails&&['attendance','student-detail'].includes(loadedView)?reads.rows('read_delivery',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal):Promise.resolve([]),capabilities.operationalDetails&&['attendance','activities','student-detail'].includes(loadedView)?reads.rows('read_activity_details',{p_centre:c.id,p_from:reportYear.starts_on,p_until:reportYear.ends_before},readController.signal):Promise.resolve(null),capabilities.aggregates&&['children','student-detail'].includes(loadedView)?reads.rows('read_enrolment_basis',{p_centre:c.id},readController.signal):Promise.resolve([])]);const namedStudents=plan.role!=='Leadership'&&c.can_write?await hydrateRosterNames(rows.students,c.id,args=>rpc('read_attendance_register',args),liveToday()):rows.students;results.push({c,rows:{...rows,students:namedStudents,activities:activityDetails??rows.activities},staff,delivery,basis});const label=document.querySelector('#mass-load-status');if(label)label.textContent=`Loaded ${results.length}/${loadCentres.length} ${plan.role} centres`;}}
   await Promise.all(Array.from({length:6},worker));
   // Build privately before swapping: failed loads never silently truncate the scope.
   const next={students:[],attendance:{},attendanceRecords:{},scores:{},assessmentDetails:{},participation:{},participationRecords:{},events:[],sessions:[],calendar:[],morarji:{},morarjiHistory:[]};const byEpisode=new Map(),observed={};
@@ -75,9 +76,9 @@ export async function startOriginalReview(config) {
    for(const r of rows.calendar)next.calendar.push({id:r.id,centre:c.id,date:r.session_date,shift:r.shift_code,status:r.is_scheduled?'Planned':'Not Scheduled'});
    for(const r of rows.morarji){const id=r.enrolment_id;if(!byEpisode.has(id))continue;const cohort=refs.programme_cohorts.find(x=>x.id===r.cohort_id);next.morarjiHistory.push({s:byEpisode.get(id),...r,cohort:cohort?.label||'',cohortAcademicYear:cohort?.academic_year_id||null,membershipId:r.membership_id,school:r.school_name,applied:r.applied??null,attended:r.attended??null,passed:r.passed??null,took:r.attended??null,result:r.passed===true?'Passed':r.passed===false?'Not passed':'Not recorded',trainingDays:null,selected:null,admitted:null,scholarship:'Not recorded'});}
   }
-  if(dead)throw Error('Session ended during data load.');Object.assign(db,next);db.visitTrends=null;reviewedCache.clear();db.academicYear=reportYear.id;globalThis.__massConfiguredQuarters=refs.assessment_definitions.filter(d=>periods.get(d.period_id)?.academic_year_id===reportYear.id).map(d=>periods.get(d.period_id).quarter);db.aggregates={};aggregateFailed.clear();dataEpoch++;globalThis.__massReviewObservedDatesByCentre=Object.fromEntries(Object.entries(observed).map(([id,months])=>[id,Object.fromEntries(Object.entries(months).map(([m,dates])=>[m,[...dates].sort()]))]));
+  if(dead)throw Error('Session ended during data load.');Object.assign(db,next);db.visitTrends=null;reviewedCache.clear();globalThis.__massProfilePages?.invalidate();db.academicYear=reportYear.id;globalThis.__massConfiguredQuarters=refs.assessment_definitions.filter(d=>periods.get(d.period_id)?.academic_year_id===reportYear.id).map(d=>periods.get(d.period_id).quarter);db.aggregates={};aggregateFailed.clear();dataEpoch++;globalThis.__massReviewObservedDatesByCentre=Object.fromEntries(Object.entries(observed).map(([id,months])=>[id,Object.fromEntries(Object.entries(months).map(([m,dates])=>[m,[...dates].sort()]))]));
   db.visits=[];db.visitSummary={};db.visitOfficerSummary={};db.visitAvailable=false;db.visitLoading=false;
-  const reportingMonth=reportYear.starts_on<=liveToday()&&liveToday()<reportYear.ends_before?liveToday().slice(0,7):reportYear.starts_on.slice(0,7);if(globalThis.__massActualRole==='Cluster Officer'&&!globalThis.__massAggregateMode)await loadVisits(reportingMonth);if(globalThis.__massAggregateMode&&!capabilities.reviewedCharts)await loadAggregates({month:reportingMonth});if(trendsRequested&&globalThis.__massActualRole==='Cluster Officer')await refreshVisitTrends();
+  const reportingMonth=reportYear.starts_on<=liveToday()&&liveToday()<reportYear.ends_before?liveToday().slice(0,7):reportYear.starts_on.slice(0,7);if(globalThis.__massAggregateMode&&!capabilities.reviewedCharts)await loadAggregates({month:reportingMonth});if(trendsRequested&&globalThis.__massActualRole==='Cluster Officer')await refreshVisitTrends();
  }
  function activeCentres(){return roleDataPlan(context,globalThis.__massActualRole,{aggregateApi:capabilities.aggregates||capabilities.reviewedCharts}).centres;}
  async function loadVisits(month,officer=null,force=false){
@@ -128,7 +129,15 @@ export async function startOriginalReview(config) {
   return {ready:true,grade:Object.entries(active.grades||{}).filter(([,n])=>Number(n)>0).map(([g])=>g).sort((a,b)=>Number(a)-Number(b)),shift:[['Evening',evening],['Morning',morning]].filter(([,r])=>Number(r.children??r.students)>0).map(([shift])=>shift)};
  };
  globalThis.__massLoadAggregates=loadAggregates;
- globalThis.__massSelectRole=async role=>{if(role===globalThis.__massActualRole)return role;const previous=globalThis.__massActualRole;setRoleRuntime(role);try{await refresh();return role;}catch(error){setRoleRuntime(previous);throw error;}};
+ globalThis.__massSelectRole=async role=>{if(role===globalThis.__massActualRole)return role;const previous=globalThis.__massActualRole,previousDetails=detailsReady,previousView=loadedView;detailsReady=false;loadedView='overview';setRoleRuntime(role);try{await refresh();return role;}catch(error){detailsReady=previousDetails;loadedView=previousView;setRoleRuntime(previous);throw error;}};
+ let detailLoad=null;
+ globalThis.__massEnsureView=async page=>{
+  if(['overview','donor','visits'].includes(page)||globalThis.__massActualRole==='Leadership'||(detailsReady&&loadedView===page))return;
+  if(detailLoad)return detailLoad;
+  const role=globalThis.__massActualRole,previousView=loadedView,previousDetails=detailsReady;detailsReady=true;loadedView=page;setRoleRuntime(role);
+  detailLoad=refresh().catch(error=>{detailsReady=previousDetails;loadedView=previousView;setRoleRuntime(role);throw error;}).finally(()=>{detailLoad=null;});
+  return detailLoad;
+ };
  globalThis.__massAggregateFor=(state,selected)=>{
   const rows=db.aggregates[aggregateKey(state)];if(!rows)return null;
   const ids=new Set(selected.map(c=>c.id)),values=rows.filter(r=>ids.has(r.centre_id));
@@ -160,6 +169,21 @@ export async function startOriginalReview(config) {
  const timer=setInterval(()=>{if(dead)clearInterval(timer);else void verifyScope();},30000);
  let registerCapabilities={version:0,enabled:false};
  try{registerCapabilities=await rpc('get_attendance_register_capabilities');}catch(error){if(!(error.status===404&&error.code==='PGRST202'))throw error;}
+ if(registerCapabilities.profile_pages===true){
+  const pages=new Map();let selection='';
+  globalThis.__massProfilePages={invalidate:()=>{pages.clear();selection='';},read:(state,selected)=>{
+   if(globalThis.__massActualRole==='Leadership'||selected.some(c=>!context.centres.find(row=>row.id===c.id)?.can_write))return null;
+   const base=JSON.stringify([dataEpoch,globalThis.__massActualRole,selected.map(c=>c.id).sort(),reportingOn({...state,today:liveToday()}),state.query,state.profileSort,state.grade,state.shift,state.gender]);
+   if(base!==selection){selection=base;state.profilePage=0;}
+   const page=Number.isInteger(state.profilePage)&&state.profilePage>=0?state.profilePage:0,key=base+'|'+page;
+   if(!pages.has(key)){
+    pages.set(key,{pending:true});const epoch=dataEpoch;
+    const request=selected.length?rpc('student_profile_page',{p_centres:selected.map(c=>c.id),p_on:reportingOn({...state,today:liveToday()}),p_query:state.query||'',p_sort:state.profileSort||'name',p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null,p_offset:page*10,p_limit:10}):Promise.resolve({ids:[],total:0});
+    void request.then(value=>{if(!dead&&epoch===dataEpoch){pages.set(key,value);globalThis.__massOriginalRefresh?.();}}).catch(error=>{if(!dead&&epoch===dataEpoch){pages.set(key,{error:error.message});globalThis.__massOriginalRefresh?.();}});
+   }
+   return pages.get(key);
+  }};
+ }
  const registerRpc=async(name,args,writing=false)=>{let result;try{result=await client.schema('mass_api').rpc(name,args).retry(false).abortSignal(readController.signal);}catch{throw new BackendError({message:'network'},0,writing,name);}if(result.error)throw new BackendError(result.error,result.status,writing,name);return result.data;};
  globalThis.__massAttendance=createAttendanceRegister({getRole:()=>globalThis.__massActualRole,rpc:registerRpc,context,capabilities:registerCapabilities,refresh,rerender:()=>{if(!dead)globalThis.__massOriginalRefresh?.();}});
  await import('../app.js');

@@ -32,3 +32,13 @@ test('unknown roles are denied and aggregate fallback is explicit',()=>{
   assert.throws(()=>roleDataPlan(context,'Administrator'),/authorized role/);
   assert.deepEqual(roleDataPlan(context,'Leadership',{aggregateApi:false}).detailedCentres.map(centre=>centre.id),['all','cluster','teacher']);
 });
+
+test('Overview loads aggregate data for each authorized role before operational details',()=>{
+ for(const role of authorizedRoles(context)){
+  const plan=roleDataPlan(context,role,{aggregateApi:true,view:'overview'});
+  assert.equal(plan.aggregateMode,true);
+  assert.deepEqual(plan.detailedCentres,[]);
+  assert(plan.centres.every(centre=>centre.roles.includes(role)));
+ }
+ assert.deepEqual(roleDataPlan(context,'Teacher',{aggregateApi:false,view:'overview'}).detailedCentres.map(c=>c.id),['teacher']);
+});

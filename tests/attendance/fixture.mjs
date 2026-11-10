@@ -3,11 +3,12 @@ import fs from 'node:fs';
 import {runSqlScript} from '../sql-statements.mjs';
 export const centre='10000000-0000-4000-8000-000000000001';
 export const user=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
-export async function fixture() {
+export async function fixture({metadata=true}={}) {
  const db=new PGlite();await db.waitReady;
  const read=name=>fs.readFileSync(new URL('../../'+name,import.meta.url),'utf8');
  await db.exec(read('tests/core/bootstrap.sql'));
  for(const file of fs.readdirSync(new URL('../../supabase/migrations/',import.meta.url)).filter(n=>n.endsWith('.sql')).sort()){
+  if(!metadata&&file.includes('attendance_register_metadata'))continue;
   const sql=read('supabase/migrations/'+file);
   if(file.includes('attendance_register_workflow')){
    const before=(await db.query("SELECT md5(pg_get_functiondef('mass_core.guard_record()'::regprocedure)) hash")).rows[0].hash;

@@ -3,6 +3,12 @@ BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL ROLE mass_core_owner;
 ALTER TABLE mass_core.attendance_register_actions ADD COLUMN notes text CHECK(notes IS NULL OR length(notes)<=2000);
+-- Match the existing form/client rule at the database boundary, without
+-- inferring unknown earlier stages or rewriting historical source observations.
+ALTER TABLE mass_core.morarji_outcomes ADD CONSTRAINT morarji_confirmed_stages_consistent
+ CHECK (NOT ((attended IS TRUE AND applied IS FALSE) OR
+ (passed IS TRUE AND (applied IS FALSE OR attended IS FALSE)))) NOT VALID;
+
 CREATE FUNCTION mass_api.save_attendance_register_v3(p_request uuid,p_centre uuid,p_shift text,p_date date,p_token text,p_rows jsonb,p_reason text DEFAULT 'Attendance entered',p_notes text DEFAULT '') RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE before_rows jsonb; r jsonb; e mass_core.enrolments; old mass_core.attendance_records; signature text; previous mass_core.attendance_register_actions; n integer:=0; note_revision uuid;
@@ -106,11 +112,47 @@ BEGIN
 END;$$;
 REVOKE ALL ON FUNCTION mass_api.delete_attendance_register_v3(uuid,uuid,text,date,text,text),mass_api.save_attendance_register_v3(uuid,uuid,text,date,text,jsonb,text,text),mass_api.read_attendance_register_v3(uuid,text,date),mass_api.attendance_register_summary_v3(uuid[],date,date,text,text,text) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION mass_api.delete_attendance_register_v3(uuid,uuid,text,date,text,text),mass_api.save_attendance_register_v3(uuid,uuid,text,date,text,jsonb,text,text),mass_api.read_attendance_register_v3(uuid,text,date),mass_api.attendance_register_summary_v3(uuid[],date,date,text,text,text) TO authenticated;
+-- Bounded server-side profile search/sort before paging. Only existing
+-- writable-centre roster names may participate; private fields stay protected.
+CREATE FUNCTION mass_api.student_profile_page(p_centres uuid[],p_on date,p_query text DEFAULT '',p_sort text DEFAULT 'name',p_grade text DEFAULT NULL,p_shift text DEFAULT NULL,p_gender text DEFAULT NULL,p_offset integer DEFAULT 0,p_limit integer DEFAULT 10) RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE c uuid; value jsonb;
+BEGIN
+ PERFORM mass_core.require_staff_session();
+ IF p_centres IS NULL OR cardinality(p_centres) NOT BETWEEN 1 AND 100 OR p_on IS NULL OR p_on>(statement_timestamp() AT TIME ZONE 'Asia/Kolkata')::date OR p_offset IS NULL OR p_offset NOT BETWEEN 0 AND 100000 OR p_limit IS NULL OR p_limit NOT BETWEEN 1 AND 100 OR p_query IS NULL OR length(p_query)>160 OR p_sort IS NULL OR p_sort NOT IN ('name','id','centre','grade','gender','shift','newest') THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='bounded profile selection required'; END IF;
+ FOREACH c IN ARRAY p_centres LOOP
+  IF c IS NULL OR NOT mass_core.can_write(c) THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='assigned operational roster required';END IF;
+ END LOOP;
+ WITH roster AS (
+  SELECT e.id,e.grade_label,e.shift_code,e.starts_on,ch.student_id,co.label centre_name,coalesce(pr.full_name,ch.student_id) student_name,
+   CASE WHEN mass_core.can_read_profile(ch.id) THEN pr.gender_code END gender
+  FROM mass_core.enrolments e JOIN mass_core.children ch ON ch.id=e.child_id JOIN mass_core.centres co ON co.id=e.centre_id
+  LEFT JOIN mass_core.private_child_profiles pr ON pr.child_id=ch.id
+  WHERE e.centre_id=ANY(p_centres) AND e.starts_on<=p_on AND (e.ends_before IS NULL OR p_on<e.ends_before)
+ ), matching AS (
+  SELECT * FROM roster WHERE (p_grade IS NULL OR grade_label=p_grade) AND (p_shift IS NULL OR shift_code=p_shift)
+   AND (p_gender IS NULL OR coalesce(gender,'Unknown')=p_gender)
+   AND (p_query='' OR position(lower(btrim(p_query)) IN lower(concat_ws(' ',student_name,student_id,centre_name)))>0)
+ ), ranked AS (
+  SELECT id,row_number() OVER(ORDER BY
+   CASE WHEN p_sort='id' THEN student_id END,
+   CASE WHEN p_sort='centre' THEN lower(centre_name) END,
+   CASE WHEN p_sort='grade' THEN grade_label::integer END,
+   CASE WHEN p_sort='gender' THEN coalesce(gender,'') END,
+   CASE WHEN p_sort='shift' THEN shift_code END,
+   CASE WHEN p_sort='newest' THEN starts_on END DESC,
+   lower(student_name),student_id,id) ordinal FROM matching
+ ) SELECT jsonb_build_object('total',(SELECT count(*) FROM matching),'ids',coalesce((SELECT jsonb_agg(id ORDER BY ordinal) FROM (SELECT * FROM ranked ORDER BY ordinal LIMIT p_limit OFFSET p_offset) page),'[]'::jsonb)) INTO value;
+ RETURN value;
+END;$$;
+REVOKE ALL ON FUNCTION mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer) TO authenticated;
+
 CREATE OR REPLACE FUNCTION mass_api.get_attendance_register_capabilities() RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
 BEGIN
  PERFORM mass_core.require_staff_session();
- RETURN jsonb_build_object('version',3,'enabled',coalesce((SELECT enabled FROM mass_core.attendance_register_control),false));
+ RETURN jsonb_build_object('version',3,'profile_pages',true,'enabled',coalesce((SELECT enabled FROM mass_core.attendance_register_control),false));
 END;$$;
 NOTIFY pgrst,'reload schema';
 COMMIT;
