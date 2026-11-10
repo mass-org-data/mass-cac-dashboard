@@ -1,6 +1,10 @@
 import {operationAllowed} from './backend-capabilities.js';
 import {BackendError} from './api.js';
 import {selectedMorarjiMembership,validateMorarjiFacts} from './morarji.js';
+export async function refreshVisitSelection(state, visit, loadVisitMonth) {
+ state.month=visit.date.slice(0,7);state.centre=visit.centre;state.shift=visit.shift;
+ await loadVisitMonth?.(state.month);
+}
 export function createOriginalActions({client,api,refs,context,refresh,signOut,capabilities}) {
  const rpc=async(name,args)=>{let r;try{r=await client.schema('mass_api').rpc(name,args).retry(false);}catch{throw new BackendError({message:'network'},0,true);}if(r.error)throw new BackendError(r.error,r.status,true);return r.data;};
  return async function handle(el,t){
@@ -67,7 +71,7 @@ export function createOriginalActions({client,api,refs,context,refresh,signOut,c
   modal(old?'Edit centre visit':'Record a centre visit','Two Morning and two Evening completed visits per assigned centre each calendar month. Do not include child names or household details in feedback.',`<div class="form-grid">${drop('Centre','centre',options,old?.centre||state.centre)}${drop('Shift','shift',['Morning','Evening'],old?.shift||state.shift)}${field('Visit date','date',old?.date||TODAY,'date')}${drop('Visit status','status',['Planned','Completed'],old?.status||'Planned')}<label class="field full"><span>Centre feedback</span><textarea name="feedback" maxlength="2000">${esc(old?.feedback||'')}</textarea></label><label class="field full"><span>Next action</span><textarea name="next_action" maxlength="2000">${esc(old?.action||'')}</textarea></label>${old?field('Correction reason','reason',''):''}</div>`,async f=>{
    if(!f.date||f.status==='Completed'&&(f.date>TODAY||!f.feedback.trim()))throw Error('Completed visits need valid feedback and a non-future date.');
    const a=assignments.filter(a=>a.centre_id===f.centre&&a.shift_scope==='Both shifts'&&a.starts_on<=f.date&&(!a.ends_before||f.date<a.ends_before));if(a.length!==1)throw Error('One verified officer assignment must cover the centre, shift and date.');
-   await done(()=>rpc('record_visit',{p_id:id,p_assignment:a[0].id,p_shift:f.shift,p_date:f.date,p_status:f.status,p_feedback:f.feedback,p_next_action:f.next_action,p_expected:old?.row_version||0,p_reason:f.reason||null}));
+   await done(()=>rpc('record_visit',{p_id:id,p_assignment:a[0].id,p_shift:f.shift,p_date:f.date,p_status:f.status,p_feedback:f.feedback,p_next_action:f.next_action,p_expected:old?.row_version||0,p_reason:f.reason||null}));await refreshVisitSelection(state,f,globalThis.__massLoadVisitMonth);
   });return;
  }
  if(el.dataset.visitHistory){const rows=await rpc('read_visit_history',{p_visit:el.dataset.visitHistory});return modal('Visit revision history','Restricted to the authorized officer.',rows.map(r=>`<article><h3>Revision ${r.revision} · ${esc(r.operation)}</h3><p>${esc(r.changed_at)} · ${esc(r.correction_reason||'Initial record')}</p><pre>${esc(JSON.stringify({previous:r.previous_values,current:r.new_values},null,2))}</pre></article>`).join(''));}
