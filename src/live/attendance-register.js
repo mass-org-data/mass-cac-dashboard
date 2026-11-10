@@ -15,11 +15,12 @@ export function registerSummaryKey(state, centres) {
  return JSON.stringify([state.month,state.shift||'',state.grade||'',state.gender||'',centres.map(c=>c.id).sort()]);
 }
 
-export function createAttendanceRegister({rpc,context,capabilities,refresh,rerender}) {
+export function createAttendanceRegister({rpc,context,capabilities,refresh,rerender,getRole=()=>null}) {
  let epoch=0,editor=null;
  const summaries=new Map();
- const writable=context.centres.filter(c=>c.can_write&&!context.centres.some(x=>x.roles.includes('Leadership')));
- const canWrite=centre=>capabilities.enabled===true&&writable.some(c=>!centre||c.id===centre);
+ const writable=context.centres.filter(c=>c.can_write&&(context.operational_roles_enabled===true||!context.centres.some(x=>x.roles.includes('Leadership'))));
+ const allowedCentres=()=>writable.filter(c=>!getRole()||(getRole()!=='Leadership'&&c.roles.includes(getRole())));
+ const canWrite=centre=>capabilities.enabled===true&&allowedCentres().some(c=>!centre||c.id===centre);
  const invalidate=()=>{epoch++;summaries.clear();};
  function table(state,centres) {
   if(!capabilities.version)return '<section class="card"><h2>Attendance register</h2><p>The attendance register API is not installed.</p></section>';
@@ -37,11 +38,12 @@ export function createAttendanceRegister({rpc,context,capabilities,refresh,reren
  }
  async function open(t,selection) {
   if(!canWrite(selection?.centre))throw Error('Your role does not permit attendance entry in this centre.');
-  const requested=selection||{centre:writable.some(c=>c.id===t.state.centre)?t.state.centre:writable[0]?.id,shift:t.state.shift||'Morning',date:t.state.date||t.TODAY};
+  const allowed=allowedCentres();
+  const requested=selection||{centre:allowed.some(c=>c.id===t.state.centre)?t.state.centre:allowed[0]?.id,shift:t.state.shift||'Morning',date:t.state.date||t.TODAY};
   if(!selection&&!requested.date.startsWith(t.state.month))requested.date=t.state.month===t.TODAY.slice(0,7)?t.TODAY:t.state.month+'-01';
   const e={...requested,roster:[],saved:{},draft:{},loaded:false,loading:false,dirty:false,committed:false,deleting:false,request:crypto.randomUUID(),sequence:0};editor=e;
   const select=(name,label,values,value)=>`<label class="field"><span>${label}</span><select name="${name}" data-register-context="${name}">${values.map(([id,text])=>`<option value="${esc(id)}" ${id===value?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`;
-  t.modal(selection?'Edit attendance':'Add attendance','Mark students below, then click Save Attendance.',`<div data-attendance-editor><div class="form-grid register-context">${select('centre','Centre',writable.map(c=>[c.id,c.label]),e.centre)}${select('shift','Shift',[['Morning','Morning'],['Evening','Evening']],e.shift)}<label class="field"><span>Date</span><input name="date" data-register-context="date" type="date" max="${esc(t.TODAY)}" value="${esc(e.date)}" required></label></div><div id="register-roster" role="region" aria-label="Student attendance"><p role="status">Loading students…</p></div><label class="field register-reason"><span>Reason for correction or deletion</span><input name="reason" maxlength="300" placeholder="Required when changing saved attendance"></label><div id="register-delete"></div><p class="form-help">Changes stay in this popup until you save. Clear removes a saved mark only after Save Attendance; it becomes unknown, not absent. P = Present · A = Absent · L = Leave · MM = Monthly meeting · WO = Sunday.</p></div>`,async values=>{
+  t.modal(selection?'Edit attendance':'Add attendance','Mark students below, then click Save Attendance.',`<div data-attendance-editor><div class="form-grid register-context">${select('centre','Centre',allowed.map(c=>[c.id,c.label]),e.centre)}${select('shift','Shift',[['Morning','Morning'],['Evening','Evening']],e.shift)}<label class="field"><span>Date</span><input name="date" data-register-context="date" type="date" max="${esc(t.TODAY)}" value="${esc(e.date)}" required></label></div><div id="register-roster" role="region" aria-label="Student attendance"><p role="status">Loading students…</p></div><label class="field register-reason"><span>Reason for correction or deletion</span><input name="reason" maxlength="300" placeholder="Required when changing saved attendance"></label><div id="register-delete"></div><p class="form-help">Changes stay in this popup until you save. Clear removes a saved mark only after Save Attendance; it becomes unknown, not absent. P = Present · A = Absent · L = Leave · MM = Monthly meeting · WO = Sunday.</p></div>`,async values=>{
    if(editor!==e||e.loading||!e.loaded)throw Error('Wait for the selected roster to load.');
    if(e.committed)throw Error('This operation is already saved. Reload the page to refresh the charts.');
    const rows=changedAttendance(e.roster,e.saved,e.draft);

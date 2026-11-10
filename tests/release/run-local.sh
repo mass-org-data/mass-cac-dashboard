@@ -70,7 +70,7 @@ python - "$repo_root" "${MASS_BASELINE_BROWSER:-0}" <<'PY' | sql
 from pathlib import Path
 import sys
 s=(Path(sys.argv[1])/'tests/core/synthetic.sql').read_text()
-s=s.replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)',('count(*)=20' if sys.argv[2]=='1' else 'count(*)=27')+' AND bool_and(relrowsecurity AND relforcerowsecurity)')
+s=s.replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)',('count(*)=20' if sys.argv[2]=='1' else 'count(*)=28')+' AND bool_and(relrowsecurity AND relforcerowsecurity)')
 s=s.replace('bool_and(student_id=upper(id::text))',"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')")
 s=s.replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'")
 print(s)

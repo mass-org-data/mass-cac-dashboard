@@ -24,7 +24,8 @@
     "test:sql:portable": "node tests/release/portable-sql.mjs",
     "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs",
     "test:attendance": "node tests/attendance/register.mjs",
-    "test:attendance:browser": "node tests/attendance/browser.mjs"
+    "test:attendance:browser": "node tests/attendance/browser.mjs",
+    "test:staff-access": "node tests/attendance/staff-access.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0"

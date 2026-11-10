@@ -37,9 +37,16 @@ CREATE TRIGGER no_truncate BEFORE TRUNCATE ON mass_activation.events FOR EACH ST
 INSERT INTO mass_activation.features(feature) SELECT unnest(ARRAY['attendance_entry','attendance_corrections','assessment_entry','assessment_corrections','visit_entry','visit_corrections','transfers','profiles','enrolments','registration','calendar','activities','morarji','reviewed_reads']);
 REVOKE ALL ON ALL TABLES IN SCHEMA mass_activation FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA mass_activation FROM PUBLIC,anon,authenticated,service_role;
+DO $optional$ BEGIN
+ IF to_regprocedure('mass_core.staff_operational_enabled()') IS NULL THEN
+  EXECUTE 'CREATE FUNCTION mass_core.staff_operational_enabled() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS ''SELECT false''';
+  REVOKE ALL ON FUNCTION mass_core.staff_operational_enabled() FROM PUBLIC,anon,service_role;
+  GRANT EXECUTE ON FUNCTION mass_core.staff_operational_enabled() TO authenticated;
+ END IF;
+END;$optional$;
 CREATE FUNCTION mass_core.operation_enabled(p_feature text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
  SELECT current_setting('role')='authenticated' AND mass_core.request_user_id() IS NOT NULL
- AND coalesce((SELECT enabled FROM mass_activation.features WHERE feature=p_feature),false)
+ AND (coalesce((SELECT enabled FROM mass_activation.features WHERE feature=p_feature),false) OR (p_feature='visit_entry' AND mass_core.staff_operational_enabled()))
 $$;
 CREATE FUNCTION mass_core.require_operation_enabled(p_feature text) RETURNS void LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
 BEGIN
