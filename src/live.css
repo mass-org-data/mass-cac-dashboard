@@ -7,3 +7,5 @@
 @media(max-width:600px){.auth-card{padding:24px}.filters .centre-filter{width:100%;min-width:0}.integration-notice{font-size:13px}.table-footer{flex-wrap:wrap;gap:8px}}
 /* Keep the existing mobile drawer above sticky filter controls. */
 @media(max-width:650px){.menu-open .sidebar{z-index:60}}
+.sidebar-scrim{display:none}.filter>span{font-size:10px;font-weight:650;color:var(--muted)}.line-chart{width:100%;overflow-x:auto}.line-chart svg{display:block;width:100%;min-width:620px;height:auto}.nav button,.bottom-nav button{min-height:44px}
+@media(max-width:650px){.sidebar-scrim{display:block;position:fixed;inset:0;background:#1c312c55;z-index:55}.menu-open .sidebar{z-index:60}.head-actions{width:100%}.head-actions .btn{flex:1}.filters .reset-filter{min-height:40px}.line-chart{margin:0 -4px;width:calc(100% + 8px)}.modal-actions .btn{min-height:44px}}
