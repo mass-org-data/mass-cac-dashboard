@@ -68,7 +68,7 @@ Older schema, deployment, privacy, and reconciliation evidence is under `docs/re
 - Verified-role switching among only roles returned by the server.
 - Role-specific centre scope for Teacher and Cluster Officer.
 - Leadership uses aggregate reporting reads and is read-only unless the user selects a separately verified operational role.
-- Default to the first authorized role, then fetch data for another role only when selected.
+- Default to Leadership when authorized (including all-role accounts), otherwise Cluster Officer then Teacher. Always land on Overview; fetch another role only when selected.
 - Detailed records load only for the active operational role's centres. Do not load the union of all writable centres or the full database.
 - Unknown roles and unauthorized centres must fail before or at server authorization. Client filtering is not a security boundary.
 
@@ -108,7 +108,7 @@ Older schema, deployment, privacy, and reconciliation evidence is under `docs/re
 - Desktop sidebar collapse and accessible mobile menu/scrim behavior must remain.
 - Maintain labelled controls, 44-pixel mobile targets, responsive filters/actions, and MASS branding.
 - Keep only the simple general About page in the live application; do not restore historical numbered “About these records” screens.
-- Historical chart numbers are hidden in the UI. Stable internal `data-chart` identifiers remain for calculations and tests.
+- Number navigation pages, scorecards and charts consistently (1.1 style, without the word Chart). Preserve stable internal `data-chart` identifiers for calculations and tests.
 
 ## Approved programme rules
 
@@ -208,7 +208,7 @@ If catalog counts change through a reviewed migration, measure the current schem
 
 ## Requirement snapshot
 
-- Completed: F01-F24 and B01-B11 through PRs #8-#15, subject to merging the current stack.
+- Phases A–F are implemented through PRs #8–#15. The signed-in acceptance review found gaps; see `docs/releases/2026-11-10/FRONTEND-ACCEPTANCE-CORRECTIONS.md`. Do not label all F01–F24 complete until the corrected deployed preview and hosted metadata migration pass acceptance.
 - D01 answered.
 - D02-D08 need programme decisions as described above.
 - No Supabase schema/data/grant change was required for Phases A-F; they reused existing protected APIs and aggregates. Phase B included read-only hosted verification of officer assignments and visit history.

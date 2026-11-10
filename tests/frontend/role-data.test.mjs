@@ -11,9 +11,9 @@ const context = {
   ],
 };
 
-test('approved multi-role accounts start with their operational Cluster Officer role',()=>{
+test('multi-role accounts start with Leadership',()=>{
   assert.deepEqual(authorizedRoles(context),['Leadership','Cluster Officer','Teacher']);
-  assert.equal(defaultAuthorizedRole(context),'Cluster Officer');
+  assert.equal(defaultAuthorizedRole(context),'Leadership');
 });
 
 test('each role loads only its own required centre details',()=>{

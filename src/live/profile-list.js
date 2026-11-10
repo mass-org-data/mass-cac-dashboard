@@ -11,6 +11,8 @@ export function profileRows(students, {query = '', sort = 'name', centreLabel = 
     id: (left, right) => compareText(left.studentId || left.id, right.studentId || right.id) || byName(left, right),
     centre: (left, right) => compareText(centreLabel(left.centre), centreLabel(right.centre)) || byName(left, right),
     grade: (left, right) => Number(left.grade) - Number(right.grade) || byName(left, right),
+    gender: (left, right) => compareText(left.gender, right.gender) || byName(left, right),
+    shift: (left, right) => compareText(left.shift, right.shift) || byName(left, right),
     newest: (left, right) => compareText(right.enrolled, left.enrolled) || byName(left, right),
   };
   return [...rows].sort(comparators[sort] || comparators.name);

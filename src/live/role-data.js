@@ -7,7 +7,6 @@ export function authorizedRoles(context) {
 
 export function defaultAuthorizedRole(context) {
   const roles = authorizedRoles(context);
-  if (context?.operational_roles_enabled === true && roles.includes('Cluster Officer')) return 'Cluster Officer';
   return roles[0] || null;
 }
 
