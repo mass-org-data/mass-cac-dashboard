@@ -173,12 +173,12 @@ export async function startOriginalReview(config) {
   const pages=new Map();let selection='';
   globalThis.__massProfilePages={invalidate:()=>{pages.clear();selection='';},read:(state,selected)=>{
    if(globalThis.__massActualRole==='Leadership'||selected.some(c=>!context.centres.find(row=>row.id===c.id)?.can_write))return null;
-   const base=JSON.stringify([dataEpoch,globalThis.__massActualRole,selected.map(c=>c.id).sort(),reportingOn({...state,today:liveToday()}),state.query,state.profileSort,state.grade,state.shift,state.gender]);
+   const base=JSON.stringify([dataEpoch,globalThis.__massActualRole,selected.map(c=>c.id).sort(),reportingOn({...state,today:liveToday()}),state.query,state.studentIdQuery,state.profileSort,state.grade,state.shift,state.gender]);
    if(base!==selection){selection=base;state.profilePage=0;}
    const page=Number.isInteger(state.profilePage)&&state.profilePage>=0?state.profilePage:0,key=base+'|'+page;
    if(!pages.has(key)){
     pages.set(key,{pending:true});const epoch=dataEpoch;
-    const request=selected.length?rpc('student_profile_page',{p_centres:selected.map(c=>c.id),p_on:reportingOn({...state,today:liveToday()}),p_query:state.query||'',p_sort:state.profileSort||'name',p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null,p_offset:page*10,p_limit:10}):Promise.resolve({ids:[],total:0});
+    const request=selected.length?rpc('student_profile_page',{p_centres:selected.map(c=>c.id),p_on:reportingOn({...state,today:liveToday()}),p_query:state.query||'',p_id_query:state.studentIdQuery||'',p_sort:state.profileSort||'name',p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null,p_offset:page*10,p_limit:10}):Promise.resolve({ids:[],total:0});
     void request.then(value=>{if(!dead&&epoch===dataEpoch){pages.set(key,value);globalThis.__massOriginalRefresh?.();}}).catch(error=>{if(!dead&&epoch===dataEpoch){pages.set(key,{error:error.message});globalThis.__massOriginalRefresh?.();}});
    }
    return pages.get(key);

@@ -221,3 +221,8 @@ Continue the corrections in PR #16 (`fix/frontend-acceptance`); do not create a 
 Initial Overview loading uses the aggregate APIs for every role. Operational modules load on demand through `__massEnsureView`; Profiles, Assessments and Activities request only their needed facts. Explicit individual student detail loads the supporting modules. Keep root rendering safe against nested blur/change callbacks. Assessment and participation entry rosters use `data-paginate="false"`.
 
 The pending metadata migration also includes bounded server profile paging and the existing nullable Morarji contradiction rule at the server boundary. Do not claim hosted installation from a local test. Keep the feature gates unchanged and report the actual hosted migration state in the PR.
+
+
+## Confirmed attendance UI rule (10 November follow-up)
+
+New attendance entry offers A, P, H, MM only. The user confirmed H means Holiday and is excluded from attendance percentages. Preserve old L and WO records and their meanings; legacy L remains eligible in P/(P+A+L). Do not convert history or map H to another code. The pending metadata migration advertises `holiday_code`; older hosted APIs must show H as unavailable until installed. Keep larger readable text, aligned scorecards, inline ID/name search and the persistent Sign out account bar.

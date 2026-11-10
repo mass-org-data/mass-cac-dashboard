@@ -2,6 +2,12 @@
 BEGIN;
 SET LOCAL lock_timeout='5s';
 SET LOCAL ROLE mass_core_owner;
+-- Approved 10 November: H is Holiday, excluded from the denominator.
+-- Legacy L and WO codes remain intact; no historical mark is converted.
+ALTER TABLE mass_core.attendance_codes DROP CONSTRAINT attendance_codes_code_check;
+ALTER TABLE mass_core.attendance_codes ADD CONSTRAINT attendance_codes_code_check CHECK(code IN ('P','A','L','WO','MM','H'));
+INSERT INTO mass_core.attendance_codes(code,meaning) VALUES('H','Holiday');
+
 ALTER TABLE mass_core.attendance_register_actions ADD COLUMN notes text CHECK(notes IS NULL OR length(notes)<=2000);
 -- Match the existing form/client rule at the database boundary, without
 -- inferring unknown earlier stages or rewriting historical source observations.
@@ -40,7 +46,7 @@ BEGIN
  FOR r IN SELECT x FROM jsonb_array_elements(p_rows) x ORDER BY x->>'enrolment' LOOP
   e:=mass_core.writable_enrolment((r->>'enrolment')::uuid);
   IF e.centre_id<>p_centre OR e.shift_code<>p_shift OR p_date<e.starts_on OR (e.ends_before IS NOT NULL AND p_date>=e.ends_before) THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='mark outside register roster';END IF;
-  IF NOT (r ? 'code') OR (r->>'code' IS NOT NULL AND r->>'code' NOT IN ('P','A','L','MM','WO')) OR (r->>'code'='WO' AND extract(isodow FROM p_date)<>7) THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='approved attendance code required';END IF;
+  IF NOT (r ? 'code') OR (r->>'code' IS NOT NULL AND r->>'code' NOT IN ('A','P','H','MM')) OR (r->>'code'='WO' AND extract(isodow FROM p_date)<>7) THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='approved attendance code required';END IF;
   SELECT * INTO old FROM mass_core.attendance_records WHERE child_id=e.child_id AND centre_id=p_centre AND shift_code=p_shift AND attendance_date=p_date FOR UPDATE;
   IF r->>'code' IS NULL THEN
    IF old.id IS NOT NULL THEN
@@ -114,12 +120,12 @@ REVOKE ALL ON FUNCTION mass_api.delete_attendance_register_v3(uuid,uuid,text,dat
 GRANT EXECUTE ON FUNCTION mass_api.delete_attendance_register_v3(uuid,uuid,text,date,text,text),mass_api.save_attendance_register_v3(uuid,uuid,text,date,text,jsonb,text,text),mass_api.read_attendance_register_v3(uuid,text,date),mass_api.attendance_register_summary_v3(uuid[],date,date,text,text,text) TO authenticated;
 -- Bounded server-side profile search/sort before paging. Only existing
 -- writable-centre roster names may participate; private fields stay protected.
-CREATE FUNCTION mass_api.student_profile_page(p_centres uuid[],p_on date,p_query text DEFAULT '',p_sort text DEFAULT 'name',p_grade text DEFAULT NULL,p_shift text DEFAULT NULL,p_gender text DEFAULT NULL,p_offset integer DEFAULT 0,p_limit integer DEFAULT 10) RETURNS jsonb
+CREATE FUNCTION mass_api.student_profile_page(p_centres uuid[],p_on date,p_query text DEFAULT '',p_sort text DEFAULT 'name',p_grade text DEFAULT NULL,p_shift text DEFAULT NULL,p_gender text DEFAULT NULL,p_offset integer DEFAULT 0,p_limit integer DEFAULT 10,p_id_query text DEFAULT '') RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE c uuid; value jsonb;
 BEGIN
  PERFORM mass_core.require_staff_session();
- IF p_centres IS NULL OR cardinality(p_centres) NOT BETWEEN 1 AND 100 OR p_on IS NULL OR p_on>(statement_timestamp() AT TIME ZONE 'Asia/Kolkata')::date OR p_offset IS NULL OR p_offset NOT BETWEEN 0 AND 100000 OR p_limit IS NULL OR p_limit NOT BETWEEN 1 AND 100 OR p_query IS NULL OR length(p_query)>160 OR p_sort IS NULL OR p_sort NOT IN ('name','id','centre','grade','gender','shift','newest') THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='bounded profile selection required'; END IF;
+ IF p_centres IS NULL OR cardinality(p_centres) NOT BETWEEN 1 AND 100 OR p_on IS NULL OR p_on>(statement_timestamp() AT TIME ZONE 'Asia/Kolkata')::date OR p_offset IS NULL OR p_offset NOT BETWEEN 0 AND 100000 OR p_limit IS NULL OR p_limit NOT BETWEEN 1 AND 100 OR p_query IS NULL OR length(p_query)>160 OR p_id_query IS NULL OR length(p_id_query)>160 OR p_sort IS NULL OR p_sort NOT IN ('name','id','centre','grade','gender','shift','newest') THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='bounded profile selection required'; END IF;
  FOREACH c IN ARRAY p_centres LOOP
   IF c IS NULL OR NOT mass_core.can_write(c) THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='assigned operational roster required';END IF;
  END LOOP;
@@ -132,6 +138,7 @@ BEGIN
  ), matching AS (
   SELECT * FROM roster WHERE (p_grade IS NULL OR grade_label=p_grade) AND (p_shift IS NULL OR shift_code=p_shift)
    AND (p_gender IS NULL OR coalesce(gender,'Unknown')=p_gender)
+   AND (p_id_query='' OR position(lower(btrim(p_id_query)) IN lower(student_id))>0)
    AND (p_query='' OR position(lower(btrim(p_query)) IN lower(concat_ws(' ',student_name,student_id,centre_name)))>0)
  ), ranked AS (
   SELECT id,row_number() OVER(ORDER BY
@@ -145,14 +152,26 @@ BEGIN
  ) SELECT jsonb_build_object('total',(SELECT count(*) FROM matching),'ids',coalesce((SELECT jsonb_agg(id ORDER BY ordinal) FROM (SELECT * FROM ranked ORDER BY ordinal LIMIT p_limit OFFSET p_offset) page),'[]'::jsonb)) INTO value;
  RETURN value;
 END;$$;
-REVOKE ALL ON FUNCTION mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer) FROM PUBLIC,anon,service_role;
-GRANT EXECUTE ON FUNCTION mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer) TO authenticated;
+REVOKE ALL ON FUNCTION mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer,text) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer,text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION mass_api.get_attendance_register_capabilities() RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
 BEGIN
  PERFORM mass_core.require_staff_session();
- RETURN jsonb_build_object('version',3,'profile_pages',true,'enabled',coalesce((SELECT enabled FROM mass_core.attendance_register_control),false));
+ RETURN jsonb_build_object('version',4,'holiday_code',true,'profile_pages',true,'enabled',coalesce((SELECT enabled FROM mass_core.attendance_register_control),false));
 END;$$;
+-- Preserve each installed read's owner, ACL, activation guard and signature.
+-- Only extend explicit holiday exclusions; P/(P+A+L) stays unchanged.
+DO $holiday_reads$
+DECLARE proc record; definition text; updated text;
+BEGIN
+ FOR proc IN SELECT p.oid,p.proname FROM pg_proc p WHERE p.pronamespace='mass_api'::regnamespace AND p.proname IN ('attendance_summary','programme_aggregate','reviewed_chart_metrics') LOOP
+  definition:=pg_get_functiondef(proc.oid);
+  IF position('code IN (''WO'',''MM'')' IN definition)=0 THEN RAISE EXCEPTION 'Expected holiday expression missing in %',proc.proname; END IF;
+  updated:=replace(definition,'code IN (''WO'',''MM'')','code IN (''WO'',''MM'',''H'')');
+  EXECUTE updated;
+ END LOOP;
+END;$holiday_reads$;
 NOTIFY pgrst,'reload schema';
 COMMIT;

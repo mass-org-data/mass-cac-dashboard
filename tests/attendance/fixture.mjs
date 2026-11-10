@@ -4,11 +4,12 @@ import {runSqlScript} from '../sql-statements.mjs';
 export const centre='10000000-0000-4000-8000-000000000001';
 export const user=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 export async function fixture({metadata=true}={}) {
+ let pendingMetadata='';
  const db=new PGlite();await db.waitReady;
  const read=name=>fs.readFileSync(new URL('../../'+name,import.meta.url),'utf8');
  await db.exec(read('tests/core/bootstrap.sql'));
  for(const file of fs.readdirSync(new URL('../../supabase/migrations/',import.meta.url)).filter(n=>n.endsWith('.sql')).sort()){
-  if(!metadata&&file.includes('attendance_register_metadata'))continue;
+  if(file.includes('attendance_register_metadata')){pendingMetadata=read('supabase/migrations/'+file);continue;}
   const sql=read('supabase/migrations/'+file);
   if(file.includes('attendance_register_workflow')){
    const before=(await db.query("SELECT md5(pg_get_functiondef('mass_core.guard_record()'::regprocedure)) hash")).rows[0].hash;
@@ -19,6 +20,7 @@ export async function fixture({metadata=true}={}) {
   await db.exec(sql);
  }
  await db.exec(read('supabase/proposals/202611030024_reviewed_chart_metrics.sql'));
+ if(metadata&&pendingMetadata)await db.exec(pendingMetadata);
  const core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=28 AND bool_and(relrowsecurity AND relforcerowsecurity)').replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')").replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
  await runSqlScript(db,core);
  await runSqlScript(db,read('tests/release/visits.sql'));

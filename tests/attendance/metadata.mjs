@@ -12,9 +12,23 @@ try{
  const before=await fingerprint();
  try{await db.exec(migration.replace('COMMIT;','SELECT 1/0;COMMIT;'));throw Error('Injected failure unexpectedly committed');}catch(error){if(error.code!=='22012')throw error;await db.exec('ROLLBACK;');}
  check(await fingerprint()===before);
- check((await db.query("SELECT to_regprocedure('mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer)') rpc")).rows[0].rpc===null);
+ check((await db.query("SELECT to_regprocedure('mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer,text)') rpc")).rows[0].rpc===null);
  check((await db.query("SELECT count(*) n FROM information_schema.columns WHERE table_schema='mass_core' AND table_name='attendance_register_actions' AND column_name='notes'")).rows[0].n===0);
+ check((await db.query("SELECT count(*) n FROM mass_core.attendance_codes WHERE code='H'")).rows[0].n===0);
  await db.exec(migration);check(await fingerprint()===before);
+ check((await db.query("SELECT count(*) n FROM mass_core.attendance_codes WHERE code='H'")).rows[0].n===1);
+ check((await rpc('get_attendance_register_capabilities')).holiday_code===true);
+ const holidayContext={p_centre:centre,p_shift:'Morning',p_date:'2026-07-13'};
+ const holidayRoster=await rpc('read_attendance_register_v3',holidayContext);
+ await rpc('save_attendance_register_v3',{...holidayContext,p_request:randomUUID(),p_token:holidayRoster.token,p_rows:[{enrolment:holidayRoster.roster[0].id,code:'P'},{enrolment:holidayRoster.roster[1].id,code:'H'}]});
+ const holidaySummary=await rpc('attendance_register_summary_v3',{p_centres:[centre],p_from:'2026-07-13',p_until:'2026-07-14'});
+ check(Number(holidaySummary[0].percentage)===100&&Number(holidaySummary[0].eligible)===1&&Number(holidaySummary[0].recorded)===2);
+ const holidayTotals=await rpc('attendance_summary',{p_centre:centre,p_from:'2026-07-13',p_until:'2026-07-14'});
+ check(Number(holidayTotals[0].excluded_count)===1&&Number(holidayTotals[0].percentage)===100);
+ const currentHoliday=await rpc('read_attendance_register_v3',holidayContext);
+ for(const code of ['L','WO'])await fails('23514',()=>rpc('save_attendance_register_v3',{...holidayContext,p_request:randomUUID(),p_token:currentHoliday.token,p_rows:[{enrolment:holidayRoster.roster[0].id,code}],p_reason:'TEST RECORD old code cannot be newly assigned'}));
+ const reviewedHoliday=await rpc('reviewed_chart_metrics',{p_centres:[centre],p_on:'2026-07-31',p_from:'2026-07-01',p_until:'2026-08-01',p_year:'20000000-0000-4000-8000-000000000001'});
+ check(Number(reviewedHoliday.attendance.excluded)===1&&Number(reviewedHoliday.attendance.percentage)===100);
  const profileArgs={p_centres:[centre],p_on:'2026-05-14',p_sort:'id',p_limit:1};
  const firstPage=await rpc('student_profile_page',profileArgs),nextPage=await rpc('student_profile_page',{...profileArgs,p_offset:1});
  check(firstPage.total>1&&firstPage.ids.length===1&&nextPage.ids.length===1&&firstPage.ids[0]!==nextPage.ids[0]);
@@ -27,7 +41,7 @@ try{
  await fails('22023',()=>rpc('student_profile_page',{...profileArgs,p_sort:'injected column'}));
  const initial=await rpc('read_attendance_register_v3',context);
  check(initial.notes==='');
- const args={...context,p_request:randomUUID(),p_token:initial.token,p_rows:[{enrolment:initial.roster[0].id,code:'L'}],p_reason:'TEST RECORD initial entry',p_notes:'TEST RECORD overall notes'};
+ const args={...context,p_request:randomUUID(),p_token:initial.token,p_rows:[{enrolment:initial.roster[0].id,code:'A'}],p_reason:'TEST RECORD initial entry',p_notes:'TEST RECORD overall notes'};
  check(await rpc('save_attendance_register_v3',args)===1);
  check(await rpc('save_attendance_register_v3',args)===1);
  await fails('PT409',()=>rpc('save_attendance_register_v3',{...args,p_notes:'different replay'}));
@@ -52,7 +66,7 @@ try{
  await rpc('delete_attendance_register_v3',{...context,p_request:randomUUID(),p_token:corrected.token,p_reason:'TEST RECORD deletion'});
  const deleted=await rpc('read_attendance_register_v3',context);check(deleted.recorded===0&&deleted.notes==='');
  await db.exec('SET ROLE mass_core_owner;');
- check(Number((await db.query("SELECT count(*) n FROM mass_core.attendance_register_actions WHERE notes IS NOT NULL")).rows[0].n)===2);
+ check(Number((await db.query("SELECT count(*) n FROM mass_core.attendance_register_actions WHERE notes LIKE 'TEST RECORD%'")).rows[0].n)===2);
  await db.exec('UPDATE mass_core.attendance_register_control SET enabled=false;RESET ROLE;');
  await fails('42501',()=>rpc('save_attendance_register_v3',{...args,p_request:randomUUID(),p_token:deleted.token}));
  // Confirmed contradictory Morarji answers are rejected on the server too.

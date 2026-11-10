@@ -26,7 +26,7 @@ function completeAttendanceBands(pop,db,state){
  for(const s of pop){let complete=true,present=0,scheduled=0;const start=s.enrolled>from?s.enrolled:from,end=[until,s.exitDate||until,new Date(new Date(on+'T12:00:00Z').getTime()+86400000).toISOString().slice(0,10)].sort()[0];
   for(let d=start;d<end;d=new Date(new Date(d+'T12:00:00Z').getTime()+86400000).toISOString().slice(0,10)){
    const status=calendar.get(s.centre+'|'+s.shift+'|'+d),mark=db.attendance?.[s.id+'|'+d];
-   if(status==='Not Scheduled'||['WO','MM'].includes(mark))continue;
+   if(status==='Not Scheduled'||['WO','MM','H'].includes(mark))continue;
    if(status!=='Planned'){complete=false;continue;}scheduled++;
    if(!['P','A','L'].includes(mark)){complete=false;continue;}if(mark==='P')present++;
   }

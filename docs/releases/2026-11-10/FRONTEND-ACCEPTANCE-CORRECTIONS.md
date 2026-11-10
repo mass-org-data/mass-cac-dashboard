@@ -85,3 +85,16 @@ The metadata migration, `student_profile_page`, and server Morarji constraint mu
 - 1,440 independent SQL/calculation cases, core/visit security matrix, and activation/provider replay passed.
 - Lint, syntax checks and build passed. Dependency audit has no high/critical findings; existing moderate development-tool findings remain.
 - Browser assertion count and the latest connected Preview are recorded in the PR after the final run. Synthetic screenshots are CI artifacts, not real child data.
+
+
+## Readability and attendance-option follow-up
+
+User instructions and three screenshot references on 10 November requested larger text, aligned scorecard values, inline ID/name searches, Export in every Overview, and a visible Sign out bar. They explicitly confirmed H means Holiday, excluded from attendance percentage, with historical L/WO preserved.
+
+- New popup options are A, P, H, MM. L and WO remain readable as historical badges and are not converted. The pending migration adds H to the reference table and read exclusions; new versioned register saves accept only the four requested codes. Capabilities advertise Holiday support. On the old hosted backend H is visibly disabled rather than silently mapped to WO/MM or sent as an unsupported value.
+- Font sizes now use 16px body/input text, 20–22px section titles, 14–15px labels/legends/table text, and larger chart labels. Scorecard label/value tracks and Morarji headlines align consistently.
+- Student Profiles and the Cluster Officer assessment roster have ID and name searches in a single row. Roster search hides rows without deleting inputs or paginating the marks form. Server profile search combines its separate ID term with the existing query before paging.
+- Each authorized role's Overview has Export, using the existing scoped export flow. Sign out is a high-contrast full-width button in a bordered account bar; navigation scrolls independently so the account bar stays visible.
+- No unrelated assessment requirement is inferred from screenshots of Overview charts. Further assessment-specific screenshots can extend the same PR if needed.
+
+No hosted schema, marks, grants, feature gates or production frontend was changed for this follow-up. Holiday saving, Notes, attribution and server profile paging require the included migration before hosted acceptance; the current Preview keeps the capability-aware fallback.

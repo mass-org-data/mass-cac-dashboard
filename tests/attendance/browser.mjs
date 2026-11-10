@@ -63,7 +63,7 @@ const screenshots=process.env.MASS_ATTENDANCE_SCREENSHOTS;
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Browser script error:',error.stack);});
  page.on('dialog',dialog=>dialog.accept());
- await page.goto(origin+'/?actor=1');await page.locator('[data-nav=attendance]').first().waitFor();check(!calls.some(c=>c.name==='read_students'));if(screenshots){await fs.mkdir(screenshots,{recursive:true});await page.screenshot({path:path.join(screenshots,'teacher-overview-desktop.png'),fullPage:true});}await page.locator('[data-nav=attendance]').first().click();
+ await page.goto(origin+'/?actor=1');await page.locator('[data-nav=attendance]').first().waitFor();check(!calls.some(c=>c.name==='read_students'));check(await page.locator('[data-action=export-explain]').count()>0);check(await page.locator('.account-bar [data-action=sign-out]').isVisible());check(await page.locator('.account-bar').evaluate(el=>el.getBoundingClientRect().bottom<=window.innerHeight));if(screenshots){await fs.mkdir(screenshots,{recursive:true});await page.screenshot({path:path.join(screenshots,'teacher-overview-desktop.png'),fullPage:true});}await page.locator('[data-nav=attendance]').first().click();
  await page.getByRole('heading',{name:'Attendance Register',exact:true}).waitFor();
  check(await page.locator('[data-mark]').count()===0);
  check(await page.locator('[data-chart]').count()>=4);
@@ -73,9 +73,10 @@ try{
  await page.locator('[data-register-mark]').first().waitFor();
  const roster=(await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).roster;
  const first=roster[0].id,second=roster[1].id;
+ check(await page.locator(`[data-register-mark^="${first}|"]`).evaluateAll(nodes=>nodes.map(n=>n.textContent).join(','))==='A,P,H,MM');
  check(await page.locator('[name=notes]').isEnabled());await page.locator('[name=notes]').fill('TEST RECORD browser notes');
  const before=writes().length;
- await page.locator(`[data-register-mark="${first}|P"]`).click();await page.locator(`[data-register-mark="${second}|L"]`).click();
+ await page.locator(`[data-register-mark="${first}|P"]`).click();await page.locator(`[data-register-mark="${second}|A"]`).click();
  check(writes().length===before);
  check((await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).recorded===0);
  if(screenshots){await fs.mkdir(screenshots,{recursive:true});await page.screenshot({path:path.join(screenshots,'attendance-popup-desktop.png'),fullPage:true});}
@@ -112,6 +113,11 @@ try{
  await page.locator('[data-register-delete]').click();await page.locator('[name=reason]').fill('Synthetic browser deletion');await page.locator('[name=confirmDelete]').check();
  await page.getByRole('button',{name:'Confirm deletion',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});await page.locator(`[data-register-edit="${centre}|Morning|2026-05-14"]`).waitFor({state:'detached'});
  check((await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).recorded===0);
+ // Holiday is an explicit draft code and excluded after the atomic save.
+ await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-context=date]').fill('2026-05-13');await page.locator('[data-register-context=date]').dispatchEvent('change');await page.locator('[data-register-mark]').first().waitFor();
+ await page.locator(`[data-register-mark="${first}|P"]`).click();await page.locator(`[data-register-mark="${second}|H"]`).click();await page.getByRole('button',{name:'Save Attendance',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
+ await page.locator(`[data-register-edit="${centre}|Morning|2026-05-13"]`).waitFor();check((await page.locator(`[data-register-edit="${centre}|Morning|2026-05-13"]`).locator('..').locator('..').innerText()).includes('100.0%'));
+ check((await rpc('read_attendance_register_v3',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-13'})).marks.some(r=>r.code==='H'));
  // CO uses the same workflow with masked student labels; Leadership only sees aggregates.
  await page.goto(origin+'/?actor=3');await page.locator('[data-nav=attendance]').first().waitFor();await page.locator('[data-nav=attendance]').first().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();check((await page.locator('#register-roster').innerText()).includes('Synthetic corrected profile'));check((await page.locator('#register-roster .subtext').count())>0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
@@ -120,7 +126,7 @@ try{
  if(screenshots)await page.screenshot({path:path.join(screenshots,'attendance-popup-mobile.png'),fullPage:true});
  // Profile paging/search operates over the full permitted selection.
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.setViewportSize({width:1440,height:1000});
- await page.locator('[data-nav=children]').first().click();await page.locator('#student-search').waitFor();
+ await page.locator('[data-nav=children]').first().click();await page.locator('#student-search').waitFor();await page.waitForFunction(()=>document.querySelector('#student-id-search')&&Math.abs(document.querySelector('#student-id-search').getBoundingClientRect().y-document.querySelector('#student-search').getBoundingClientRect().y)<2);checks++;
  const profilePager=page.locator('[data-profile-jump],[data-page-jump]').last();await profilePager.waitFor();check(await profilePager.count()===1);await profilePager.fill('2');await profilePager.dispatchEvent('change');
  await page.locator('[data-profile-jump],[data-page-jump]').last().waitFor();check(await page.locator('[data-profile-jump],[data-page-jump]').last().inputValue()==='2');
  await page.locator('#student-search').fill('TEST RECORD learner 11');await page.waitForFunction(()=>document.querySelectorAll('.profile-table-tools').length&&[...document.querySelectorAll('.content tbody tr')].some(row=>row.textContent.includes('TEST RECORD learner 11')));
@@ -131,15 +137,15 @@ try{
  if(process.env.MASS_TEST_MULTI_ROLE==='1'){
   await page.setViewportSize({width:1440,height:1000});
   const detailReads=calls.filter(c=>c.name==='read_students').length;await page.goto(origin+'/?actor=8');await page.locator('#role:not([disabled])').waitFor();check(calls.filter(c=>c.name==='read_students').length===detailReads);
-  check(await page.locator('#role').inputValue()==='Leadership');
+  check(await page.locator('#role').inputValue()==='Leadership');check(await page.locator('[data-action=export-explain]').count()>0);check(await page.locator('.metric-top').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=15));check(await page.locator('.metric-value').evaluateAll(nodes=>nodes.slice(0,3).every(n=>Math.abs(n.getBoundingClientRect().y-nodes[0].getBoundingClientRect().y)<2)));
   check(await page.locator('[data-nav=overview].active').count()>0);if(screenshots)await page.screenshot({path:path.join(screenshots,'leadership-overview-desktop.png'),fullPage:true});
-  await page.locator('#role').selectOption('Cluster Officer');await page.locator('#role:not([disabled])').waitFor();
+  await page.locator('#role').selectOption('Cluster Officer');await page.locator('#role:not([disabled])').waitFor();check(await page.locator('[data-action=export-explain]').count()>0);
   await page.locator('[data-nav=attendance]').first().click();await page.getByRole('button',{name:'Add Attendance',exact:true}).click();await page.locator('[data-register-mark]').first().waitFor();
   const key=await page.locator('[data-register-mark]').first().getAttribute('data-register-mark');
   await page.locator(`[data-register-mark="${key.split('|')[0]}|P"]`).click();await page.getByRole('button',{name:'Save Attendance',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});checks++;
   await page.locator('[data-nav=learning]').first().click();await page.locator('[data-filter=centre]').selectOption(centre);await page.locator('[data-filter=exam]').selectOption('F1');
   const learner=await page.evaluate(centre=>globalThis.__massLiveReviewData.students.find(s=>s.centre===centre&&s.enrolled<='2026-05-15'&&!s.exitDate&&!globalThis.__massLiveReviewData.assessmentDetails[s.id+'|F1'])?.id,centre);
-  check(Boolean(learner));await page.locator('[data-action=enter-marks]').click();await page.locator('[name=date]').fill('2026-08-15');await page.locator('[data-assessment-round]').filter({hasText:'F2'}).waitFor();checks++;await page.locator('[name=date]').fill('2026-05-15');await page.locator('[data-assessment-round]').filter({hasText:'F1'}).waitFor();checks++;await page.locator('#dialog-form [type=submit]').click();await page.getByRole('heading',{name:'Enter F1 marks',exact:true}).waitFor();check(await page.locator('.assessment-roster tbody tr').count()>10);check(await page.locator('.assessment-roster tbody tr[hidden]').count()===0);check(await page.locator('#overlay .pagination').count()===0);if(screenshots)await page.screenshot({path:path.join(screenshots,'assessment-roster-desktop.png'),fullPage:true});check((await page.locator('.assessment-roster').innerText()).includes('TEST RECORD learner'));await page.locator(`[name="score_${learner}"]`).fill('22');await page.getByRole('button',{name:'Save assessment',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
+  check(Boolean(learner));await page.locator('[data-action=enter-marks]').click();await page.locator('[name=date]').fill('2026-08-15');await page.locator('[data-assessment-round]').filter({hasText:'F2'}).waitFor();checks++;await page.locator('[name=date]').fill('2026-05-15');await page.locator('[data-assessment-round]').filter({hasText:'F1'}).waitFor();checks++;await page.locator('#dialog-form [type=submit]').click();await page.getByRole('heading',{name:'Enter F1 marks',exact:true}).waitFor();check(await page.locator('.assessment-roster tbody tr').count()>10);check(await page.locator('.assessment-roster tbody tr[hidden]').count()===0);check(await page.locator('#overlay .pagination').count()===0);if(screenshots)await page.screenshot({path:path.join(screenshots,'assessment-roster-desktop.png'),fullPage:true});check((await page.locator('.assessment-roster').innerText()).includes('TEST RECORD learner'));await page.locator(`[name="score_${learner}"]`).fill('22');check(await page.locator('[data-roster-search=id]').evaluate(el=>Math.abs(el.getBoundingClientRect().y-el.closest('.student-search-row').querySelector('[data-roster-search=name]').getBoundingClientRect().y)<2));await page.locator('[data-roster-search=name]').fill('no matching TEST RECORD');check(await page.locator('.assessment-roster tr[data-student-id]:not([hidden])').count()===0);await page.locator('[data-roster-search=name]').fill('');check(await page.locator(`[name="score_${learner}"]`).inputValue()==='22');await page.getByRole('button',{name:'Save assessment',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
   check(await page.evaluate(id=>globalThis.__massLiveReviewData.scores[id].F1===22,learner));
   await page.locator(`[data-assessment-group="${centre}|F1|2026-05-15"]`).click();await page.getByRole('heading',{name:'Edit F1 marks',exact:true}).waitFor();check(await page.locator(`[name="score_${learner}"]`).inputValue()==='22');check(await page.locator('#dialog-form [type=submit]').isDisabled());await page.getByRole('button',{name:'Cancel',exact:true}).click();
   await page.locator('[data-nav=visits]').first().click();await page.locator('[data-action=new-visit]').click();await page.locator('[name=status]').selectOption('Completed');await page.locator('[name=feedback]').fill('Synthetic explicitly authorized mixed-role visit');await page.locator('#dialog-form [type=submit]').click();await page.getByRole('dialog').waitFor({state:'detached'});checks++;

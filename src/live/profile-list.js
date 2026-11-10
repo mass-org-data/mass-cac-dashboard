@@ -1,10 +1,11 @@
 const text = value => String(value ?? '').trim();
 const compareText = (left, right) => text(left).localeCompare(text(right), 'en', {numeric:true, sensitivity:'base'});
 
-export function profileRows(students, {query = '', sort = 'name', centreLabel = id => id} = {}) {
+export function profileRows(students, {query = '', idQuery = '', sort = 'name', centreLabel = id => id} = {}) {
   const term = text(query).toLocaleLowerCase('en');
-  const rows = students.filter(student => !term || [student.name, student.studentId, student.id, centreLabel(student.centre)]
-    .some(value => text(value).toLocaleLowerCase('en').includes(term)));
+  const idTerm=text(idQuery).toLocaleLowerCase('en');
+  const rows = students.filter(student => (!idTerm || text(student.studentId||student.id).toLocaleLowerCase('en').includes(idTerm)) && (!term || [student.name, student.studentId, student.id, centreLabel(student.centre)]
+    .some(value => text(value).toLocaleLowerCase('en').includes(term))));
   const byName = (left, right) => compareText(left.name, right.name) || compareText(left.studentId || left.id, right.studentId || right.id);
   const comparators = {
     name: byName,
