@@ -11,13 +11,14 @@ import {discoverCapabilities,BASELINE_READ_NOTICE,safeDiagnosticText} from './ba
 import {baselineAggregates} from './baseline-aggregates.js';
 import {reviewedCalculations} from './reviewed-calculations.js';
 import {createAccessVerificationGate,isAuthorizationFailure} from './access-verification.js';
+import {createAttendanceRegister} from './attendance-register.js';
 
 export async function startOriginalReview(config) {
  globalThis.__massReviewToday=liveToday();
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
  const readController=new AbortController(),reviewedCache=new Map();let dead=false;
- const clear=()=>{dead=true;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
+ const clear=()=>{dead=true;delete globalThis.__massAttendance;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Checking your session</h1><p role="status">No programme records have been loaded.</p></section></main>';
@@ -48,6 +49,7 @@ export async function startOriginalReview(config) {
  let trendsRequested=false,trendOfficer=null;
  const officerLabels={};globalThis.__massOfficerLabels=officerLabels;
  async function refresh(){
+  globalThis.__massAttendance?.invalidate();
   const reportYear=year;
   // Verify identity and current scope for every refresh; never trust a preview role.
   const [{data:auth,error},scope]=await Promise.all([client.auth.getUser(),reads.context(readController.signal)]);
@@ -144,11 +146,15 @@ export async function startOriginalReview(config) {
  globalThis.__massOriginalActions=createOriginalActions({client,api,refs,context,refresh,capabilities,signOut:async()=>{clear();try{await client.auth.signOut({scope:'local'});}finally{clearStoredSession(config);window.location.reload();}}});
  const fingerprint=JSON.stringify(context.centres);let verifying=false;
  const endSession=()=>{clear();login();};
- const verification=createAccessVerificationGate({root,onRestore:()=>globalThis.__massOriginalRefresh?.(),onRetry:()=>void verifyScope()});
+ const verification=createAccessVerificationGate({root,onBlock:()=>{globalThis.__massAttendance?.discard();document.querySelector('#overlay')?.replaceChildren();document.body.style.overflow='';},onRestore:()=>globalThis.__massOriginalRefresh?.(),onRetry:()=>void verifyScope()});
  client.auth.onAuthStateChange((event,session)=>queueMicrotask(async()=>{if(!session||session.user?.id!==context.user_id){endSession();return;}if(event==='TOKEN_REFRESHED'){try{const current=await reads.context(readController.signal);if(current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){endSession();return;}verification.restore();}catch(error){if(isAuthorizationFailure(error))endSession();else if(!dead)verification.block();}}}));
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void verifyScope();});
  async function verifyScope(){if(dead||verifying)return;verifying=true;try{const [current,auth]=await Promise.all([reads.context(readController.signal),client.auth.getUser()]);if(auth.error){if(isAuthorizationFailure(auth.error)){endSession();return;}throw auth.error;}if(auth.data?.user?.id!==context.user_id||current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){endSession();return;}verification.restore();}catch(error){if(isAuthorizationFailure(error))endSession();else if(!dead)verification.block();}finally{verifying=false;}}
  const timer=setInterval(()=>{if(dead)clearInterval(timer);else void verifyScope();},30000);
+ let registerCapabilities={version:0,enabled:false};
+ try{registerCapabilities=await rpc('get_attendance_register_capabilities');}catch(error){if(!(error.status===404&&error.code==='PGRST202'))throw error;}
+ const registerRpc=async(name,args,writing=false)=>{let result;try{result=await client.schema('mass_api').rpc(name,args).retry(false).abortSignal(readController.signal);}catch{throw new BackendError({message:'network'},0,writing,name);}if(result.error)throw new BackendError(result.error,result.status,writing,name);return result.data;};
+ globalThis.__massAttendance=createAttendanceRegister({rpc:registerRpc,context,capabilities:registerCapabilities,refresh,rerender:()=>{if(!dead)globalThis.__massOriginalRefresh?.();}});
  await import('../app.js');
  }catch(error){clear();root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Programme data could not be loaded</h1><p role="alert"></p><button type="button" id="retry-verified-load">Retry verified load</button></section></main>';root.querySelector('[role=alert]').textContent=[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ');root.querySelector('#retry-verified-load').addEventListener('click',()=>window.location.reload());}
 }

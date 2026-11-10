@@ -22,13 +22,13 @@ def run(origin,post,token):
   browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox']);page=browser.new_page();page.clock.set_fixed_time('2026-10-29T12:00:00+05:30')
   page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(origin) else r.abort())
   errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-  page.goto(origin+'/?role=teacher');page.wait_for_selector('[data-nav="daily"]',timeout=60000)
+  page.goto(origin+'/?role=teacher');page.wait_for_selector('[data-nav="attendance"]',timeout=60000)
   assert not page.locator('h1:text-is("Programme data could not be loaded")').count();checks.append('Original protected dashboard loads actual isolated data with all writes disabled')
-  page.locator('[data-nav="daily"]').first.click();page.locator('[data-mark]').first.wait_for();before=page.evaluate('JSON.stringify(globalThis.__massLiveReviewData.attendanceRecords)')
-  writes=[];page.on('request',lambda r:writes.append(r.url) if '/rpc/record_' in r.url else None)
-  page.locator('[data-mark]').first.click();page.wait_for_function("document.querySelector('#toast')?.textContent.includes('Operational activation pending')")
-  assert not writes;checks.append('Attendance control cannot submit a mutation when disabled')
-  page.locator('[data-action="save-default-attendance"]').click();page.wait_for_function("document.querySelector('#toast')?.textContent.includes('explicit marks saved')")
+  page.locator('[data-nav="attendance"]').first.click();before=page.evaluate('JSON.stringify(globalThis.__massLiveReviewData.attendanceRecords)')
+  assert page.locator('[data-action="add-attendance"]').count()==0
+  assert page.locator('[data-register-edit]').count()==0
+  assert page.evaluate('JSON.stringify(globalThis.__massLiveReviewData.attendanceRecords)')==before
+
   assert page.evaluate('JSON.stringify(globalThis.__massLiveReviewData.attendanceRecords)')==before;checks.append('Save Attendance still refreshes explicit records without writing or changing unknowns')
   page.locator('[data-nav="learning"]').first.click();page.locator('[data-action="enter-marks"]').click();page.wait_for_function("document.querySelector('#toast')?.textContent.includes('Operational activation pending')");assert not writes;checks.append('Assessment form activation requires explicit authorization metadata')
   page.goto(origin+'/?role=officer');page.wait_for_selector('[data-action="new-visit"]',timeout=60000);page.locator('[data-action="new-visit"]').first.click();page.wait_for_function("document.querySelector('#toast')?.textContent.includes('Operational activation pending')");assert not writes;checks.append('Visit entry remains unavailable despite installed visit tables and RPCs')
