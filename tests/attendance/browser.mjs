@@ -166,7 +166,7 @@ try{
   check(await page.locator('#dialog-form [name=shift]').count()===0);
   await page.locator('#dialog-form [name=centre]').selectOption(centre);await page.locator('#dialog-form [name=date]').fill('2026-05-21');await page.locator('#dialog-form [name=name]').fill('TEST RECORD both-shift sports');await page.locator('#dialog-form [name=category]').selectOption('Sports');await page.locator('#dialog-form [name=status]').selectOption('Held');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
   const sharedEvent=(await db.query("SELECT id,shift_code FROM mass_core.activity_events WHERE name='TEST RECORD both-shift sports'")).rows[0];check(sharedEvent.shift_code==='Both shifts');
-  await page.locator('[data-action=activity-entry]').click();await page.locator(`[data-event="${sharedEvent.id}"]`).click();await page.getByRole('heading',{name:'Session participation',exact:true}).waitFor();
+  await page.locator('[data-action=activity-entry]').click();await page.locator(`#overlay [data-event="${sharedEvent.id}"]`).click();await page.getByRole('heading',{name:'Session participation',exact:true}).waitFor();
   const rosterText=await page.locator('#dialog-form .table-scroll').innerText();check(rosterText.includes('Morning')&&rosterText.includes('Evening'));
   await page.locator(`[data-participation="${eveningChild.enrolment_id}"][data-value=Attended]`).click();await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
   check((await db.query('SELECT participated FROM mass_core.activity_participation WHERE event_id=$1 AND child_id=$2',[sharedEvent.id,eveningChild.child_id])).rows[0].participated===true);
