@@ -73,7 +73,8 @@ try{
  await page.locator('[data-register-mark]').first().waitFor();
  const roster=(await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).roster;
  const first=roster[0].id,second=roster[1].id;
- check(await page.locator(`[data-register-mark^="${first}|"]`).evaluateAll(nodes=>nodes.map(n=>n.textContent).join(','))==='A,P,H,MM');
+ check(await page.locator('.register-reason').isHidden());check(await page.locator('[data-register-mark$="|MM"]').count()===0);
+ check(await page.locator(`[data-register-mark^="${first}|"]`).evaluateAll(nodes=>nodes.map(n=>n.textContent).join(','))==='A,P,H');
  check(await page.locator('[name=notes]').isEnabled());await page.locator('[name=notes]').fill('TEST RECORD browser notes');
  const before=writes().length;
  await page.locator(`[data-register-mark="${first}|P"]`).click();await page.locator(`[data-register-mark="${second}|A"]`).click();
@@ -127,7 +128,7 @@ try{
  // Profile paging/search operates over the full permitted selection.
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.setViewportSize({width:1440,height:1000});
  await page.locator('[data-nav=children]').first().click();await page.locator('#student-search').waitFor();await page.waitForFunction(()=>document.querySelector('#student-id-search')&&Math.abs(document.querySelector('#student-id-search').getBoundingClientRect().y-document.querySelector('#student-search').getBoundingClientRect().y)<2);checks++;
- const profilePager=page.locator('[data-profile-jump],[data-page-jump]').last();await profilePager.waitFor();check(await profilePager.count()===1);await profilePager.fill('2');await profilePager.dispatchEvent('change');
+ const profilePager=page.locator('[data-profile-jump],[data-page-jump]').last();await profilePager.waitFor();check(await profilePager.count()===1);await profilePager.fill('2');await profilePager.press('Enter');
  await page.locator('[data-profile-jump],[data-page-jump]').last().waitFor();check(await page.locator('[data-profile-jump],[data-page-jump]').last().inputValue()==='2');
  await page.locator('#student-search').fill('TEST RECORD learner 11');await page.waitForFunction(()=>document.querySelectorAll('.profile-table-tools').length&&[...document.querySelectorAll('.content tbody tr')].some(row=>row.textContent.includes('TEST RECORD learner 11')));
  check(await page.locator('.content tbody tr:not([hidden])').count()===1);
@@ -156,7 +157,28 @@ try{
   const teacherLearner=await page.evaluate(()=>globalThis.__massLiveReviewData.students.find(s=>s.centre==='10000000-0000-4000-8000-000000000002'&&s.enrolled<='2026-05-15'&&!s.exitDate&&!globalThis.__massLiveReviewData.assessmentDetails[s.id+'|F1'])?.id);
   check(Boolean(teacherLearner));await page.locator('[data-action=enter-marks]').click();await page.locator('[name=date]').fill('2026-05-15');await page.locator('#dialog-form [type=submit]').click();await page.getByRole('heading',{name:'Enter F1 marks',exact:true}).waitFor();await page.locator(`[name="score_${teacherLearner}"]`).fill('20');await page.getByRole('button',{name:'Save assessment',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});checks++;
 
+  // Explicitly authorized features in this disposable test database only.
+  await db.exec(await fs.readFile(path.join(root,'supabase/configuration/2026-11-11-registration-activities.sql'),'utf8'));
+  const eveningChild=(await rpc('register_student_once',{p_request:randomUUID(),p_centre:centre,p_grade:'6',p_shift:'Evening',p_start:'2026-04-01',p_name:'TEST RECORD evening event participant',p_gender:null}))[0];
+  await page.goto(origin+'/?actor=1');await page.locator('[data-nav=activities]').first().waitFor();await page.locator('[data-nav=activities]').first().click();
+  await page.locator('[data-filter=month]').selectOption('2026-05');
+  await page.locator('[data-action=new-activity]').click();await page.getByRole('heading',{name:'Add activity session',exact:true}).waitFor();
+  check(await page.locator('#dialog-form [name=shift]').count()===0);
+  await page.locator('#dialog-form [name=centre]').selectOption(centre);await page.locator('#dialog-form [name=date]').fill('2026-05-21');await page.locator('#dialog-form [name=name]').fill('TEST RECORD both-shift sports');await page.locator('#dialog-form [name=category]').selectOption('Sports');await page.locator('#dialog-form [name=status]').selectOption('Held');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
+  const sharedEvent=(await db.query("SELECT id,shift_code FROM mass_core.activity_events WHERE name='TEST RECORD both-shift sports'")).rows[0];check(sharedEvent.shift_code==='Both shifts');
+  await page.locator('[data-action=activity-entry]').click();await page.locator(`#overlay [data-event="${sharedEvent.id}"]`).click();await page.getByRole('heading',{name:'Session participation',exact:true}).waitFor();
+  const rosterText=await page.locator('#dialog-form .table-scroll').innerText();check(rosterText.includes('Morning')&&rosterText.includes('Evening'));
+  await page.locator(`[data-participation="${eveningChild.enrolment_id}"][data-value=Attended]`).click();await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
+  check((await db.query('SELECT participated FROM mass_core.activity_participation WHERE event_id=$1 AND child_id=$2',[sharedEvent.id,eveningChild.child_id])).rows[0].participated===true);
+  check(Number((await db.query('SELECT count(*) n FROM mass_core.attendance_records WHERE child_id=$1',[eveningChild.child_id])).rows[0].n)===0);
+  await page.locator('[data-action=new-monthly-meeting]').click();await page.getByRole('heading',{name:'Add monthly meeting',exact:true}).waitFor();await page.locator('#dialog-form [name=centre]').selectOption(centre);await page.locator('#dialog-form [name=date]').fill('2026-05-22');await page.locator('#dialog-form [name=status]').selectOption('Held');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
+  const sharedSummary=await rpc('centre_event_summary',{p_centres:[centre],p_from:'2026-05-01',p_until:'2026-06-01'});check(Number(sharedSummary[0].activity_held)===1&&Number(sharedSummary[0].meeting_held)===1);
+  await page.getByRole('heading',{name:/Centre Activities.*Monthly Meetings/}).waitFor();checks++;
+  await page.locator('[data-nav=children]').first().click();await page.locator('[data-action=new-child]').click();await page.getByRole('heading',{name:'Add student',exact:true}).waitFor();check(await page.locator('#dialog-form [type=submit]').isEnabled());await page.locator('#dialog-form [name=name]').fill('TEST RECORD browser registration');await page.locator('#dialog-form [name=centre]').selectOption(centre);await page.locator('#dialog-form [name=grade]').selectOption('4');await page.locator('#dialog-form [name=shift]').selectOption('Morning');await page.locator('#dialog-form [name=enrolled]').fill('2026-04-01');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
+  check(Number((await db.query("SELECT count(*) n FROM mass_core.private_child_profiles WHERE full_name='TEST RECORD browser registration'")).rows[0].n)===1);
+  if(screenshots){await page.locator('[data-nav=activities]').first().click();await page.screenshot({path:path.join(screenshots,'centre-wide-events.png'),fullPage:true});}
+
  }
- check(errors.length===0);check(process.env.MASS_TEST_MULTI_ROLE==='1'?await page.locator('#role:not([disabled])').count()===1:await page.locator('[data-register-mark]').count()>0);
+ check(errors.length===0);check(process.env.MASS_TEST_MULTI_ROLE==='1'?await page.locator('#role').inputValue()==='Teacher':await page.locator('[data-register-mark]').count()>0);
  console.log(`PASS ${checks} browser assertions: chart-first landing, draft-only clicks, atomic Save, refreshed summary, correction, reload persistence, discard, audited deletion, scoped CO and read-only Leadership, mobile layout.`);
 }catch(error){console.error(error);if(screenshots){await fs.mkdir(screenshots,{recursive:true});for(const [index,page] of browser.contexts().flatMap(c=>c.pages()).entries())await page.screenshot({path:path.join(screenshots,'failure-'+index+'.png'),fullPage:true});}console.error('Last RPCs',calls.slice(-8).map(c=>c.name));process.exitCode=1;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));await db.close();await fs.rm(output,{recursive:true,force:true});}

@@ -36,3 +36,10 @@ test('saved assessment records group by authorized centre, actual date and round
  assert.equal(result[1].date,'');assert.equal(result[1].students.length,2);
  assert(result.every(group=>group.centre==='one'));
 });
+
+
+import {titleCase} from '../../src/live/presentation.js';
+test('headings capitalise actual word boundaries without changing chart references',()=>{
+ assert.equal(titleCase('Students enrolled'), 'Students Enrolled');
+ assert.equal(titleCase('MASS F1–F4'), 'MASS F1–F4');
+});

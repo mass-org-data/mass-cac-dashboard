@@ -55,3 +55,8 @@
 .sidebar .nav{flex:1 1 auto;min-height:44px;overflow-y:auto}.sidebar-bottom{flex:0 0 auto;margin-top:12px}
 @media(max-width:650px){.student-search-row{flex:1 0 310px;gap:10px}.roster-search{min-width:0;flex-basis:auto}.roster-search>label{min-width:0}.student-search-row input{font-size:13px}.sidebar-bottom .mini-profile{display:none}}
 .register-context>*{min-width:0}.register-context strong{overflow-wrap:anywhere}.register-context input,.register-context select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+
+/* Keep the header logo independent of the collapsed sidebar image rule. */
+.sidebar-collapsed .topbar .header-logo img{width:128px;height:auto;left:-10px;top:-24px}
+.register-reason[hidden]{display:none!important}
+@media(max-width:650px){.sidebar-collapsed .topbar .header-logo img{width:118px;left:-10px;top:-22px}}

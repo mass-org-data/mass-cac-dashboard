@@ -1,3 +1,4 @@
+import {discoverCentreEvents,createCentreEventSummary} from './centre-events.js';
 import {createBackendClient,clearStoredSession} from './client.js';
 import {createReadApi} from './reads.js';
 import {createDirectoryApi} from './directory.js';
@@ -20,7 +21,7 @@ export async function startOriginalReview(config) {
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
  const readController=new AbortController(),reviewedCache=new Map();let dead=false;
- const clear=()=>{dead=true;delete globalThis.__massOperationalRoles;delete globalThis.__massSelectRole;delete globalThis.__massEnsureView;delete globalThis.__massOverviewOnly;delete globalThis.__massProfilePages;delete globalThis.__massAttendance;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
+ const clear=()=>{dead=true;delete globalThis.__massOperationalRoles;delete globalThis.__massSelectRole;delete globalThis.__massEnsureView;delete globalThis.__massOverviewOnly;delete globalThis.__massProfilePages;delete globalThis.__massAttendance;delete globalThis.__massCentreEvents;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Checking your session</h1><p role="status">No programme records have been loaded.</p></section></main>';
@@ -33,7 +34,9 @@ export async function startOriginalReview(config) {
  root.innerHTML='<main class="loading-shell"><header><img src="mass-logo.jpg" alt="MASS NGO"><strong>Children’s Activity Centres</strong></header><section class="card"><h1>Overview</h1><p id="mass-load-status" role="status">Loading authorized records…</p></section></main>';
  try{
  const reads=createReadApi(client),directory=createDirectoryApi(client),api=createApi(client);
- const [context,dir,refs,capabilities]=await Promise.all([reads.context(readController.signal),directory.centres({signal:readController.signal}),reads.references(readController.signal),discoverCapabilities(rpc)]);
+ const [context,dir,refs,baseCapabilities]=await Promise.all([reads.context(readController.signal),directory.centres({signal:readController.signal}),reads.references(readController.signal),discoverCapabilities(rpc)]);
+ const capabilities=Object.freeze({...baseCapabilities,centreEvents:baseCapabilities.originalWorkflows?await discoverCentreEvents(rpc):false});
+ globalThis.__massCentreEvents=capabilities.centreEvents?createCentreEventSummary({rpc,rerender:()=>{if(!dead)globalThis.__massOriginalRefresh?.();}}):null;
  globalThis.__massBackendCapabilities=capabilities;globalThis.__massBackendNotice=capabilities.baseline?BASELINE_READ_NOTICE:!capabilities.operationalDetails||!capabilities.aggregates?'The installed backend has partial workflow capabilities. Unavailable operational and reporting features require activation; no data or permission is invented.':'';
  if(context?.user_id!==identity.data.user.id||!context.centres?.length)throw Error('No verified centre scope is available. Contact the administrator.');
  globalThis.__massOperationalRoles=context.operational_roles_enabled===true;globalThis.__massActualRoles=authorizedRoles(context);globalThis.__massActualRole=defaultAuthorizedRole(context);
@@ -54,7 +57,7 @@ export async function startOriginalReview(config) {
  let trendsRequested=false,trendOfficer=null,visitSequence=0;
  const officerLabels={};globalThis.__massOfficerLabels=officerLabels;
  async function refresh(){
-  globalThis.__massAttendance?.invalidate();
+  globalThis.__massAttendance?.invalidate();globalThis.__massCentreEvents?.invalidate();
   const reportYear=year;
   // Verify identity and current scope for every refresh; never trust a preview role.
   const [{data:auth,error},scope]=await Promise.all([client.auth.getUser(),reads.context(readController.signal)]);
@@ -70,7 +73,7 @@ export async function startOriginalReview(config) {
    for(const s of rows.students){const id=s.enrolment_id;if(byEpisode.has(id))continue;const student={id,childId:s.child_id,enrolmentId:id,studentId:s.student_id,name:s.full_name||s.student_id,centre:c.id,shift:s.shift_code,grade:s.grade_label,gender:s.gender_code||'',enrolled:s.starts_on,dateBasis:basis.find(r=>r.enrolment_id===id)?.date_basis||'not documented',active:!s.ends_before||liveToday()<s.ends_before,exitDate:s.ends_before||'',enrolmentStatus:s.status_code,boardPassed:s.class10_board_passed,row_version:s.row_version,note:''};byEpisode.set(id,student);next.students.push(student);next.scores[id]={F1:null,F2:null,F3:null,F4:null};}
    for(const a of rows.attendance){const id=a.enrolment_id;if(!byEpisode.has(id))throw Error('Attendance has an unavailable historical enrolment.');const key=id+'|'+a.attendance_date;next.attendance[key]=a.code;next.attendanceRecords[key]=a;((observed[c.id]??={})[a.attendance_date.slice(0,7)]??=new Set()).add(a.attendance_date);}
    for(const r of rows.assessments){const def=definitions.get(r.definition_id),period=periods.get(def?.period_id);if(!period||period.academic_year_id!==reportYear.id||Number(def.max_score)!==25)continue;const id=r.enrolment_id,key='F'+period.quarter;if(!next.scores[id])throw Error('Assessment has an unavailable historical enrolment.');if(next.assessmentDetails[id+'|'+key])throw Error('Conflicting assessment definitions need review.');next.scores[id][key]=r.score===null?null:Number(r.score);next.assessmentDetails[id+'|'+key]={...r,maxMarks:25,date:r.assessed_on||'',status:'Recorded',academicYear:reportYear.id};}
-   for(const e of rows.activities)next.events.push({id:e.id,centre:c.id,date:e.activity_date,name:e.name,shift:e.shift_code,category:e.category||'',status:e.delivery_status||'',row_version:e.row_version});
+   for(const e of rows.activities)next.events.push({id:e.id,centre:c.id,date:e.activity_date,name:e.name,kind:e.event_kind||'Activity',shift:e.shift_code,category:e.category||'',status:e.delivery_status||'',row_version:e.row_version});
    for(const p of rows.participation){const key=p.enrolment_id+'|'+p.event_id;next.participation[key]=p.participated===null?'Unknown':p.participated?'Attended':'Not attended';next.participationRecords[key]=p;}
    for(const r of delivery)next.sessions.push({id:r.id,centre:c.id,date:r.session_date,shift:r.shift_code,status:r.status,row_version:r.row_version});
    for(const r of rows.calendar)next.calendar.push({id:r.id,centre:c.id,date:r.session_date,shift:r.shift_code,status:r.is_scheduled?'Planned':'Not Scheduled'});

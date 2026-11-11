@@ -226,3 +226,9 @@ The pending metadata migration also includes bounded server profile paging and t
 ## Confirmed attendance UI rule (10 November follow-up)
 
 New attendance entry offers A, P, H, MM only. The user confirmed H means Holiday and is excluded from attendance percentages. Preserve old L and WO records and their meanings; legacy L remains eligible in P/(P+A+L). Do not convert history or map H to another code. The pending metadata migration advertises `holiday_code`; older hosted APIs must show H as unavailable until installed. Keep larger readable text, aligned scorecards, inline ID/name search and the persistent Sign out account bar.
+
+## 11 November centre-event clarification and authorised continuation
+
+The latest user clarification supersedes the older MM UI rule above: MM is a separate centre-wide monthly meeting, not a new classroom attendance mark. One MM and four planned activities per centre/month cover both shifts together. Individual participation remains separate from classroom attendance and the >20-day rule. Historical MM/L/WO are preserved.
+
+Continue this work in PR17 (`fix/centre-event-review`), on top of PR16. The user explicitly authorised applying the pending attendance metadata migration, enabling registration/activity entry, and building centre-wide MM/activity records. This does not authorise a main merge, Production frontend deployment, new staff grants, or unrelated feature activation. Supabase connection and actual hosted state must be verified before claiming installation. See `docs/releases/2026-11-11/CENTRE-EVENTS-AND-ACTIVATION.md`.
