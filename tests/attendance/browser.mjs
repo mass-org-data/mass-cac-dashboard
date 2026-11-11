@@ -74,7 +74,7 @@ try{
  const roster=(await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).roster;
  const first=roster[0].id,second=roster[1].id;
  check(await page.locator('.register-reason').isHidden());check(await page.locator('[data-register-mark$="|MM"]').count()===0);
- check(await page.locator(`[data-register-mark^="${first}|"]`).evaluateAll(nodes=>nodes.map(n=>n.textContent).join(','))==='A,P,H,MM');
+ check(await page.locator(`[data-register-mark^="${first}|"]`).evaluateAll(nodes=>nodes.map(n=>n.textContent).join(','))==='A,P,H');
  check(await page.locator('[name=notes]').isEnabled());await page.locator('[name=notes]').fill('TEST RECORD browser notes');
  const before=writes().length;
  await page.locator(`[data-register-mark="${first}|P"]`).click();await page.locator(`[data-register-mark="${second}|A"]`).click();
