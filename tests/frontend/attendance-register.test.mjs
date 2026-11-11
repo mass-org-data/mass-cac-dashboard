@@ -27,4 +27,4 @@ test('summary shows present/enrolled and the exact approved percentage fraction'
  assert.equal(partial.ratio,'1/17');assert.equal(partial.percentage,'100.0% (1/1)');assert.equal(partial.incomplete,true);
 });
 
-test('new options exclude legacy codes without changing saved history',()=>{assert.deepEqual(attendanceCodes,['A','P','H','MM']);for(const code of ['L','WO']){assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{one:code}),[]);assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{}),[{enrolment:'one',code:null}]);}});
+test('new options exclude legacy codes without changing saved history',()=>{assert.deepEqual(attendanceCodes,['A','P','H']);for(const code of ['MM','L','WO']){assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{one:code}),[]);assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{}),[{enrolment:'one',code:null}]);}});

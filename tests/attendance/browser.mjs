@@ -73,6 +73,7 @@ try{
  await page.locator('[data-register-mark]').first().waitFor();
  const roster=(await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'})).roster;
  const first=roster[0].id,second=roster[1].id;
+ check(await page.locator('.register-reason').isHidden());check(await page.locator('[data-register-mark$="|MM"]').count()===0);
  check(await page.locator(`[data-register-mark^="${first}|"]`).evaluateAll(nodes=>nodes.map(n=>n.textContent).join(','))==='A,P,H,MM');
  check(await page.locator('[name=notes]').isEnabled());await page.locator('[name=notes]').fill('TEST RECORD browser notes');
  const before=writes().length;
@@ -127,7 +128,7 @@ try{
  // Profile paging/search operates over the full permitted selection.
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.setViewportSize({width:1440,height:1000});
  await page.locator('[data-nav=children]').first().click();await page.locator('#student-search').waitFor();await page.waitForFunction(()=>document.querySelector('#student-id-search')&&Math.abs(document.querySelector('#student-id-search').getBoundingClientRect().y-document.querySelector('#student-search').getBoundingClientRect().y)<2);checks++;
- const profilePager=page.locator('[data-profile-jump],[data-page-jump]').last();await profilePager.waitFor();check(await profilePager.count()===1);await profilePager.fill('2');await profilePager.dispatchEvent('change');
+ const profilePager=page.locator('[data-profile-jump],[data-page-jump]').last();await profilePager.waitFor();check(await profilePager.count()===1);await profilePager.fill('2');await profilePager.press('Enter');
  await page.locator('[data-profile-jump],[data-page-jump]').last().waitFor();check(await page.locator('[data-profile-jump],[data-page-jump]').last().inputValue()==='2');
  await page.locator('#student-search').fill('TEST RECORD learner 11');await page.waitForFunction(()=>document.querySelectorAll('.profile-table-tools').length&&[...document.querySelectorAll('.content tbody tr')].some(row=>row.textContent.includes('TEST RECORD learner 11')));
  check(await page.locator('.content tbody tr:not([hidden])').count()===1);
