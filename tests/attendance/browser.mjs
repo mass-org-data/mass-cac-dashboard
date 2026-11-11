@@ -179,6 +179,6 @@ try{
   if(screenshots){await page.locator('[data-nav=activities]').first().click();await page.screenshot({path:path.join(screenshots,'centre-wide-events.png'),fullPage:true});}
 
  }
- check(errors.length===0);check(process.env.MASS_TEST_MULTI_ROLE==='1'?await page.locator('#role:not([disabled])').count()===1:await page.locator('[data-register-mark]').count()>0);
+ check(errors.length===0);check(process.env.MASS_TEST_MULTI_ROLE==='1'?await page.locator('#role').inputValue()==='Teacher':await page.locator('[data-register-mark]').count()>0);
  console.log(`PASS ${checks} browser assertions: chart-first landing, draft-only clicks, atomic Save, refreshed summary, correction, reload persistence, discard, audited deletion, scoped CO and read-only Leadership, mobile layout.`);
 }catch(error){console.error(error);if(screenshots){await fs.mkdir(screenshots,{recursive:true});for(const [index,page] of browser.contexts().flatMap(c=>c.pages()).entries())await page.screenshot({path:path.join(screenshots,'failure-'+index+'.png'),fullPage:true});}console.error('Last RPCs',calls.slice(-8).map(c=>c.name));process.exitCode=1;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));await db.close();await fs.rm(output,{recursive:true,force:true});}
