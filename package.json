@@ -25,6 +25,7 @@
     "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs",
     "test:attendance": "node tests/attendance/register.mjs && node tests/attendance/metadata.mjs",
     "test:attendance:browser": "node tests/attendance/browser.mjs",
+    "test:centre-events": "node tests/centre-events/register.mjs",
     "test:staff-access": "node tests/attendance/staff-access.mjs"
   },
   "dependencies": {

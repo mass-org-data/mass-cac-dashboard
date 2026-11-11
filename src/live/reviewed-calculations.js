@@ -41,7 +41,7 @@ export function reviewedCalculations(db,centres,state,{profileReadable=true,asse
  const calendar=(db.calendar||[]).map(r=>({centre_id:r.centre,shift_code:r.shift,session_date:r.date,is_scheduled:r.status!=='Not Scheduled'}));
  const rowsByEnrolment=new Map(db.students.map(s=>[enrolment(s),s]));
  const marks=Object.values(db.attendanceRecords||{}).filter(r=>popIds.has(r.enrolment_id)&&inMonth(r.attendance_date)).map(r=>({...r,centre_id:rowsByEnrolment.get(r.enrolment_id)?.centre}));
- const events=(db.events||[]).filter(e=>ids.has(e.centre)&&inMonth(e.date)&&e.status==='Held'&&(!state.shift||e.shift===state.shift||e.shift==='Both shifts'));
+ const events=(db.events||[]).filter(e=>e.kind!=='Monthly meeting'&&ids.has(e.centre)&&inMonth(e.date)&&e.status==='Held'&&(!state.shift||e.shift===state.shift||e.shift==='Both shifts'));
  const participationRows=Object.values(db.participationRecords||{}),activity=participation(pop,events,participationRows);
  const scoreRows=[];
  for(const [key,r] of Object.entries(db.assessmentDetails||{})){
