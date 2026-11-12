@@ -230,3 +230,7 @@ New attendance entry offers A, P, H, MM only. The user confirmed H means Holiday
 ## Feedback review (12 November)
 
 Continue PR #16 and preserve production. Source and requirement matrix: `docs/releases/2026-11-12/FEEDBACK-IMPLEMENTATION.md`. Scorecard values are larger while labels stay compact. Gender charts display only Girls/Boys; missing source genders remain unchanged. Attendance is aggregate-first and ends with its register. Teacher/CO Overview has a background current-month student summary; Leadership remains aggregate-only. New register audit/timestamp reads and reversible profile paging require the new additive feedback migration after the pending metadata migration. Neither migration was installed hosted during implementation. Keep filters/cards/charts/register order, sorting before pagination, draft-only attendance marks and scoped server audit reads.
+
+## Swapneel review, 12 November
+
+Continue the requested review in PR #16. Reuse centre-wide Monthly Meeting/activity support from PR #17 without opening another PR. The document comment defers the full unified attendance/Morarji form; add Monthly Meeting to Session Type now. Preserve historical L/WO; new individual marks are P/A. Keep production frontend held.

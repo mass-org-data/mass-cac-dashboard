@@ -94,3 +94,33 @@ th[aria-sort=ascending] .table-sort,th[aria-sort=descending] .table-sort{color:#
 @media(max-width:1100px){.filters.teacher-filter-panel{grid-template-columns:repeat(3,minmax(100px,1fr))}}
 @media(max-width:650px){.filters.teacher-filter-panel{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.teacher-filter-panel .filter select,.teacher-filter-panel .reset-filter{min-height:44px}.teacher-filter-layout{margin-bottom:16px}}
 @media(max-width:340px){.filters.teacher-filter-panel{grid-template-columns:minmax(0,1fr)}}
+
+/* 12 November screen review */
+.live-review .demographics-grid {grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}
+.live-review .metric-top {font-size:1rem;line-height:1.4;min-height:2.8em;align-items:flex-start}
+.live-review .section-head h2,.live-review .table-head h2 {font-size:1.15rem;line-height:1.35}
+.live-review .attendance-register .table-scroll {max-height:none}
+.live-review .attendance-register td {padding-top:9px;padding-bottom:9px}
+.live-review .table-sort {font-weight:700}
+.live-review .sidebar .nav {margin-top:4px}
+@media(max-width:900px){.live-review .demographics-grid {grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.live-review .demographics-grid {grid-template-columns:minmax(0,1fr)}}
+
+.live-review .teacher-centre {display:grid;gap:4px;max-width:260px;margin:0 0 10px}
+.live-review .teacher-centre select {width:100%;padding:7px 10px;opacity:1;color:var(--ink)}
+.live-review .column-chart {position:relative;padding-left:18px}
+.live-review .chart-axis-label {position:absolute;left:0;top:45px;writing-mode:vertical-rl;transform:rotate(180deg);font-size:13px}
+.live-review .chart-x-axis {text-align:center;font-size:13px;margin-top:4px}
+
+.live-review .teacher-centre select {min-width:0;box-sizing:border-box}
+.live-review .topbar .header-logo {display:none}
+.live-review .metric-top {height:auto;min-height:4.2em}
+@media(max-width:650px){.live-review .topbar .header-logo {display:block}.live-review .menu-open .topbar .header-logo {visibility:hidden}}
+
+.live-review .demographics-grid .column-chart svg {max-width:380px;margin:auto}
+
+.live-review .metric-loading {font-size:16px;font-weight:600}
+
+.live-review .demographics-grid .section-head {min-height:76px;align-items:flex-start}
+
+.live-review .line-chart svg {max-height:300px}

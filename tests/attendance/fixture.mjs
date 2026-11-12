@@ -3,12 +3,14 @@ import fs from 'node:fs';
 import {runSqlScript} from '../sql-statements.mjs';
 export const centre='10000000-0000-4000-8000-000000000001';
 export const user=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
-export async function fixture({metadata=true}={}) {
- let pendingMetadata='',pendingFeedback='';
+export async function fixture({metadata=true,centreEvents=true,review=true}={}) {
+ let pendingMetadata='',pendingFeedback='',pendingCentreEvents='',pendingReview='';
  const db=new PGlite();await db.waitReady;
  const read=name=>fs.readFileSync(new URL('../../'+name,import.meta.url),'utf8');
  await db.exec(read('tests/core/bootstrap.sql'));
  for(const file of fs.readdirSync(new URL('../../supabase/migrations/',import.meta.url)).filter(n=>n.endsWith('.sql')).sort()){
+  if(file.includes('swapneel_review_workflows')){pendingReview=read('supabase/migrations/'+file);continue;}
+  if(file.includes('centre_wide_events')){pendingCentreEvents=read('supabase/migrations/'+file);continue;}
   if(file.includes('feedback_register_reporting')){pendingFeedback=read('supabase/migrations/'+file);continue;}
   if(file.includes('attendance_register_metadata')){pendingMetadata=read('supabase/migrations/'+file);continue;}
   const sql=read('supabase/migrations/'+file);
@@ -27,6 +29,8 @@ export async function fixture({metadata=true}={}) {
  await runSqlScript(db,core);
  await runSqlScript(db,read('tests/release/visits.sql'));
  await db.exec('RESET ROLE; BEGIN;'+read('supabase/activation/control.sql')+read('supabase/activation/seal.sql')+'COMMIT;');
+ if(centreEvents&&pendingCentreEvents)await db.exec(pendingCentreEvents);
+ if(metadata&&review&&pendingReview)await db.exec(pendingReview);
  await db.exec("SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated register test' WHERE feature IN ('attendance_entry','assessment_entry','reviewed_reads'); UPDATE mass_core.attendance_register_control SET enabled=true,approval_reference='isolated approved register test'; RESET ROLE;");
  async function rpc(name,args={},actor=user(1),role='authenticated') {
   if(!/^[a-z_][a-z0-9_]*$/.test(name)||Object.keys(args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid test RPC');

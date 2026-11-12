@@ -24,7 +24,7 @@ try{
  for(const actor of [4,8])check((await rpc('assessment_register_summary',args,user(actor))).length>0);
  const before=(await db.query('SELECT count(*) n FROM mass_core.assessment_results')).rows[0].n;
  await db.query("INSERT INTO mass_core.staff_operational_access(user_id,approval_reference,approved_by) VALUES($1,'TEST RECORD attribution verification',$2)",[user(1),user(6)]);await db.exec('SET ROLE mass_core_owner');await db.query("INSERT INTO mass_core.staff_members(display_name,source_name,auth_user_id) VALUES('TEST RECORD editor','TEST RECORD editor',$1)",[user(1)]);await db.exec('RESET ROLE');
- const enrolment=(await db.query('SELECT id FROM mass_core.enrolments WHERE centre_id=$1 ORDER BY id LIMIT 1',[centre])).rows[0].id;
+ const enrolment=(await db.query('SELECT id FROM mass_core.enrolments WHERE centre_id=$1 AND starts_on<=$2 AND (ends_before IS NULL OR ends_before>$2) ORDER BY id LIMIT 1',[centre,'2026-08-15'])).rows[0].id;
  await db.exec("SET ROLE mass_core_admin; INSERT INTO mass_core.assessment_definitions(period_id) SELECT id FROM mass_core.assessment_periods WHERE academic_year_id='20000000-0000-4000-8000-000000000001' AND quarter=2; RESET ROLE;");
  const definition=(await db.query('SELECT d.id FROM mass_core.assessment_definitions d JOIN mass_core.assessment_periods p ON p.id=d.period_id WHERE p.academic_year_id=$1 AND p.quarter=2',[args.p_year])).rows[0].id;
  await rpc('record_assessment_batch',{p_rows:[{enrolment,definition,date:'2026-08-15',score:21,expected:0}]});

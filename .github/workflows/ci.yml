@@ -42,6 +42,7 @@ jobs:
       - run: npm run test:sql:portable
       - run: npm run test:attendance
       - run: npm run test:staff-access
+      - run: npm run test:centre-events
 
   browser-acceptance:
     runs-on: ubuntu-latest
