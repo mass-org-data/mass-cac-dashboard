@@ -26,7 +26,7 @@ export function attendanceTotals(rows,calendar=[]) {
   const holiday=r=>calendar.some(s=>!s.is_scheduled&&s.centre_id===r.centre_id&&s.shift_code===r.shift_code&&s.session_date===r.attendance_date);
   const count=code=>rows.filter(r=>r.code===code&&!holiday(r)).length;
   const p=count('P'),a=count('A'),l=count('L'),denominator=p+a+l;
-  return {p,a,l,excluded:rows.filter(r=>['WO','MM'].includes(r.code)||holiday(r)).length,percentage:denominator?100*p/denominator:null};
+  return {p,a,l,excluded:rows.filter(r=>['WO','MM','H'].includes(r.code)||holiday(r)).length,percentage:denominator?100*p/denominator:null};
 }
 export function quarterLabel(definition,refs) {
   const period=refs.assessment_periods.find(p=>p.id===definition.period_id);

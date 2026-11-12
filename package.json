@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MASS Children’s Activity Centres integrated frontend prototype",
+  "description": "MASS Children\u2019s Activity Centres integrated frontend prototype",
   "engines": {
     "node": "24.x"
   },
@@ -23,8 +23,9 @@
     "test:activation": "python -m unittest discover -s tests/activation -p 'test_*.py' && node tests/activation/provider-rehearsal.mjs",
     "test:sql:portable": "node tests/release/portable-sql.mjs",
     "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs",
-    "test:attendance": "node tests/attendance/register.mjs",
+    "test:attendance": "node tests/attendance/register.mjs && node tests/attendance/metadata.mjs && node tests/attendance/feedback.mjs && node tests/attendance/swapneel-review.mjs",
     "test:attendance:browser": "node tests/attendance/browser.mjs",
+    "test:centre-events": "node tests/centre-events/register.mjs",
     "test:staff-access": "node tests/attendance/staff-access.mjs"
   },
   "dependencies": {

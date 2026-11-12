@@ -28,7 +28,7 @@ test('roster filters and bounded stable pagination stay inside mass_api',async()
 test('invalid dates, identifiers, controlled values and revisions never reach RPC',async()=>{
   const client=fakeClient(),api=createApi(client);
   for(const on of ['2026-02-30','2026-13-01','not-a-date'])await assert.rejects(api.listStudents({centre:ID,on}));
-  assert.throws(()=>api.recordAttendance({enrolment:ID,on:'2026-04-01',code:'H',expected:0}));
+  assert.throws(()=>api.recordAttendance({enrolment:ID,on:'2026-04-01',code:'INVALID',expected:0}));
   assert.throws(()=>api.recordAttendance({enrolment:ID,on:'2026-04-01',code:'P',expected:undefined}));
   assert.throws(()=>api.registerStudent({centre:'C01',grade:'5',shift:'Morning',start:'2026-04-01',name:'Synthetic',gender:'Girl'}));
   assert.throws(()=>api.recordAssessment({enrolment:ID,definition:ID,on:'2026-04-01',score:26,expected:0}));

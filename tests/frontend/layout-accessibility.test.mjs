@@ -19,5 +19,5 @@ test('live help is one general About page without the hidden records screen',()=
 });
 
 test('live menus use task labels while preserving internal route identities',()=>{
-  for(const label of ['Student profiles','Assessments','Centre visits','Officer visits','Morarji scholarship'])assert(source.includes(`'${label}'`),label);
+  for(const label of ['Student Profiles','Assessments','Centre Visits','Officer Visits','Morarji Scholarship Prep'])assert(source.includes(`'${label}'`),label);
 });
