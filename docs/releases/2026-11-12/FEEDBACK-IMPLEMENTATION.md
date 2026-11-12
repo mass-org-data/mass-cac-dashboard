@@ -25,7 +25,7 @@ Sources: [MASS IDS changes](https://docs.google.com/document/d/1D3E_PPhfBRlFsLuN
 
 Read-only hosted inspection confirmed register capability version 2, the register write control enabled, and no Holiday or metadata support. The old backend's save function accepts P/A/L/MM/WO, not H. A/P writes were verified in isolated browser/SQL tests; the hosted reported save failure was not reproduced by inserting programme data.
 
-Migration `20261110120000_attendance_register_metadata.sql` remains pending. It supplies Holiday support, notes and attendance actor labels. New additive migration `20261112052348_feedback_register_reporting.sql` supplies assessment audit summaries, attendance edit timestamps and reversible profile paging. Both are included in GitHub and tested locally; neither is applied to hosted Supabase in this task.
+Migration `20261110120000_attendance_register_metadata.sql` remains pending. It supplies Holiday support, notes and attendance actor labels. New additive migration `20261112052348_feedback_register_reporting.sql` supplies assessment audit summaries, attendance edit timestamps and reversible profile paging. Both were included in GitHub and tested locally, then installed after the user subsequently approved the database updates. Reload the updated Preview to discover their capabilities.
 
 The new migration does not change programme facts, user grants, activation flags, history or guard functions. Its only audit-table permission is SELECT of assessment audit identities for the private application owner, limited by an entity-specific RLS policy. No raw audit access is granted to browser roles. New APIs require a staff session, bounded parameters and authorized centre scope. Actor names use verified staff links; unlinked accounts have a stable pseudonymous staff label. Import identities remain explicitly unrecorded. Auth IDs are not returned.
 
@@ -42,3 +42,7 @@ Application refreshes reject stale role/load generations. Late background reques
 - Lint, syntax and build; final browser total and exact connected Preview recorded in PR #16.
 
 All tests use isolated synthetic records. Managed staff sign-in and live production save acceptance are separate; no hosted test records were created.
+
+## Teacher filter follow-up
+
+The shared Teacher filter renderer uses one compact panel for Month, Shift, Grade, Gender and Academic year, with Reset inside. A single assigned centre appears as a small label above the panel (using the verified centre name rather than a hardcoded label). Desktop uses one row or a three-column wrap; phones use two columns, switching to one below 341px. Applicable extra controls such as exam round remain inside the panel. Other roles and filter calculations retain their existing behavior. Responsive layout is verified by browser geometry checks and screenshots.

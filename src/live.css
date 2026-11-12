@@ -79,3 +79,18 @@ th[aria-sort=ascending] .table-sort,th[aria-sort=descending] .table-sort{color:#
 .register-students .mark-btn.p{background:#eaf5ed;color:#277b55;border-color:#9dc8ae}.register-students .mark-btn.p.selected{background:#277b55;color:#fff;border-color:#277b55}
 .register-students .mark-btn.h{background:#eff2f1;color:#62716e;border-color:#b5c0bc}.register-students .mark-btn.h.selected{background:#62716e;color:#fff;border-color:#62716e}
 .register-students .mark-btn.mm{background:#f2edf9;color:#745495;border-color:#c0acd4}.register-students .mark-btn.mm.selected{background:#745495;color:#fff;border-color:#745495}
+
+/* Compact, shared Teacher filters: centre label outside; Reset stays inside. */
+.teacher-filter-layout{margin-bottom:20px}
+.teacher-filter-layout .teacher-centre{display:block;min-height:0;margin:0 0 8px;padding:0;font-size:12px;line-height:1.4;color:var(--muted)}
+.teacher-filter-layout .teacher-centre strong{display:inline;padding:0;color:var(--ink);font-size:12px}
+.filters.teacher-filter-panel{display:grid;grid-template-columns:repeat(5,minmax(100px,1fr)) auto;align-items:end;gap:10px 12px;padding:14px;margin:0}
+.teacher-filter-panel .filter,.teacher-filter-panel .filter:first-child{display:flex;flex-direction:column;gap:5px;min-width:0;width:auto;max-width:none;flex:none}
+.teacher-filter-panel .filter>span{font-size:11px}
+.teacher-filter-panel .filter select{width:100%;min-width:0;min-height:36px;font-size:12px;padding:7px 24px 7px 9px}
+.teacher-filter-panel .reset-filter{min-height:36px;margin:0;padding:7px 10px;white-space:nowrap;justify-self:start}
+.teacher-filter-panel .filter-note{grid-column:1/-1;width:auto;max-width:none;margin:0;font-size:10px;line-height:1.4}
+.teacher-filter-panel .filter-chip{justify-self:start}
+@media(max-width:1100px){.filters.teacher-filter-panel{grid-template-columns:repeat(3,minmax(100px,1fr))}}
+@media(max-width:650px){.filters.teacher-filter-panel{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.teacher-filter-panel .filter select,.teacher-filter-panel .reset-filter{min-height:44px}.teacher-filter-layout{margin-bottom:16px}}
+@media(max-width:340px){.filters.teacher-filter-panel{grid-template-columns:minmax(0,1fr)}}
