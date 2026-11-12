@@ -23,7 +23,7 @@
     "test:activation": "python -m unittest discover -s tests/activation -p 'test_*.py' && node tests/activation/provider-rehearsal.mjs",
     "test:sql:portable": "node tests/release/portable-sql.mjs",
     "test:cleanup": "node tests/maintenance/attendance-cleanup.mjs",
-    "test:attendance": "node tests/attendance/register.mjs && node tests/attendance/metadata.mjs",
+    "test:attendance": "node tests/attendance/register.mjs && node tests/attendance/metadata.mjs && node tests/attendance/feedback.mjs",
     "test:attendance:browser": "node tests/attendance/browser.mjs",
     "test:staff-access": "node tests/attendance/staff-access.mjs"
   },

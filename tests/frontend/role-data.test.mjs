@@ -42,3 +42,5 @@ test('Overview loads aggregate data for each authorized role before operational 
  }
  assert.deepEqual(roleDataPlan(context,'Teacher',{aggregateApi:false,view:'overview'}).detailedCentres.map(c=>c.id),['teacher']);
 });
+
+ test('Attendance reporting never requires individual year-long fact downloads',()=>{for(const role of authorizedRoles(context)){const plan=roleDataPlan(context,role,{aggregateApi:true,view:'attendance'});assert.equal(plan.aggregateMode,true);assert.deepEqual(plan.detailedCentres,[]);}});

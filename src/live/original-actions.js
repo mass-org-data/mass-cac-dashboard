@@ -13,9 +13,10 @@ export function createOriginalActions({client,api,refs,context,refresh,signOut,c
  const rpc=async(name,args)=>{let r;try{r=await client.schema('mass_api').rpc(name,args).retry(false);}catch{throw new BackendError({message:'network'},0,true);}if(r.error)throw new BackendError(r.error,r.status,true);return r.data;};
  return async function handle(el,t){
  if(globalThis.__massDataLoading)throw Error('Wait for the selected academic year to finish loading.');
- const {state,db,modal:baseModal,field,drop,esc,TODAY}=t,action=el.dataset.action||'';
+ const {state,db,modal:baseModal,field,drop:baseDrop,esc,TODAY}=t,action=el.dataset.action||'';
  const eligible=context.centres.filter(c=>c.can_write&&c.roles.includes(state.role));
  const options=eligible.map(c=>[c.id,c.label]);
+ const drop=(label,name,values,selected)=>state.role==='Teacher'&&eligible.length===1&&name==='centre'?`<div class="field fixed-centre"><span>${esc(label)}</span><strong>${esc(eligible[0].label)}</strong><input type="hidden" name="centre" value="${esc(eligible[0].id)}"></div>`:baseDrop(label,name,values,selected);
  const student=id=>{const s=db.students.find(x=>x.id===id);if(!s||!eligible.some(c=>c.id===s.centre))throw Error('Choose a student in your verified write scope.');return s;};
  const blocked=message=>modal('This operation needs approval',message,'<p class="form-help">No record was changed. The original workflow is retained; unsupported values will not be invented.</p>');
  const done=async work=>{if(feature)requireOperation(feature);await work();await refresh();t.toast('Saved and refreshed.');};

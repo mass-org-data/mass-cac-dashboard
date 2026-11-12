@@ -55,3 +55,27 @@
 .sidebar .nav{flex:1 1 auto;min-height:44px;overflow-y:auto}.sidebar-bottom{flex:0 0 auto;margin-top:12px}
 @media(max-width:650px){.student-search-row{flex:1 0 310px;gap:10px}.roster-search{min-width:0;flex-basis:auto}.roster-search>label{min-width:0}.student-search-row input{font-size:13px}.sidebar-bottom .mini-profile{display:none}}
 .register-context>*{min-width:0}.register-context strong{overflow-wrap:anywhere}.register-context input,.register-context select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+
+/* Feedback review: prominent values, compact labels, clear table hierarchy. */
+.metric-value{font-size:36px;line-height:1.15;margin:12px 0 10px}.metric-value .unit{font-size:13px;letter-spacing:0}
+.metric-top{height:44px;min-height:44px}.metric.alert{padding-top:20px}
+.content table th{background:#eaf3f2;color:#426763;border-bottom:1px solid #cbdedb}
+.content table tbody tr:nth-child(even){background:#f8fbfa}.content table tbody tr:hover{background:#edf5f3}
+.table-sort{background:transparent;color:inherit;font:inherit;font-weight:650;text-align:left;padding:0;min-height:24px;white-space:normal}
+th[aria-sort=ascending] .table-sort,th[aria-sort=descending] .table-sort{color:#1b6066;text-decoration:underline;text-underline-offset:4px}
+.mark-btn.a,.mark-buttons .a{background:#fff0ed;color:#a8493e;border-color:#dca39c}.mark-btn.a.selected{background:#a8493e;color:#fff}
+.mark-btn.p,.mark-buttons .p{background:#eaf5ed;color:#277b55;border-color:#9dc8ae}.mark-btn.p.selected{background:#277b55;color:#fff}
+.mark-btn.h,.mark-buttons .h{background:#eff2f1;color:#62716e;border-color:#b5c0bc}.mark-btn.h.selected{background:#62716e;color:#fff}
+.mark-btn.mm,.mark-buttons .mm{background:#f2edf9;color:#745495;border-color:#c0acd4}.mark-btn.mm.selected{background:#745495;color:#fff}
+.fixed-centre{justify-content:center;min-height:60px}.fixed-centre strong{padding:8px 0;color:var(--ink)}
+/* Crop only the source image's white margin; preserve the whole logo artwork. */
+.header-logo,.sidebar-collapsed .header-logo{width:103px;height:54px;flex:0 0 103px}
+.header-logo img,.sidebar-collapsed .header-logo img{position:absolute;width:128px;height:auto;max-width:none;left:-10px;top:-24px}
+.sidebar-collapsed .brand .mass-logo{width:76px;height:62px}
+.sidebar-collapsed .brand .mass-logo img{position:absolute;width:96px;height:auto;left:-8px;top:-8px}
+@media(max-width:650px){.metric-value{font-size:32px}.metric-top{height:44px;min-height:44px}.table-tools,.profile-table-tools{overflow-x:auto;padding-bottom:10px}.header-logo,.sidebar-collapsed .header-logo{width:72px;height:52px;flex-basis:72px}.header-logo img,.sidebar-collapsed .header-logo img{width:94px;left:-9px;top:-12px}.table-sort{min-height:44px}}
+/* Override the roster component's base colours, including selected states. */
+.register-students .mark-btn.a{background:#fff0ed;color:#a8493e;border-color:#dca39c}.register-students .mark-btn.a.selected{background:#a8493e;color:#fff;border-color:#a8493e}
+.register-students .mark-btn.p{background:#eaf5ed;color:#277b55;border-color:#9dc8ae}.register-students .mark-btn.p.selected{background:#277b55;color:#fff;border-color:#277b55}
+.register-students .mark-btn.h{background:#eff2f1;color:#62716e;border-color:#b5c0bc}.register-students .mark-btn.h.selected{background:#62716e;color:#fff;border-color:#62716e}
+.register-students .mark-btn.mm{background:#f2edf9;color:#745495;border-color:#c0acd4}.register-students .mark-btn.mm.selected{background:#745495;color:#fff;border-color:#745495}

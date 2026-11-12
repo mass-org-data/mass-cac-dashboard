@@ -226,3 +226,7 @@ The pending metadata migration also includes bounded server profile paging and t
 ## Confirmed attendance UI rule (10 November follow-up)
 
 New attendance entry offers A, P, H, MM only. The user confirmed H means Holiday and is excluded from attendance percentages. Preserve old L and WO records and their meanings; legacy L remains eligible in P/(P+A+L). Do not convert history or map H to another code. The pending metadata migration advertises `holiday_code`; older hosted APIs must show H as unavailable until installed. Keep larger readable text, aligned scorecards, inline ID/name search and the persistent Sign out account bar.
+
+## Feedback review (12 November)
+
+Continue PR #16 and preserve production. Source and requirement matrix: `docs/releases/2026-11-12/FEEDBACK-IMPLEMENTATION.md`. Scorecard values are larger while labels stay compact. Gender charts display only Girls/Boys; missing source genders remain unchanged. Attendance is aggregate-first and ends with its register. Teacher/CO Overview has a background current-month student summary; Leadership remains aggregate-only. New register audit/timestamp reads and reversible profile paging require the new additive feedback migration after the pending metadata migration. Neither migration was installed hosted during implementation. Keep filters/cards/charts/register order, sorting before pagination, draft-only attendance marks and scoped server audit reads.

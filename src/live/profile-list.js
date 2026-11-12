@@ -16,5 +16,6 @@ export function profileRows(students, {query = '', idQuery = '', sort = 'name', 
     shift: (left, right) => compareText(left.shift, right.shift) || byName(left, right),
     newest: (left, right) => compareText(right.enrolled, left.enrolled) || byName(left, right),
   };
-  return [...rows].sort(comparators[sort] || comparators.name);
+  const reverse=sort.startsWith('-'),key=reverse?sort.slice(1):sort;
+  return [...rows].sort((a,b)=>(comparators[key]||comparators.name)(a,b)*(reverse?-1:1));
 }
