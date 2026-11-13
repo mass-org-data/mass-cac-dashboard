@@ -3,24 +3,11 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {build} from 'esbuild';
-import {validateConfig,PRODUCTION_PROJECT} from '../src/live/config.js';
+import {readRuntimeConfig} from './runtime-config.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const output=path.join(root,'dist');
-const input={mode:process.env.MASS_APP_MODE || 'live',url:process.env.MASS_SUPABASE_URL,publishableKey:process.env.MASS_SUPABASE_PUBLISHABLE_KEY,readApi:process.env.MASS_READ_API || 'frontend-reads-v1',directoryApi:process.env.MASS_DIRECTORY_API || 'off'};
-// Missing config builds a fail-closed configuration screen. Partial/unsafe config
-// fails the build before any browser bundle is produced.
-const configured=Boolean(input.url || input.publishableKey);
-const config=(input.mode==='demo' || configured) ? validateConfig(input) : {mode:input.mode};
-if(!['live','demo'].includes(input.mode)) throw Error('MASS_APP_MODE must be live or demo.');
-// Data isolation: Vercel Production builds must use the production project, and
-// Preview builds must not (a preview that writes to production data is a defect).
-// MASS_ALLOW_PRODUCTION_IN_PREVIEW=1 is an explicit, reviewed override.
-if(config.project){
-  const environment=process.env.VERCEL_ENV;
-  if(environment==='production'&&config.project!==PRODUCTION_PROJECT)throw Error('Production builds must use the production Supabase project.');
-  if(environment==='preview'&&config.project===PRODUCTION_PROJECT&&process.env.MASS_ALLOW_PRODUCTION_IN_PREVIEW!=='1')throw Error('Preview builds must use the preview Supabase project, not production. Set MASS_SUPABASE_URL for the Preview environment.');
-}
+const {input,config}=readRuntimeConfig();
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 await cp(path.join(root,'src'),output,{recursive:true});
@@ -32,6 +19,10 @@ await build({
     builder.onLoad({filter:/.*/,namespace:'public-config'},()=>({contents:`export const runtimeConfig=${JSON.stringify(config)};`,loader:'js'}));
   }}],
 });
+// The React interface in web/ is built only on request (MASS_NEXT_UI=1) and is served beside the
+// current app at /next/. Default builds, including Production, do not contain it.
+const nextUi=process.env.MASS_NEXT_UI==='1';
+if(nextUi){const {build:viteBuild}=await import('vite');await viteBuild({configFile:path.join(root,'web/vite.config.ts'),logLevel:'warn'});}
 let commit=process.env.VERCEL_GIT_COMMIT_SHA||'',dirty=null,trackedChanges=null;
 try {
   if(!commit)commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
@@ -41,7 +32,7 @@ try {
 } catch { /* A source checkout may legitimately have no Git metadata. */ }
 const release={format:1,commit:/^[0-9a-f]{40}$/.test(commit)?commit:null,dirty,trackedChanges,
   deploymentEnvironment:['preview','production','development'].includes(process.env.VERCEL_ENV)?process.env.VERCEL_ENV:null,
-  mode:config.mode,project:config.project||null,url:config.url||null,readApi:config.readApi||null,directoryApi:config.directoryApi||null};
+  nextUi,mode:config.mode,project:config.project||null,url:config.url||null,readApi:config.readApi||null,directoryApi:config.directoryApi||null};
 // Intentionally excludes ALL keys, tokens, identity and programme records.
 await writeFile(path.join(output,'release.json'),JSON.stringify(release,null,2)+'\n');
 console.log(`Built MASS ${input.mode} workspace in dist/.`);
