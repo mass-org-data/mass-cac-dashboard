@@ -16,6 +16,8 @@ Never print or commit credentials, tokens, private student data, or private sour
 
 ## Baseline and current PR stack
 
+> **Status on 14 November 2026 (supersedes the table below where they differ):** PR #10 is merged; `main` is `3c5d7ef` and is what Production runs. #11-#17 are open as a dependent stack and are all contained in `perf/overview-load-and-ui-rebuild` (see "Performance branch and new interface" at the end). Merge order: #11-#15 into `main` in order, then the new branch's PR (which carries #16 and #17); close #16 and #17 afterwards. Prefer merge commits, not squash. Production's database was installed by sealed provider payloads and hand-applied migrations, so it differs from a fresh replay (see that section).
+
 The verified Production baseline on 10 November 2026 was `main` at `26dd33b80071d95b8b20d2c3fd2cd1d55b5f6ef8`. It includes:
 
 - PR #8, attendance popup/register: merge commit `9053d45`.
@@ -144,6 +146,9 @@ Continue independent work while these decisions remain open. Do not invent progr
 - `src/live/assessment-round.js`: April-March date-to-round mapping.
 - `src/live/leadership-report.js`: centre sorting, annual attendance, and line-chart rendering.
 - `src/live/api.js`, `reads.js`, `backend-capabilities.js`: Supabase API boundaries and feature capabilities.
+- `src/live/config.js`: approved Supabase project allow-list (production and preview). `scripts/runtime-config.mjs`: shared build-time config and the production/preview isolation guard.
+- `src/live/limiter.js`, `reviewed-aggregate.js`, `perf.js`: two-at-a-time report queue, aggregate view built from one reviewed report, opt-in timing (`?perf=1`).
+- `web/`: the new React interface (see the last section). `scripts/perf/overview-waterfall.mjs`: browser load measurement (`npm run perf:overview`).
 - `src/live.css`: live layout and responsive/accessibility styles.
 - `scripts/imports/render.py`: reviewed import SQL rendering.
 - `supabase/migrations/`: append-only reviewed schema and security migrations.
@@ -184,7 +189,9 @@ Playwright 1.55.1 is a declared development dependency. In the managed cloud env
 
 Docker-backed integration suites create disposable PostgreSQL containers but some scripts can still contend for Docker/test resources. Run `test:students`, `test:imports`, `test:directory`, `test:api`, and `test:browser` sequentially. A parallel run previously produced a false current-schema failure through shared test interference.
 
-Current expected high-level results as of PR #15:
+Also required for changes to `web/`: `npm run web:typecheck` and `npm run test:web` (CI runs both, plus `MASS_NEXT_UI=1 npm run build`). The portable SQL suite includes the monthly-series parity cases. `tests/release/visits.sql` is time-zone correct (it once failed between 18:30 and 24:00 UTC).
+
+Expected high-level results as of PR #15 (later work adds to them: 138 frontend tests, 45 web tests, 63 series parity cases, 22 guarded functions in a fresh install):
 
 - 25 frontend test files and 27 workflow/removal checks.
 - 47 Chromium/PostgREST release scenarios.
@@ -240,3 +247,26 @@ Continue PR #16 and preserve production. Source and requirement matrix: `docs/re
 ## Swapneel review, 12 November
 
 Continue the requested review in PR #16. Reuse centre-wide Monthly Meeting/activity support from PR #17 without opening another PR. The document comment defers the full unified attendance/Morarji form; add Monthly Meeting to Session Type now. Preserve historical L/WO; new individual marks are P/A. Keep production frontend held.
+
+## Performance branch and new interface (13-14 November 2026)
+
+Branch `perf/overview-load-and-ui-rebuild` (cut from `fix/centre-event-review` `c075cc3`, then merged `fix/frontend-acceptance` so it holds #11-#17; existing branches and `main` are untouched). PR base to propose: `fix/centre-event-review` while the stack is reviewed. Do not open a PR until the owner asks. Plan: `/Users/swapneelrane/.claude/plans/pasted-content-id-8391-you-are-shiny-cherny.md`; results: `docs/perf/` (`BASELINE.md`, `PHASE-2-RESULT.md`, `PHASE-3-RESULT.md`, `PHASE-5-OVERVIEW-RESULT.md`); working notes for the analyst: `docs/knowledge-sharing/WORKING-WITH-CLAUDE-CODE.md`.
+
+### Environments
+- Production Supabase `pbkwpfdpdtelmvbkzgvx`: real data, read-only diagnostics only, changed only through a gated release after merge to `main`. Vercel Production deploys `main`.
+- Preview Supabase `nilzfsahxoxibvrwsqkd`: full schema (all 30 migrations incl. `20261112163945` and `20261113120000`, proposal 024, activation control and seal), `mass_api` exposed, only `reviewed_reads` enabled, SYNTHETIC data only (92 centres, 1,500 students, about 200,000 attendance rows, about 3,700 assessments). Test accounts for Leadership (92 centres), Teacher (Centre 01) and Cluster Officer (Centres 01-09) are in the git-ignored `.env.preview-test-account`; never print or commit them. Visits, activities and monthly meetings are not seeded (owner will populate visits; activities and monthly meetings may be discarded; leave them untouched).
+- Vercel project variables are split: Preview uses the preview project URL and key, Production the production ones. The build refuses a Production build with a non-production project and a Preview build with the production project (override `MASS_ALLOW_PRODUCTION_IN_PREVIEW=1`). `vercel.json` `connect-src` lists exactly `'self'` and the two project hosts; a test keeps it equal to `APPROVED_PROJECTS`.
+- Supabase access uses a personal access token (`sbp_...`); secret API keys do not work with the Management API. Every preview database change needs the owner's approval each time and is applied as a reviewed migration file; preview changes are applied with temporary role grants inside one transaction (`mass_data_importer` for data, `mass_core_admin` for grants). The `mass_core_owner` role cannot insert facts directly (policy `can_write`).
+
+### Overview load fix (done on the branch)
+Cause: the Overview started about 10 all-centre `reviewed_chart_metrics` reports plus 92 per-centre `programme_aggregate` calls at once; concurrent heavy reports hit the database statement timeout and cards showed "Unavailable". Fixes: the per-centre loop is skipped when reviewed charts exist and the aggregate view is built from the single reviewed report (`reviewed-aggregate.js`); reviewed reports run two at a time (`limiter.js`); the 12-month chart loads when it scrolls into view and uses one `mass_api.reviewed_attendance_series` call (sealed behind `reviewed_reads`, advertised as `reviewed_attendance_series`, falls back to per-month reports if absent); capability probes run in parallel; the startup refresh reuses the just-verified identity and scope. The 30-second scope re-verification is unchanged. Measured on preview: first scorecards 10.6 s to 2.0 s median, whole page 11.7 s to about 4.7 s, requests 111 to 11, failed cards 7 of 7 runs to 0. Production gets this only after merge and release; the series migration `20261113120000` is not on Production and the client tolerates its absence.
+
+### Drift between Production and a fresh replay (do not guess)
+Production has `assessment_register_summary`, `attendance_register_summary_v4`, `student_profile_page_v2` that preview lacks and lacks the `centre_event_*` functions and two `user_scope_grants` indexes (`202611060025`). `supabase/compatibility/MIGRATIONS.sha256` covers only files up to 023. A gated production workflow (GitHub Environment approval, ledger, preflight/postflight, only unapplied migrations) is proposed but not implemented.
+
+### New interface (`web/`, flag `MASS_NEXT_UI=1`, served at `/next/`)
+Vite, React 19, TypeScript, Tailwind 4, shadcn/ui-style primitives, TanStack Table pinned to 8.x. Default builds (including Production) do not contain it. Shared with the current app, not copied: config check, client, verified sign-in, read API, role rules, CSV escaping. Shared components every page must use: `DataTable` (search, click-to-sort ascending first, default ascending on the first column, sticky header, 10 rows per page, CSV of filtered and sorted rows, no column reorder or toggles), `Scorecard`, `ChartCard`, `AsyncState`; numbering follows the current 1.x style. Rules: no inline script or handlers (CSP), no external fonts, controls at least 44 px, unknown is a dash never zero, never a service key. Built so far: shell with sign-in and role switching, and the Overview (identical numbers to the current Overview for all three roles; see `PHASE-5-OVERVIEW-RESULT.md`). Next screens in order: Attendance (highest risk: register popup, drafts until Save, audit, clears, whole-register deletion, version and request tokens, newest-first 10-row pagination), Student profiles, Assessments, Visits, Morarji, Annual donor summary, About. Parity tests that freeze the original look (`original-parity.test.mjs`, `tests/parity/visual.py`) stay until cutover, then are replaced by behaviour and number checks (owner decision).
+
+### Working rules for this effort
+Plan then build in owner-approved phases; one phase per approval. Commit small logical commits on the new branch; push only that branch. Verify claims with measurements and parity runs; say what was not measured. Heavy tools: Playwright Chromium is installed in `~/Library/Caches/ms-playwright`; run `npm run perf:overview -- --runs N --label X --build` for load numbers (uses the preview project and the Leadership test account).
+
