@@ -1,0 +1,20 @@
+import {useEffect, useState} from 'react';
+
+export type Route = 'overview' | 'attendance';
+export const ROUTES: Array<{id: Route; number: number; label: string}> = [
+  {id: 'overview', number: 1, label: 'Overview'},
+  {id: 'attendance', number: 2, label: 'Attendance'},
+];
+
+const parse = (hash: string): Route => (hash.replace(/^#\/?/, '') === 'attendance' ? 'attendance' : 'overview');
+
+// Hash routes need no server rewrites and survive the strict CSP.
+export function useRoute(): [Route, (route: Route) => void] {
+  const [route, setRoute] = useState<Route>(() => parse(window.location.hash));
+  useEffect(() => {
+    const onChange = () => setRoute(parse(window.location.hash));
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  return [route, next => { window.location.hash = `#/${next}`; }];
+}

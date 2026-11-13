@@ -6,9 +6,12 @@ import {AsyncState} from '../components/AsyncState';
 import {Button} from '../components/ui/button';
 import {SignIn} from '../pages/SignIn';
 import {Overview} from '../pages/Overview';
+import {Attendance} from '../pages/Attendance';
+import {ROUTES, useRoute} from './route';
 
 function Shell({backend}: {backend: LiveBackend}) {
   const {state, controller} = useSession();
+  const [route, go] = useRoute();
   if (state.status === 'loading') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="loading" loadingLabel="Checking your session" /></main>;
   if (state.status === 'error') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="error" errorMessage={state.message} onRetry={() => void controller.start()} /></main>;
   if (state.status === 'signed-out') return <SignIn message={state.message} onSignIn={(email, password) => controller.signIn(email, password)} />;
@@ -33,10 +36,15 @@ function Shell({backend}: {backend: LiveBackend}) {
       </header>
       <main className="mx-auto max-w-6xl space-y-6 p-4">
         <div role="note" className="rounded-md bg-warn-soft p-4 text-sm text-warn">
-          Preview of the new interface: only the Overview is built so far. <a className="font-semibold underline" href="../">Use the standard application for everything else</a>.
+          Preview of the new interface: only the Overview and Attendance are built so far. <a className="font-semibold underline" href="../">Use the standard application for everything else</a>.
         </div>
-        <h1 className="text-2xl font-bold"><span className="mr-1 text-base font-bold text-brand-dark">1</span>Overview</h1>
-        <Overview backend={backend} context={state.context} role={state.activeRole} key={state.activeRole} />
+        <nav aria-label="Primary" className="flex flex-wrap gap-2">
+          {ROUTES.map(item => <a key={item.id} href={`#/${item.id}`} aria-current={route === item.id ? 'page' : undefined} onClick={event => { event.preventDefault(); go(item.id); }} className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-semibold ${route === item.id ? 'bg-brand-dark text-white' : 'border border-line bg-white text-ink hover:bg-brand-soft'}`}>{item.number} {item.label}</a>)}
+        </nav>
+        <h1 className="text-2xl font-bold"><span className="mr-1 text-base font-bold text-brand-dark">{ROUTES.find(r => r.id === route)!.number}</span>{ROUTES.find(r => r.id === route)!.label}</h1>
+        {route === 'attendance'
+          ? <Attendance backend={backend} context={state.context} role={state.activeRole} key={`a-${state.activeRole}`} />
+          : <Overview backend={backend} context={state.context} role={state.activeRole} key={`o-${state.activeRole}`} />}
       </main>
     </div>
   );
