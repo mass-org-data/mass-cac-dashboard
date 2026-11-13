@@ -232,3 +232,11 @@ New attendance entry offers A, P, H, MM only. The user confirmed H means Holiday
 The latest user clarification supersedes the older MM UI rule above: MM is a separate centre-wide monthly meeting, not a new classroom attendance mark. One MM and four planned activities per centre/month cover both shifts together. Individual participation remains separate from classroom attendance and the >20-day rule. Historical MM/L/WO are preserved.
 
 Continue this work in PR17 (`fix/centre-event-review`), on top of PR16. The user explicitly authorised applying the pending attendance metadata migration, enabling registration/activity entry, and building centre-wide MM/activity records. This does not authorise a main merge, Production frontend deployment, new staff grants, or unrelated feature activation. Supabase connection and actual hosted state must be verified before claiming installation. See `docs/releases/2026-11-11/CENTRE-EVENTS-AND-ACTIVATION.md`.
+
+## Feedback review (12 November)
+
+Continue PR #16 and preserve production. Source and requirement matrix: `docs/releases/2026-11-12/FEEDBACK-IMPLEMENTATION.md`. Scorecard values are larger while labels stay compact. Gender charts display only Girls/Boys; missing source genders remain unchanged. Attendance is aggregate-first and ends with its register. Teacher/CO Overview has a background current-month student summary; Leadership remains aggregate-only. New register audit/timestamp reads and reversible profile paging require the new additive feedback migration after the pending metadata migration. Neither migration was installed hosted during implementation. Keep filters/cards/charts/register order, sorting before pagination, draft-only attendance marks and scoped server audit reads.
+
+## Swapneel review, 12 November
+
+Continue the requested review in PR #16. Reuse centre-wide Monthly Meeting/activity support from PR #17 without opening another PR. The document comment defers the full unified attendance/Morarji form; add Monthly Meeting to Session Type now. Preserve historical L/WO; new individual marks are P/A. Keep production frontend held.

@@ -6,8 +6,8 @@ export function savedAssessmentGroups(db, centres) {
   for (const round of ['F1','F2','F3','F4']) {
    const result = db.assessmentDetails[student.id + '|' + round];
    if (!result?.id) continue;
-   const key = [student.centre, round, result.date || 'unknown'].join('|');
-   const group = groups.get(key) || {key, centre:student.centre, round, date:result.date || '', students:[]};
+   const key = [student.centre, round, result.date || 'unknown', student.shift].join('|');
+   const group = groups.get(key) || {key, centre:student.centre, round, shift:student.shift, date:result.date || '', students:[]};
    group.students.push(student);
    groups.set(key, group);
   }
