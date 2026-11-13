@@ -20,6 +20,7 @@ try {
  await runSqlScript(db,core);console.log('PASS existing core SQL assertions');
  await runSqlScript(db,read('tests/release/visits.sql'));console.log('PASS existing visit/delivery/scoped reporting SQL assertions');
  await runSqlScript(db,read('tests/reviewed-calculations/synthetic.sql'));
+ await runSqlScript(db,read('tests/reviewed-calculations/attendance-series.sql'));console.log('PASS batched monthly attendance series equals reviewed_chart_metrics for 63 month and filter cases');
  await runSqlScript(db,read('tests/security/definer-matrix.sql'));console.log('PASS existing definer security matrix');
  await db.exec('RESET ROLE; BEGIN;'+read('supabase/activation/control.sql')+read('supabase/activation/seal.sql')+'COMMIT;');
  await db.exec("SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated calculation check' WHERE feature='reviewed_reads'; RESET ROLE;");
@@ -30,5 +31,11 @@ try {
  const rows=results.flatMap(r=>r.rows).map(r=>Object.values(r)[0]).filter(r=>r&&typeof r==='object'&&r.case!==undefined);
  fs.writeFileSync(path.join(out,'results.jsonl'),rows.map(r=>JSON.stringify(r)).join('\n')+'\n');
  console.log(execFileSync(process.execPath,[path.join(root,'tests/reviewed-calculations/compare.mjs'),path.join(out,'input.json'),path.join(out,'cases.json'),path.join(out,'results.jsonl')],{encoding:'utf8'}).trim());
+ const gated=(await db.query("SELECT position('-- MASS_ACTIVATION_GUARD_V1' IN prosrc)>0 AS guarded FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='reviewed_attendance_series'")).rows;
+ if(gated.length!==1||gated[0].guarded!==true)throw new Error('reviewed_attendance_series must be sealed behind reviewed_reads');
+ await db.exec("SET ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false)");
+ const caps=(await db.query("SELECT mass_api.get_original_capabilities()->>'reviewed_attendance_series' AS v")).rows;await db.exec('RESET ROLE');
+ if(caps[0]?.v!=='1')throw new Error('get_original_capabilities must advertise reviewed_attendance_series when reviewed_reads is enabled');
+ console.log('PASS series is sealed behind reviewed_reads');
  console.log('PASS sealed reviewed calculation API. Native concurrency and managed Auth/browser tests remain separate.');
 } finally {await db.close();fs.rmSync(out,{recursive:true,force:true});}

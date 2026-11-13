@@ -20,3 +20,4 @@ record_cac_delivery,activities,disabled,prohibited; constrained hard-off,assigne
 add_morarji_member,morarji,disabled,prohibited; constrained hard-off,writable enrolment/cohort context
 record_morarji,morarji,disabled,prohibited; constrained hard-off,existing member enrolment write scope
 reviewed_chart_metrics,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; bounded month/year/filters
+reviewed_attendance_series,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; academic year and filters validated; one month per row up to the reporting day
