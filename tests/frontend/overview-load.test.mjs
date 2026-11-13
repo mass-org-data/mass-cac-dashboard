@@ -65,3 +65,23 @@ test('startup source: no per-centre aggregate loop with reviewed charts, paralle
   assert.match(app, /new window\.IntersectionObserver/);
   assert.match(app, /paginateTables\(\$\('#app'\)\);observeLazyMonths\(\);/);
 });
+
+test('the monthly series capability needs reviewed charts and is absent on older backends', async () => {
+  const {discoverCapabilities} = await import('../../src/live/backend-capabilities.js');
+  const base = {activation_control: 1, original_workflows: 20, period_assessments: true, operational_details: 22, aggregate_api: 23, writes: {}};
+  const withSeries = await discoverCapabilities(async () => ({...base, reviewed_charts: 24, reviewed_attendance_series: 1}));
+  assert.equal(withSeries.reviewedAttendanceSeries, true);
+  const older = await discoverCapabilities(async () => ({...base, reviewed_charts: 24}));
+  assert.equal(older.reviewedAttendanceSeries, false);
+  const disabled = await discoverCapabilities(async () => ({...base, reviewed_attendance_series: 1}));
+  assert.equal(disabled.reviewedAttendanceSeries, false);
+});
+
+test('Overview chart uses one series request when available and falls back to per-month reports', async () => {
+  const review = await readFile(new URL('../../src/live/original-review.js', import.meta.url), 'utf8');
+  assert.match(review, /rpc\('reviewed_attendance_series'/);
+  assert.match(review, /delete globalThis\.__massAttendanceSeries/);
+  const app = await readFile(new URL('../../src/app.js', import.meta.url), 'utf8');
+  assert.match(app, /series=liveReview\?globalThis\.__massAttendanceSeries\?\.\(state,scope\(\)\):null/);
+  assert.match(app, /if\(series&&!series\.unavailable\)/);
+});

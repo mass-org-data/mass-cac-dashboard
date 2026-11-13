@@ -26,8 +26,8 @@ export async function startOriginalReview(config) {
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
  // At most two all-centre reviewed reports run at once (see limiter.js). One report alone takes about 0.4 s on production.
- const readController=new AbortController(),reviewedCache=new Map(),reviewedLimiter=createLimiter(2);let dead=false;
- const clear=()=>{dead=true;delete globalThis.__massOperationalRoles;delete globalThis.__massSelectRole;delete globalThis.__massEnsureView;delete globalThis.__massEnsureSummary;delete globalThis.__massOverviewOnly;delete globalThis.__massProfilePages;globalThis.__massAttendance?.dispose();delete globalThis.__massAttendance;delete globalThis.__massAssessmentRegisters;delete globalThis.__massCentreEvents;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
+ const readController=new AbortController(),reviewedCache=new Map(),seriesCache=new Map(),reviewedLimiter=createLimiter(2);let dead=false;
+ const clear=()=>{dead=true;delete globalThis.__massOperationalRoles;delete globalThis.__massSelectRole;delete globalThis.__massEnsureView;delete globalThis.__massEnsureSummary;delete globalThis.__massOverviewOnly;delete globalThis.__massProfilePages;globalThis.__massAttendance?.dispose();delete globalThis.__massAttendance;delete globalThis.__massAssessmentRegisters;delete globalThis.__massCentreEvents;reviewedCache.clear();seriesCache.clear();delete globalThis.__massAttendanceSeries;delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
  root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Checking your session</h1><p role="status">No programme records have been loaded.</p></section></main>';
@@ -126,6 +126,15 @@ export async function startOriginalReview(config) {
   }
   const value=reviewedCalculations(db,centres,{...state,query:''},{profileReadable:!globalThis.__massAggregateMode,assessmentReady:capabilities.periodAssessments,detailsReady:capabilities.operationalDetails});
   reviewedCache.set(key,value);return value;
+ };
+ // One light request returns every elapsed month's attendance for the Overview line chart (replaces one full report per month).
+ globalThis.__massAttendanceSeries=(state,selected)=>{
+  if(!capabilities.reviewedAttendanceSeries||state.query||!selected.length)return null;
+  const key=JSON.stringify([dataEpoch,year.id,state.grade,state.shift,state.gender,selected.map(c=>c.id).sort()]);
+  if(seriesCache.has(key))return seriesCache.get(key);
+  seriesCache.set(key,{pending:'Loading monthly attendance…'});const epoch=dataEpoch;
+  void reviewedLimiter(()=>rpc('reviewed_attendance_series',{p_centres:selected.map(c=>c.id),p_year:year.id,p_today:liveToday(),p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null})).then(rows=>{if(!dead&&epoch===dataEpoch){seriesCache.set(key,Object.fromEntries(rows.map(r=>[r.month,r.percentage===null?null:Number(r.percentage)])));globalThis.__massOriginalRefresh?.();}}).catch(error=>{if(!dead&&epoch===dataEpoch){seriesCache.set(key,{unavailable:safeDiagnosticText(error)||error.message});globalThis.__massOriginalRefresh?.();}});
+  return seriesCache.get(key);
  };
  globalThis.__massDependentOptions=(state,selected)=>{
   if(!globalThis.__massAggregateMode)return null;
