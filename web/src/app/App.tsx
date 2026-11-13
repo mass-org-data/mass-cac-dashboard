@@ -5,7 +5,7 @@ import {createLiveBackend, type LiveBackend, type RuntimeConfig} from '../sessio
 import {AsyncState} from '../components/AsyncState';
 import {Button} from '../components/ui/button';
 import {SignIn} from '../pages/SignIn';
-import {Foundation} from '../pages/Foundation';
+import {Overview} from '../pages/Overview';
 
 function Shell({backend}: {backend: LiveBackend}) {
   const {state, controller} = useSession();
@@ -33,10 +33,10 @@ function Shell({backend}: {backend: LiveBackend}) {
       </header>
       <main className="mx-auto max-w-6xl space-y-6 p-4">
         <div role="note" className="rounded-md bg-warn-soft p-4 text-sm text-warn">
-          Foundation preview of the new interface. Full screens arrive in later phases; <a className="font-semibold underline" href="../">use the standard application for real work</a>.
+          Preview of the new interface: only the Overview is built so far. <a className="font-semibold underline" href="../">Use the standard application for everything else</a>.
         </div>
-        <h1 className="text-2xl font-bold">Overview</h1>
-        <Foundation backend={backend} context={state.context} role={state.activeRole} />
+        <h1 className="text-2xl font-bold"><span className="mr-1 text-base font-bold text-brand-dark">1</span>Overview</h1>
+        <Overview backend={backend} context={state.context} role={state.activeRole} key={state.activeRole} />
       </main>
     </div>
   );

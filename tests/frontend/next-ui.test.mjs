@@ -25,7 +25,7 @@ test('the new interface reuses the approved configuration check and the producti
 });
 
 test('web sources never use service keys or inline handlers', async () => {
-  for (const file of ['web/src/session/backend.ts', 'web/src/session/controller.ts', 'web/src/app/App.tsx', 'web/src/pages/Foundation.tsx']) {
+  for (const file of ['web/src/session/backend.ts', 'web/src/session/controller.ts', 'web/src/app/App.tsx', 'web/src/pages/Overview.tsx']) {
     const source = await readFile(file, 'utf8');
     assert.equal(/service_role|sb_secret_|dangerouslySetInnerHTML/.test(source), false, file);
   }

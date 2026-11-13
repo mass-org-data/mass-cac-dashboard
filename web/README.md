@@ -17,6 +17,9 @@ npm run test:web       # Vitest + Testing Library + axe-core
 - `Scorecard`: compact label, large value, optional unit and hint, loading/error/unavailable states. Unknown stays an em dash, never zero.
 - `AsyncState`: the one loading, empty and error treatment.
 
+## Screens built
+- **Overview** (`pages/Overview.tsx`, data in `data/overview.ts`): same reports and numbers as the current Overview; see `docs/perf/PHASE-5-OVERVIEW-RESULT.md`.
+
 ## Rules
 - No inline scripts or handlers (CSP `script-src 'self'`); no external fonts or CDNs.
 - Controls are at least 44 px high. Run `npm run test:web` for axe checks; contrast is checked in a real browser (see the Phase 4 note in `docs/perf/`).
