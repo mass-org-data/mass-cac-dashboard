@@ -27,6 +27,9 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+      - run: npm run web:typecheck
+      - run: npm run test:web
+      - run: MASS_NEXT_UI=1 npm run build
       - run: npm audit --audit-level=high
 
   portable-sql:
