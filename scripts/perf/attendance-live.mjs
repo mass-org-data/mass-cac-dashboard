@@ -1,4 +1,4 @@
-// Real-browser check of the new Attendance screen against the PREVIEW project (synthetic data only).
+// Real-browser check of the new Attendance and Student profiles screens against the PREVIEW project (synthetic data only).
 // Serves ./dist with the production CSP headers, signs in with the git-ignored preview test accounts,
 // never prints credentials or records. Usage: node scripts/perf/attendance-live.mjs
 import http from 'node:http';
@@ -18,7 +18,7 @@ const headers=Object.fromEntries(vercel.headers[0].headers.map(h=>[h.key,h.value
 delete headers['Strict-Transport-Security'];headers['Content-Security-Policy']=headers['Content-Security-Policy'].replace('; upgrade-insecure-requests','');
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.json':'application/json'};
 const dist=path.join(root,'dist');
-const server=http.createServer(async(req,res)=>{try{let p=decodeURIComponent(new URL(req.url,'http://x').pathname);if(p.endsWith('/'))p+='index.html';res.writeHead(200,{...headers,'Content-Type':types[path.extname(p)]||'application/octet-stream'});res.end(await readFile(path.join(dist,p)));}catch{res.writeHead(404);res.end('nf');}});
+const server=http.createServer(async(req,res)=>{try{let p=decodeURIComponent(new URL(req.url,'http://x').pathname);if(p==='/__axe.js'){res.writeHead(200,{...headers,'Content-Type':types['.js']});res.end(await readFile(path.join(root,'node_modules/axe-core/axe.min.js')));return;}if(p.endsWith('/'))p+='index.html';res.writeHead(200,{...headers,'Content-Type':types[path.extname(p)]||'application/octet-stream'});res.end(await readFile(path.join(dist,p)));}catch{res.writeHead(404);res.end('nf');}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const base=`http://127.0.0.1:${server.address().port}/next/`;
 const results=[];const note=(item,ok,detail='')=>{results.push({item,ok,detail});console.log(`${ok?'PASS':'FAIL'}  ${item}${detail?' — '+detail:''}`);};
@@ -66,7 +66,8 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   const close=async()=>{if(await dialog.count()){await dialog.getByRole('button',{name:'Cancel'}).click().catch(()=>{});if(await dialog.count()){const c=page.getByRole('button',{name:'Close'});if(await c.count())await c.click();}}};
   // find an unrecorded date with a roster
   let day=null;const start=new Date(Date.now()+5.5*3600e3);
-  for(let i=0;i<40&&!day;i++){const d=isoDay(new Date(start-i*86400e3));await open(d);
+  // Start from yesterday: an earlier run leaves a holiday (which cannot be deleted) on the first free day.
+  for(let i=1;i<41&&!day;i++){const d=isoDay(new Date(start-i*86400e3));await open(d);
     const logged=await dialog.getByText(/Already logged/).count(),empty=await dialog.getByText(/No eligible students/).count(),students=await dialog.locator('table[aria-label="Students to mark"] tbody tr').count();
     if(!logged&&!empty&&students>0)day=d;else await close();}
   note('Teacher: found an unrecorded date with a roster',Boolean(day),day??'');
@@ -101,13 +102,15 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       await page.waitForTimeout(2500);
       note('Teacher: deleted register removed from the table',await page.getByRole('button',{name:new RegExp(`Edit attendance:.*Evening, ${day}`)}).count()===0);
     }
-    // holiday on the same (now empty) date
+    // holiday on the same (now empty) date. Holidays cannot be deleted, so this only runs with --holiday.
+    if(process.argv.includes('--holiday')){
     await open(day);
     await dialog.getByLabel('Session Type').selectOption('Holiday');
     await dialog.getByLabel('Notes').fill('Preview acceptance test holiday');
     await dialog.getByRole('button',{name:'Save Holiday'}).click();await dialog.waitFor({state:'detached',timeout:60000});
     await page.waitForTimeout(2500);
     note('Teacher: holiday saved and shown as Recorded holiday',await page.getByText('Recorded holiday').count()>0);
+    }
   }
   note('Teacher: no failed RPC calls',failed.length===0,failed.join(', '));
   note('Teacher: no console errors',problems.length===0,problems.join(' | '));
@@ -125,6 +128,50 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   note('Cluster Officer: no failed RPC calls',failed.length===0,failed.join(', '));
   note('Cluster Officer: no console errors',problems.length===0,problems.join(' | '));
   await context.close();
+}
+
+// Student profiles (read-only checks; writes stay switched off on preview until separately approved)
+{
+  const openProfiles=async page=>{await page.goto(base+'#/profiles');await page.getByRole('table',{name:'Student profiles'}).or(page.getByRole('note')).or(page.getByRole('alert')).first().waitFor({timeout:60000});};
+  {
+    const {context,page,problems,failed}=await session('Leadership');await openProfiles(page);
+    note('Profiles, Leadership: aggregate-only note, no student table',await page.getByText(/aggregate reporting only/).count()>0&&await page.getByRole('table',{name:'Student profiles'}).count()===0);
+    note('Profiles, Leadership: no failed RPC calls or console errors',failed.length===0&&problems.length===0,[...failed,...problems].join(' | '));await context.close();
+  }
+  for(const role of ['Teacher','Cluster Officer']){
+    const {context,page,problems,failed}=await session(role);await openProfiles(page);
+    const T=page.getByRole('table',{name:'Student profiles'});
+    await T.locator('tbody tr').first().waitFor({timeout:60000});
+    const rows=await T.locator('tbody tr').count();
+    note(`Profiles, ${role}: first page shows up to 10 students`,rows>0&&rows<=10,`${rows} rows`);
+    const firstName=await T.locator('tbody tr').first().innerText();
+    const next=page.getByRole('button',{name:'Next page'}).first();
+    if(await next.isEnabled()){await next.click();await page.waitForTimeout(2500);note(`Profiles, ${role}: next page shows different students`,firstName!==await T.locator('tbody tr').first().innerText());await page.getByRole('button',{name:'Previous page'}).first().click();await page.waitForTimeout(2000);}
+    await page.getByRole('button',{name:/^Grade/}).first().click();await page.waitForTimeout(2500);
+    const grades=(await T.locator('tbody tr td:nth-child(4)').allTextContents()).map(Number);
+    note(`Profiles, ${role}: sorting by grade orders the page ascending`,grades.length>0&&grades.every((g,i)=>i===0||g>=grades[i-1]),grades.join(','));
+    await page.getByRole('button',{name:/^Grade/}).first().click();await page.waitForTimeout(2500);
+    const down=(await T.locator('tbody tr td:nth-child(4)').allTextContents()).map(Number);
+    note(`Profiles, ${role}: second click sorts descending`,down.length>0&&down.every((g,i)=>i===0||g<=down[i-1]),down.join(','));
+    const idText=(await T.locator('tbody tr td:nth-child(1)').first().innerText()).trim();
+    await page.getByLabel('Student ID').fill(idText);await page.waitForTimeout(3500);
+    const found=await T.locator('tbody tr').count();
+    note(`Profiles, ${role}: searching by a student ID narrows to that student`,found===1,`${found} rows`);
+    if(role==='Teacher'){
+      await page.addScriptTag({url:'/__axe.js'});
+      const axeList=async()=>page.evaluate(async()=>(await window.axe.run(document)).violations.map(v=>v.id+': '+v.nodes.length));
+      note('Profiles, Teacher: no axe violations in the browser (incl. contrast)',(await axeList()).length===0,(await axeList()).join('; '));
+      await page.getByRole('button',{name:'Add student'}).click();
+      note('Profiles, Teacher: no axe violations with Add student open',(await axeList()).length===0,(await axeList()).join('; '));
+      note('Profiles, Teacher: Add student opens with saving switched off (activation pending)',await page.getByText(/Saving is switched off/).count()>0&&await page.getByRole('button',{name:'Save student'}).isDisabled());
+      await page.getByRole('button',{name:'Cancel'}).click();
+    }
+    await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
+    note(`Profiles, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`Profiles, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
+    note(`Profiles, ${role}: no console errors`,problems.length===0,problems.join(' | '));
+    await context.close();
+  }
 }
 await browser.close();server.close();
 console.log(`\n${results.filter(r=>r.ok).length}/${results.length} checks passed`);
