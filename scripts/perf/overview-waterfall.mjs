@@ -68,13 +68,14 @@ const measureInPage=timeout=>new Promise(resolve=>{
   const cards=()=>[...document.querySelectorAll('.metric')];
   // A card is loading when it shows the loading marker, or shows an em dash while requests are still in flight
   // (some cards stay '—' until aggregate reads finish). A dash with nothing in flight is a legitimate unknown.
-  const loadingCards=list=>list.filter(c=>c.querySelector('.metric-loading')||(/^\s*(—|Loading)/.test(c.querySelector('.metric-value')?.textContent||'—')&&inflight()>0));
+  const loadingCards=list=>list.filter(c=>c.querySelector('.metric-loading[role=status]')||(/^\s*(—|Loading)/.test(c.querySelector('.metric-value')?.textContent||'—')&&inflight()>0));
+  const failedCards=()=>cards().filter(c=>c.querySelector('.metric-loading[role=alert]')).length;
   const statusLoading=()=>[...document.querySelectorAll('#app [role=status]')].some(el=>/loading/i.test(el.textContent));
   const finish=(reason)=>{if(done)return;done=true;clearInterval(timer);
     for(const m of performance.getEntriesByType('mark'))if(m.name.startsWith('mass:'))marks[m.name]=Math.round(m.startTime);
     const pending=[...document.querySelectorAll('.metric-loading,#app [role=status],#mass-load-status')].map(el=>el.textContent.trim().slice(0,80)).slice(0,10);
     const cardText=cards().map(c=>(c.querySelector('.metric-top')?.textContent||'').trim().slice(0,40)+' = '+(c.querySelector('.metric-value')?.textContent||'').trim().slice(0,20));
-    resolve({t1,t2:reason==='complete'?Math.round(performance.now()):null,reason,cards:cards().length,pending,cardText,marks,requests:globalThis.__massPerf?.requests||[]});};
+    resolve({t1,t2:reason==='complete'?Math.round(performance.now()):null,reason,cards:cards().length,failedCards:failedCards(),pending,cardText,marks,requests:globalThis.__massPerf?.requests||[]});};
   const timer=setInterval(()=>{
     const list=cards(),first=list.slice(0,5);
     if(t1===null&&list.length>=5&&loadingCards(first).length===0)t1=Math.round(performance.now());
@@ -109,12 +110,12 @@ async function main(){
       const reqs=r.requests.filter(q=>q.end!==undefined).map(q=>({name:q.path.split('/').pop(),start:Math.round(q.start),ms:Math.round(q.end-q.start),status:q.status,bytes:q.bytes}));
       const byName={};for(const q of reqs){const e=byName[q.name]||={count:0,totalMs:0,maxMs:0};e.count++;e.totalMs+=q.ms;e.maxMs=Math.max(e.maxMs,q.ms);}
       let peak=0;for(const q of reqs){const c=reqs.filter(o=>o.start<q.start+q.ms&&q.start<o.start+o.ms).length;peak=Math.max(peak,c);}
-      results.push({run,t1:r.t1,t2:r.t2,reason:r.reason,cards:r.cards,pending:r.pending,cardText:r.cardText,requestCount:reqs.length,peakConcurrent:peak,maxRequestMs:Math.max(0,...reqs.map(q=>q.ms)),marks:r.marks,byName,waterfall:reqs.sort((a,b)=>a.start-b.start),cspBlocked:blocked});
-      console.log(`run ${run}: T1=${r.t1}ms T2=${r.t2}ms (${r.reason}) requests=${reqs.length} peak=${peak} cspBlocked=${blocked.length}`);
+      results.push({run,t1:r.t1,t2:r.t2,reason:r.reason,cards:r.cards,failedCards:r.failedCards,http500:reqs.filter(q=>q.status>=500).length,pending:r.pending,cardText:r.cardText,requestCount:reqs.length,peakConcurrent:peak,maxRequestMs:Math.max(0,...reqs.map(q=>q.ms)),marks:r.marks,byName,waterfall:reqs.sort((a,b)=>a.start-b.start),cspBlocked:blocked});
+      console.log(`run ${run}: T1=${r.t1}ms T2=${r.t2}ms (${r.reason}) failedCards=${r.failedCards} http5xx=${reqs.filter(q=>q.status>=500).length} requests=${reqs.length} peak=${peak} cspBlocked=${blocked.length}`);
       await context.close();
     }
   }finally{await browser.close();local?.server.close();}
-  const summary={label,base:baseUrlArg||'local dist',runs,t1:{median:median(results.map(r=>r.t1).filter(Number.isFinite)),p75:p75(results.map(r=>r.t1).filter(Number.isFinite))},t2:{median:median(results.map(r=>r.t2).filter(Number.isFinite)),p75:p75(results.map(r=>r.t2).filter(Number.isFinite))},requests:{median:median(results.map(r=>r.requestCount))},timeouts:results.filter(r=>r.reason!=='complete').length};
+  const summary={label,base:baseUrlArg||'local dist',runs,t1:{median:median(results.map(r=>r.t1).filter(Number.isFinite)),p75:p75(results.map(r=>r.t1).filter(Number.isFinite))},t2:{median:median(results.map(r=>r.t2).filter(Number.isFinite)),p75:p75(results.map(r=>r.t2).filter(Number.isFinite))},requests:{median:median(results.map(r=>r.requestCount))},timeouts:results.filter(r=>r.reason!=='complete').length,runsWithFailedCards:results.filter(r=>r.failedCards>0).length,totalHttp5xx:results.reduce((n,r)=>n+r.http500,0)};
   await mkdir(path.join(root,'perf-results'),{recursive:true});
   const file=path.join(root,'perf-results',`${label}-${new Date().toISOString().replace(/[:.]/g,'-')}.json`);
   await writeFile(file,JSON.stringify({summary,results},null,1));
