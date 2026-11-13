@@ -1,6 +1,8 @@
 import {discoverCentreEvents,createCentreEventSummary} from './centre-events.js';
 import {createBackendClient,clearStoredSession} from './client.js';
 import {perfMark} from './perf.js';
+import {createLimiter} from './limiter.js';
+import {aggregateFromReviewed} from './reviewed-aggregate.js';
 import {createReadApi} from './reads.js';
 import {createDirectoryApi} from './directory.js';
 import {createApi,BackendError} from './api.js';
@@ -23,7 +25,8 @@ export async function startOriginalReview(config) {
  globalThis.__massReviewToday=liveToday();
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
- const readController=new AbortController(),reviewedCache=new Map();let dead=false;
+ // At most two all-centre reviewed reports run at once (see limiter.js). One report alone takes about 0.4 s on production.
+ const readController=new AbortController(),reviewedCache=new Map(),reviewedLimiter=createLimiter(2);let dead=false;
  const clear=()=>{dead=true;delete globalThis.__massOperationalRoles;delete globalThis.__massSelectRole;delete globalThis.__massEnsureView;delete globalThis.__massEnsureSummary;delete globalThis.__massOverviewOnly;delete globalThis.__massProfilePages;globalThis.__massAttendance?.dispose();delete globalThis.__massAttendance;delete globalThis.__massAssessmentRegisters;delete globalThis.__massCentreEvents;reviewedCache.clear();delete globalThis.__massReviewedFor;delete globalThis.__massDependentOptions;readController.abort();const db=globalThis.__massLiveReviewData;if(db)for(const key of Object.keys(db))delete db[key];delete globalThis.__massLiveReviewData;delete globalThis.__massOriginalActions;delete globalThis.__massOriginalRefresh;delete globalThis.__massOfficerLabels;delete globalThis.__massAggregateFor;root.replaceChildren();document.querySelector('#overlay')?.replaceChildren();};
  const rpc=async(name,args={})=>{const r=await client.schema('mass_api').rpc(name,args).abortSignal(readController.signal);if(r.error)throw new BackendError(r.error,r.status,false,name);return r.data;};
  const login=()=>{clearStoredSession(config);window.location.reload();};
@@ -38,9 +41,9 @@ export async function startOriginalReview(config) {
  root.innerHTML='<main class="loading-shell"><header><img src="mass-logo.jpg" alt="MASS NGO"><strong>Children’s Activity Centres</strong></header><section class="card"><h1>Overview</h1><p id="mass-load-status" role="status">Loading authorized records…</p></section></main>';
  try{
  const reads=createReadApi(client),directory=createDirectoryApi(client),api=createApi(client);
- const [context,dir,refs,baseCapabilities]=await Promise.all([reads.context(readController.signal),directory.centres({signal:readController.signal}),reads.references(readController.signal),discoverCapabilities(rpc)]);
+ const [context,dir,refs,baseCapabilities,centreEventsFound,registerCapabilitiesProbe]=await Promise.all([reads.context(readController.signal),directory.centres({signal:readController.signal}),reads.references(readController.signal),discoverCapabilities(rpc),discoverCentreEvents(rpc),rpc('get_attendance_register_capabilities').catch(error=>{if(error.status===404&&error.code==='PGRST202')return {version:0,enabled:false};throw error;})]);
  perfMark('core-reads-done');
- const capabilities=Object.freeze({...baseCapabilities,centreEvents:baseCapabilities.originalWorkflows?await discoverCentreEvents(rpc):false});
+ const capabilities=Object.freeze({...baseCapabilities,centreEvents:baseCapabilities.originalWorkflows?centreEventsFound:false});
  globalThis.__massCentreEvents=capabilities.centreEvents?createCentreEventSummary({rpc,rerender:()=>{if(!dead)globalThis.__massOriginalRefresh?.();}}):null;
  globalThis.__massBackendCapabilities=capabilities;globalThis.__massBackendNotice=capabilities.baseline?BASELINE_READ_NOTICE:!capabilities.operationalDetails||!capabilities.aggregates?'The installed backend has partial workflow capabilities. Unavailable operational and reporting features require activation; no data or permission is invented.':'';
  if(context?.user_id!==identity.data.user.id||!context.centres?.length)throw Error('No verified centre scope is available. Contact the administrator.');
@@ -62,12 +65,13 @@ export async function startOriginalReview(config) {
  let trendsRequested=false,trendOfficer=null,visitSequence=0;
  const officerLabels={};globalThis.__massOfficerLabels=officerLabels;
  let refreshSequence=0;
- async function refresh(){
+ async function refresh({skipVerify=false}={}){
   const refreshId=++refreshSequence,reportView=loadedView,reportRole=globalThis.__massActualRole,summaryMonth=db.summaryRequestedMonth,summaryIds=db.summaryRequestedCentres;
   globalThis.__massAttendance?.invalidate();globalThis.__massAssessmentRegisters?.invalidate();globalThis.__massCentreEvents?.invalidate();
   const reportYear=year;
   // Verify identity and current scope for every refresh; never trust a preview role.
-  const [{data:auth,error},scope]=await Promise.all([client.auth.getUser(),reads.context(readController.signal)]);
+  // The startup refresh runs right after the identity and scope were verified, so it reuses them instead of repeating both calls.
+  const [{data:auth,error},scope]=skipVerify?[{data:{user:{id:context.user_id}},error:null},{user_id:context.user_id,centres:context.centres}]:await Promise.all([client.auth.getUser(),reads.context(readController.signal)]);
   if(error||auth?.user?.id!==context.user_id||scope.user_id!==context.user_id||JSON.stringify(scope.centres)!==JSON.stringify(context.centres)){clear();throw Error('Your authorized scope changed. Sign in again.');}
   // Aggregate-capable accounts never need centre-level profile/fact downloads
   // to render programme reporting. Older baselines retain their local fallback.
@@ -103,7 +107,7 @@ export async function startOriginalReview(config) {
  }
  function aggregateKey(s){return [s.month,s.grade||'',s.shift||'',s.gender||''].join('|');}
  async function loadAggregates(state){
-  if(!globalThis.__massAggregateMode)return;
+  if(!globalThis.__massAggregateMode||capabilities.reviewedCharts)return;
   const key=aggregateKey(state);if(db.aggregates[key]||aggregateLoading.has(key)||aggregateFailed.has(key))return;aggregateLoading.add(key);const epoch=dataEpoch;
   if(state.gender==='Unknown'){aggregateLoading.delete(key);return;}
   if(!capabilities.aggregates){try{db.aggregates[key]=baselineAggregates(db,centres,{...state,page:'overview',today:liveToday()});}catch(error){db.aggregateError=error.message;aggregateFailed.add(key);}finally{aggregateLoading.delete(key);}return;}
@@ -117,7 +121,7 @@ export async function startOriginalReview(config) {
   if(state.month>liveToday().slice(0,7)){const value={unavailable:'Future reporting periods have no verified observations.'};reviewedCache.set(key,value);return value;}
   if(capabilities.reviewedCharts&&selected.length){
    reviewedCache.set(key,{pending:'Loading authorized reviewed calculations…'});const epoch=dataEpoch;const {from,until}=monthWindow(state.month);
-   void rpc('reviewed_chart_metrics',{p_centres:selected.map(c=>c.id),p_on:reportingOn({...state,today:liveToday()}),p_from:from,p_until:until,p_year:year.id,p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null,p_earlier:Number(state.fromExam.slice(1)),p_later:Number(state.toExam.slice(1))}).then(value=>{if(!dead&&epoch===dataEpoch){reviewedCache.set(key,value);globalThis.__massOriginalRefresh?.();}}).catch(error=>{if(!dead&&epoch===dataEpoch){reviewedCache.set(key,{unavailable:[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ')});globalThis.__massOriginalRefresh?.();}});
+   void reviewedLimiter(()=>rpc('reviewed_chart_metrics',{p_centres:selected.map(c=>c.id),p_on:reportingOn({...state,today:liveToday()}),p_from:from,p_until:until,p_year:year.id,p_grade:state.grade||null,p_shift:state.shift||null,p_gender:state.gender||null,p_earlier:Number(state.fromExam.slice(1)),p_later:Number(state.toExam.slice(1))})).then(value=>{if(!dead&&epoch===dataEpoch){reviewedCache.set(key,value);globalThis.__massOriginalRefresh?.();}}).catch(error=>{if(!dead&&epoch===dataEpoch){reviewedCache.set(key,{unavailable:[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ')});globalThis.__massOriginalRefresh?.();}});
    return reviewedCache.get(key);
   }
   const value=reviewedCalculations(db,centres,{...state,query:''},{profileReadable:!globalThis.__massAggregateMode,assessmentReady:capabilities.periodAssessments,detailsReady:capabilities.operationalDetails});
@@ -151,7 +155,14 @@ export async function startOriginalReview(config) {
  };
  let summaryLoad=null;
  globalThis.__massEnsureSummary=(month,selected=activeCentres().map(c=>c.id).sort())=>{if(globalThis.__massActualRole==='Leadership'||(db.summaryMonth===month&&db.summaryScope===JSON.stringify(selected))||db.summaryError)return Promise.resolve();if(summaryLoad)return summaryLoad;db.summaryRequestedMonth=month;db.summaryRequestedCentres=selected;summaryLoad=globalThis.__massEnsureView('overview-summary').then(()=>globalThis.__massOriginalRefresh?.()).catch(error=>{db.summaryError=error.message;globalThis.__massOriginalRefresh?.();}).finally(()=>{summaryLoad=null;});return summaryLoad;};
+ const reviewedAggregates=new WeakMap();
  globalThis.__massAggregateFor=(state,selected)=>{
+  if(capabilities.reviewedCharts&&!state.query){
+   // One reviewed report replaces the old per-centre programme_aggregate calls; the same cached report also feeds the scorecards.
+   const m=globalThis.__massReviewedFor(state,selected);if(!m||m.pending||m.unavailable)return null;
+   if(!reviewedAggregates.has(m))reviewedAggregates.set(m,aggregateFromReviewed(m,state));
+   return reviewedAggregates.get(m);
+  }
   const rows=db.aggregates[aggregateKey(state)];if(!rows)return null;
   const ids=new Set(selected.map(c=>c.id)),values=rows.filter(r=>ids.has(r.centre_id));
   const result={students:0,grades:{},genders:{},attendance:{p:0,a:0,l:0,excluded:0},quarters:{},changes:{},centres:values};
@@ -171,7 +182,7 @@ export async function startOriginalReview(config) {
  }
  globalThis.__massLoadVisitTrends=async(officer=null)=>{if(db.visitTrendsLoading)return;trendOfficer=officer;trendsRequested=true;await refreshVisitTrends();};
  globalThis.__massLoadVisitMonth=loadVisits;
- await refresh();globalThis.__massMorarjiCohort=Object.values(db.morarji)[0]?.cohort||db.morarjiHistory[0]?.cohort||'';globalThis.__massLiveReviewData=db;
+ await refresh({skipVerify:true});globalThis.__massMorarjiCohort=Object.values(db.morarji)[0]?.cohort||db.morarjiHistory[0]?.cohort||'';globalThis.__massLiveReviewData=db;
  globalThis.__massOriginalActions=createOriginalActions({client,api,refs,context,refresh,capabilities,signOut:async()=>{clear();try{await client.auth.signOut({scope:'local'});}finally{clearStoredSession(config);window.location.reload();}}});
  const fingerprint=JSON.stringify(context.centres);let verifying=false;
  const endSession=()=>{clear();login();};
@@ -180,8 +191,7 @@ export async function startOriginalReview(config) {
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void verifyScope();});
  async function verifyScope(){if(dead||verifying)return;verifying=true;try{const [current,auth]=await Promise.all([reads.context(readController.signal),client.auth.getUser()]);if(auth.error){if(isAuthorizationFailure(auth.error)){endSession();return;}throw auth.error;}if(auth.data?.user?.id!==context.user_id||current.user_id!==context.user_id||JSON.stringify(current.centres)!==fingerprint){endSession();return;}verification.restore();}catch(error){if(isAuthorizationFailure(error))endSession();else if(!dead)verification.block();}finally{verifying=false;}}
  const timer=setInterval(()=>{if(dead)clearInterval(timer);else void verifyScope();},30000);
- let registerCapabilities={version:0,enabled:false};
- try{registerCapabilities=await rpc('get_attendance_register_capabilities');}catch(error){if(!(error.status===404&&error.code==='PGRST202'))throw error;}
+ const registerCapabilities=registerCapabilitiesProbe;
  if(registerCapabilities.profile_pages===true){
   const pages=new Map();let selection='';
   globalThis.__massProfilePages={invalidate:()=>{pages.clear();selection='';},read:(state,selected)=>{

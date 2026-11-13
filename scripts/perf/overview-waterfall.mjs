@@ -107,15 +107,18 @@ async function main(){
       await Promise.all([page.waitForEvent('framenavigated',{timeout:60000}),page.click('#sign-in [type=submit]')]);
       await page.waitForLoadState('domcontentloaded');
       const r=await page.evaluate(measureInPage,timeoutMs);
-      const reqs=r.requests.filter(q=>q.end!==undefined).map(q=>({name:q.path.split('/').pop(),start:Math.round(q.start),ms:Math.round(q.end-q.start),status:q.status,bytes:q.bytes}));
+      // T3: scroll to the end so content that loads when it comes into view is requested, then wait for it (ms from navigation start).
+      await page.evaluate(()=>{for(const el of [document.scrollingElement,document.querySelector('.content'),document.querySelector('main')])if(el)el.scrollTop=el.scrollHeight;});
+      const late=await page.evaluate(measureInPage,timeoutMs);
+      const reqs=late.requests.filter(q=>q.end!==undefined).map(q=>({name:q.path.split('/').pop(),start:Math.round(q.start),ms:Math.round(q.end-q.start),status:q.status,bytes:q.bytes}));
       const byName={};for(const q of reqs){const e=byName[q.name]||={count:0,totalMs:0,maxMs:0};e.count++;e.totalMs+=q.ms;e.maxMs=Math.max(e.maxMs,q.ms);}
       let peak=0;for(const q of reqs){const c=reqs.filter(o=>o.start<q.start+q.ms&&q.start<o.start+o.ms).length;peak=Math.max(peak,c);}
-      results.push({run,t1:r.t1,t2:r.t2,reason:r.reason,cards:r.cards,failedCards:r.failedCards,http500:reqs.filter(q=>q.status>=500).length,pending:r.pending,cardText:r.cardText,requestCount:reqs.length,peakConcurrent:peak,maxRequestMs:Math.max(0,...reqs.map(q=>q.ms)),marks:r.marks,byName,waterfall:reqs.sort((a,b)=>a.start-b.start),cspBlocked:blocked});
-      console.log(`run ${run}: T1=${r.t1}ms T2=${r.t2}ms (${r.reason}) failedCards=${r.failedCards} http5xx=${reqs.filter(q=>q.status>=500).length} requests=${reqs.length} peak=${peak} cspBlocked=${blocked.length}`);
+      results.push({run,t1:r.t1,t2:r.t2,t3:late.t2,reason:r.reason,cards:r.cards,failedCards:r.failedCards,http500:reqs.filter(q=>q.status>=500).length,pending:r.pending,cardText:r.cardText,requestCount:reqs.length,requestCountAtT2:r.requests.filter(q=>q.end!==undefined).length,peakConcurrent:peak,maxRequestMs:Math.max(0,...reqs.map(q=>q.ms)),marks:r.marks,byName,waterfall:reqs.sort((a,b)=>a.start-b.start),cspBlocked:blocked});
+      console.log(`run ${run}: T1=${r.t1}ms T2=${r.t2}ms T3=${late.t2}ms (${r.reason}) failedCards=${r.failedCards} http5xx=${reqs.filter(q=>q.status>=500).length} requests=${reqs.length} peak=${peak} cspBlocked=${blocked.length}`);
       await context.close();
     }
   }finally{await browser.close();local?.server.close();}
-  const summary={label,base:baseUrlArg||'local dist',runs,t1:{median:median(results.map(r=>r.t1).filter(Number.isFinite)),p75:p75(results.map(r=>r.t1).filter(Number.isFinite))},t2:{median:median(results.map(r=>r.t2).filter(Number.isFinite)),p75:p75(results.map(r=>r.t2).filter(Number.isFinite))},requests:{median:median(results.map(r=>r.requestCount))},timeouts:results.filter(r=>r.reason!=='complete').length,runsWithFailedCards:results.filter(r=>r.failedCards>0).length,totalHttp5xx:results.reduce((n,r)=>n+r.http500,0)};
+  const summary={label,base:baseUrlArg||'local dist',runs,t1:{median:median(results.map(r=>r.t1).filter(Number.isFinite)),p75:p75(results.map(r=>r.t1).filter(Number.isFinite))},t2:{median:median(results.map(r=>r.t2).filter(Number.isFinite)),p75:p75(results.map(r=>r.t2).filter(Number.isFinite))},t3:{median:median(results.map(r=>r.t3).filter(Number.isFinite)),p75:p75(results.map(r=>r.t3).filter(Number.isFinite))},requests:{atT2Median:median(results.map(r=>r.requestCountAtT2)),totalMedian:median(results.map(r=>r.requestCount))},timeouts:results.filter(r=>r.reason!=='complete').length,runsWithFailedCards:results.filter(r=>r.failedCards>0).length,totalHttp5xx:results.reduce((n,r)=>n+r.http500,0)};
   await mkdir(path.join(root,'perf-results'),{recursive:true});
   const file=path.join(root,'perf-results',`${label}-${new Date().toISOString().replace(/[:.]/g,'-')}.json`);
   await writeFile(file,JSON.stringify({summary,results},null,1));
