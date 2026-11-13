@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {build} from 'esbuild';
-import {validateConfig} from '../src/live/config.js';
+import {validateConfig,PRODUCTION_PROJECT} from '../src/live/config.js';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const output=path.join(root,'dist');
@@ -13,6 +13,14 @@ const input={mode:process.env.MASS_APP_MODE || 'live',url:process.env.MASS_SUPAB
 const configured=Boolean(input.url || input.publishableKey);
 const config=(input.mode==='demo' || configured) ? validateConfig(input) : {mode:input.mode};
 if(!['live','demo'].includes(input.mode)) throw Error('MASS_APP_MODE must be live or demo.');
+// Data isolation: Vercel Production builds must use the production project, and
+// Preview builds must not (a preview that writes to production data is a defect).
+// MASS_ALLOW_PRODUCTION_IN_PREVIEW=1 is an explicit, reviewed override.
+if(config.project){
+  const environment=process.env.VERCEL_ENV;
+  if(environment==='production'&&config.project!==PRODUCTION_PROJECT)throw Error('Production builds must use the production Supabase project.');
+  if(environment==='preview'&&config.project===PRODUCTION_PROJECT&&process.env.MASS_ALLOW_PRODUCTION_IN_PREVIEW!=='1')throw Error('Preview builds must use the preview Supabase project, not production. Set MASS_SUPABASE_URL for the Preview environment.');
+}
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 await cp(path.join(root,'src'),output,{recursive:true});
