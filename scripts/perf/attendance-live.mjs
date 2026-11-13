@@ -163,8 +163,22 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       note('Profiles, Teacher: no axe violations in the browser (incl. contrast)',(await axeList()).length===0,(await axeList()).join('; '));
       await page.getByRole('button',{name:'Add student'}).click();
       note('Profiles, Teacher: no axe violations with Add student open',(await axeList()).length===0,(await axeList()).join('; '));
-      note('Profiles, Teacher: Add student opens with saving switched off (activation pending)',await page.getByText(/Saving is switched off/).count()>0&&await page.getByRole('button',{name:'Save student'}).isDisabled());
+      note('Profiles, Teacher: Add student opens with saving available (registration gate on)',await page.getByText(/Saving is switched off/).count()===0&&await page.getByRole('button',{name:'Save student'}).isEnabled());
       await page.getByRole('button',{name:'Cancel'}).click();
+      note('Profiles, Teacher: Edit profile stays review-only while the profiles gate is off',await(async()=>{await T.getByRole('button',{name:/^Edit profile/}).first().click();await page.getByText(/Saving is switched off/).waitFor();const off=await page.getByRole('button',{name:'Save profile'}).isDisabled();await page.getByRole('button',{name:'Cancel'}).click();return off;})());
+      // Registers a permanent synthetic student, so it only runs with --register.
+      if(process.argv.includes('--register')){
+        await page.getByRole('button',{name:'Add student'}).click();
+        const d=page.getByRole('dialog');
+        await d.getByLabel('Full name').fill('ZZ Test Student '+Date.now().toString().slice(-6));
+        await d.getByLabel('Shift').selectOption('Evening');
+        await d.getByLabel('Start date').fill(new Date(Date.now()+5.5*3600e3).toISOString().slice(0,10));
+        const unique=(await d.getByLabel('Full name').inputValue());
+        await d.getByRole('button',{name:'Save student'}).click();
+        await d.waitFor({state:'detached',timeout:60000});
+        await page.getByLabel('Student ID').fill('');await page.getByLabel('Search name, ID or centre').fill(unique);await page.waitForTimeout(4000);
+        note('Profiles, Teacher: registered student appears in the list after saving',await T.getByText(unique).count()===1,unique);
+      }
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
     note(`Profiles, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
