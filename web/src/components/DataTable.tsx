@@ -45,6 +45,8 @@ export interface DataTableProps<T> {
   errorMessage?: string;
   emptyMessage?: string;
   onRetry?: () => void;
+  /** Page-numbered reference such as 1.13, shown before the title. */
+  reference?: string;
 }
 
 const collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
@@ -62,7 +64,7 @@ const sortValues: SortingFn<unknown> = (a, b, columnId) => {
 
 const asCsv = (value: string | number | null | undefined): CsvValue => (value === undefined ? null : value);
 
-export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage = 'No records.', onRetry}: DataTableProps<T>) {
+export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage = 'No records.', onRetry, reference}: DataTableProps<T>) {
   const searchId = useId();
   const captionId = useId();
   const firstColumn = columns[0]?.id;
@@ -187,7 +189,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
 
   return (
     <section aria-labelledby={`${captionId}-title`} className="rounded-lg border border-line bg-white p-4 shadow-sm">
-      <h2 id={`${captionId}-title`} className="mb-3 text-lg font-semibold text-ink">{caption}</h2>
+      <h2 id={`${captionId}-title`} className="mb-3 text-lg font-semibold text-ink">{reference ? <span className="mr-1 text-xs font-bold text-brand-dark">{reference}</span> : null}{caption}</h2>
       <AsyncState state={state === 'ready' && data.length === 0 ? 'empty' : state} errorMessage={errorMessage} emptyMessage={emptyMessage} onRetry={onRetry}>{body}</AsyncState>
     </section>
   );

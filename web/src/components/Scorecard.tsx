@@ -15,14 +15,16 @@ interface Props {
   /** Text shown for the error and unavailable states. */
   message?: string;
   tone?: 'default' | 'alert';
+  /** Page-numbered reference such as 1.3, shown before the label. */
+  reference?: string;
 }
 
 // One scorecard for every page: compact label, large value, same three states everywhere.
-export function Scorecard({label, value, unit, hint, state = 'ready', message, tone = 'default'}: Props) {
+export function Scorecard({label, value, unit, hint, state = 'ready', message, tone = 'default', reference}: Props) {
   const unknown = value === null || value === undefined || value === '';
   return (
     <Card role="group" aria-label={label} aria-busy={state === 'loading'} className={cn('flex min-h-36 flex-col justify-between', tone === 'alert' && 'border-bad')}>
-      <p className="min-h-11 text-sm font-semibold text-muted">{label}</p>
+      <p className="min-h-11 text-sm font-semibold text-muted">{reference ? <span className="mr-1 text-xs font-bold text-brand-dark">{reference}</span> : null}{label}</p>
       <div>
         {state === 'loading' ? (
           <div role="status"><span className="sr-only">Loading {label}</span><Skeleton className="h-9 w-24" /></div>
