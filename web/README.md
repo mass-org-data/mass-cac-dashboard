@@ -18,6 +18,8 @@ npm run test:web       # Vitest + Testing Library + axe-core
 - `AsyncState`: the one loading, empty and error treatment.
 
 ## Screens built
+- **Student profiles** (`pages/Profiles.tsx`, `profiles/`): server-searched, sorted and paged list; Add student and Edit profile dialogs (saving follows the server's activation gates); see `docs/perf/PHASE-5-PROFILES-RESULT.md`.
+- **Attendance** (`pages/Attendance.tsx`, `attendance/`): see `docs/perf/PHASE-5-ATTENDANCE-RESULT.md`.
 - **Overview** (`pages/Overview.tsx`, data in `data/overview.ts`): same reports and numbers as the current Overview; see `docs/perf/PHASE-5-OVERVIEW-RESULT.md`.
 
 ## Rules

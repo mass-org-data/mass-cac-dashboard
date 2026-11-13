@@ -1,12 +1,13 @@
 import {useEffect, useState} from 'react';
 
-export type Route = 'overview' | 'attendance';
+export type Route = 'overview' | 'attendance' | 'profiles';
 export const ROUTES: Array<{id: Route; number: number; label: string}> = [
   {id: 'overview', number: 1, label: 'Overview'},
   {id: 'attendance', number: 2, label: 'Attendance'},
+  {id: 'profiles', number: 3, label: 'Student profiles'},
 ];
 
-const parse = (hash: string): Route => (hash.replace(/^#\/?/, '') === 'attendance' ? 'attendance' : 'overview');
+const parse = (hash: string): Route => ROUTES.find(r => r.id === hash.replace(/^#\/?/, ''))?.id ?? 'overview';
 
 // Hash routes need no server rewrites and survive the strict CSP.
 export function useRoute(): [Route, (route: Route) => void] {

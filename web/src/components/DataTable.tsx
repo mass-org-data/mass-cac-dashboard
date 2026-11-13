@@ -50,7 +50,7 @@ export interface DataTableProps<T> {
   /** Page-numbered reference such as 1.13, shown before the title. */
   reference?: string;
   /** Server-side paging and sorting (for example the saved attendance register). The server returns one page; no search box. */
-  server?: {total: number; pageIndex: number; onPageChange: (pageIndex: number) => void; sort: {id: string; desc: boolean}; onSortChange: (columnId: string) => void};
+  server?: {note?: string; total: number; pageIndex: number; onPageChange: (pageIndex: number) => void; sort: {id: string; desc: boolean}; onSortChange: (columnId: string) => void};
 }
 
 const collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
@@ -133,7 +133,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
   const body = (
     <>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        {server ? <p className="text-sm text-muted">Sorted and paged by the server, newest first by default.</p> : <div className="relative w-full max-w-sm">
+        {server ? <p className="text-sm text-muted">{server.note ?? 'Sorted and paged by the server, newest first by default.'}</p> : <div className="relative w-full max-w-sm">
           <label htmlFor={searchId} className="mb-1 block text-xs font-semibold text-muted">Search this table</label>
           <Search aria-hidden="true" className="pointer-events-none absolute bottom-3 left-3 size-4 text-muted" />
           <Input id={searchId} type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Type to filter rows" className="pl-9" autoComplete="off" />

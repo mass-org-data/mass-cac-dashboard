@@ -16,7 +16,7 @@ export interface References {
   assessment_definitions: Array<{id: string; period_id: string}>;
 }
 
-export interface Capabilities {reviewedCharts: boolean; reviewedAttendanceSeries: boolean}
+export interface Capabilities {reviewedCharts: boolean; reviewedAttendanceSeries: boolean; /** Operational write gates from the server's activation control; anything missing means off. */ writes?: Record<string, boolean>}
 
 export interface LiveBackend extends Backend {
   rpc: Rpc;
@@ -52,8 +52,8 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
     readReferences: signal => reads.references(signal) as Promise<References>,
     async readCapabilities() {
       const value = await discoverCapabilities((name: string) => rpc(name));
-      const flags = value as {reviewedCharts?: boolean; reviewedAttendanceSeries?: boolean};
-      return {reviewedCharts: Boolean(flags.reviewedCharts), reviewedAttendanceSeries: Boolean(flags.reviewedAttendanceSeries)};
+      const flags = value as {reviewedCharts?: boolean; reviewedAttendanceSeries?: boolean; activationControl?: boolean; writes?: Record<string, boolean>};
+      return {reviewedCharts: Boolean(flags.reviewedCharts), reviewedAttendanceSeries: Boolean(flags.reviewedAttendanceSeries), writes: flags.activationControl === true ? {...flags.writes} : {}};
     },
   };
 }
