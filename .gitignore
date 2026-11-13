@@ -22,3 +22,6 @@ __pycache__/
 *.xlsx
 *.xlsm
 *.private.*
+
+# Local performance measurement output (never committed).
+perf-results/

@@ -1,5 +1,6 @@
 import {discoverCentreEvents,createCentreEventSummary} from './centre-events.js';
 import {createBackendClient,clearStoredSession} from './client.js';
+import {perfMark} from './perf.js';
 import {createReadApi} from './reads.js';
 import {createDirectoryApi} from './directory.js';
 import {createApi,BackendError} from './api.js';
@@ -18,6 +19,7 @@ import {hydrateRosterNames} from './roster-names.js';
 import {authorizedRoles,defaultAuthorizedRole,roleDataPlan} from './role-data.js';
 
 export async function startOriginalReview(config) {
+ perfMark('startup-begin');
  globalThis.__massReviewToday=liveToday();
  window.addEventListener('hashchange',()=>scrubImplicitFragment());
  const {centres}=await import('../data.js'),client=createBackendClient(config),root=document.querySelector('#app');
@@ -31,11 +33,13 @@ export async function startOriginalReview(config) {
  if(session.error||!session.data?.session)return showSignIn(client,{root,clearSession:()=>clearStoredSession(config)});
  const identity=await client.auth.getUser();
  if(identity.error||!identity.data?.user||identity.data.user.id!==session.data.session.user?.id){clearStoredSession(config);return showSignIn(client,{root,message:'Your session has ended. Sign in again.',clearSession:()=>clearStoredSession(config)});}
+ perfMark('identity-verified');
  globalThis.__massPublicReview=false;
  root.innerHTML='<main class="loading-shell"><header><img src="mass-logo.jpg" alt="MASS NGO"><strong>Children’s Activity Centres</strong></header><section class="card"><h1>Overview</h1><p id="mass-load-status" role="status">Loading authorized records…</p></section></main>';
  try{
  const reads=createReadApi(client),directory=createDirectoryApi(client),api=createApi(client);
  const [context,dir,refs,baseCapabilities]=await Promise.all([reads.context(readController.signal),directory.centres({signal:readController.signal}),reads.references(readController.signal),discoverCapabilities(rpc)]);
+ perfMark('core-reads-done');
  const capabilities=Object.freeze({...baseCapabilities,centreEvents:baseCapabilities.originalWorkflows?await discoverCentreEvents(rpc):false});
  globalThis.__massCentreEvents=capabilities.centreEvents?createCentreEventSummary({rpc,rerender:()=>{if(!dead)globalThis.__massOriginalRefresh?.();}}):null;
  globalThis.__massBackendCapabilities=capabilities;globalThis.__massBackendNotice=capabilities.baseline?BASELINE_READ_NOTICE:!capabilities.operationalDetails||!capabilities.aggregates?'The installed backend has partial workflow capabilities. Unavailable operational and reporting features require activation; no data or permission is invented.':'';
@@ -197,6 +201,8 @@ export async function startOriginalReview(config) {
  const registerRpc=async(name,args,writing=false)=>{let result;try{result=await client.schema('mass_api').rpc(name,args).retry(false).abortSignal(readController.signal);}catch{throw new BackendError({message:'network'},0,writing,name);}if(result.error)throw new BackendError(result.error,result.status,writing,name);return result.data;};
  globalThis.__massAssessmentRegisters=createAssessmentRegister({rpc,enabled:registerCapabilities.assessment_register===true,rerender:()=>{if(!dead)globalThis.__massOriginalRefresh?.();}});
  globalThis.__massAttendance=createAttendanceRegister({getRole:()=>globalThis.__massActualRole,rpc:registerRpc,context,capabilities:registerCapabilities,refresh,rerender:()=>{if(!dead)globalThis.__massOriginalRefresh?.();}});
+ perfMark('app-import-begin');
  await import('../app.js');
+ perfMark('app-imported');
  }catch(error){clear();root.innerHTML='<main class="auth-page"><section class="card auth-card"><h1>Programme data could not be loaded</h1><p role="alert"></p><button type="button" id="retry-verified-load">Retry verified load</button></section></main>';root.querySelector('[role=alert]').textContent=[error.message,safeDiagnosticText(error)].filter(Boolean).join(' · ');root.querySelector('#retry-verified-load').addEventListener('click',()=>window.location.reload());}
 }
