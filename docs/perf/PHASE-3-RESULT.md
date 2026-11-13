@@ -19,10 +19,10 @@ Applied to the PREVIEW project only (migration `20261113120000_reviewed_attendan
 | T3, including the monthly chart | n/a | 12.0 s / 18.7 s | 4.7 s / 5.1 s | |
 | Requests by T2 | 111 | 10 | 10 | 12 or fewer |
 | Requests in total | 111 | 17 | 11 | |
-| Longest single request | 14.9 s (26.7 s worst) | about 2.2 s | about 1.5 s | 2 s or less |
+| Longest single request | 14.9 s (26.7 s worst) | about 2.2 s | 1.5 s typical, 2.6 s worst of 7 runs | 2 s or less |
 | Failed cards / HTTP 5xx | 7 of 7 / 50 | 0 / 0 | 0 / 0 | 0 |
 
-Every target in the plan is now met on preview, which is the slower of the two databases for the heavy reports.
+Every target in the plan is met on preview (the slower of the two databases for the heavy reports), with one exception: in one of the seven runs a single report took 2.6 s, just over the 2 s per-request target.
 
 ## Rollback
 `DROP FUNCTION mass_api.reviewed_attendance_series(uuid[],uuid,date,text,text,text);` then re-run the previous seal (`git show 1497c74:supabase/activation/seal.sql`). The client falls back to the per-month path without a redeploy.
