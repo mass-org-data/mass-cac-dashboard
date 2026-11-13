@@ -31,6 +31,8 @@ export interface Column<T> {
   numeric?: boolean;
   /** Exclude from the search box (default: searchable). */
   searchable?: boolean;
+  /** Set false for columns that cannot be sorted (the header is plain text). */
+  sortable?: boolean;
 }
 
 export interface DataTableProps<T> {
@@ -47,6 +49,8 @@ export interface DataTableProps<T> {
   onRetry?: () => void;
   /** Page-numbered reference such as 1.13, shown before the title. */
   reference?: string;
+  /** Server-side paging and sorting (for example the saved attendance register). The server returns one page; no search box. */
+  server?: {total: number; pageIndex: number; onPageChange: (pageIndex: number) => void; sort: {id: string; desc: boolean}; onSortChange: (columnId: string) => void};
 }
 
 const collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
@@ -64,7 +68,7 @@ const sortValues: SortingFn<unknown> = (a, b, columnId) => {
 
 const asCsv = (value: string | number | null | undefined): CsvValue => (value === undefined ? null : value);
 
-export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage = 'No records.', onRetry, reference}: DataTableProps<T>) {
+export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage = 'No records.', onRetry, reference, server}: DataTableProps<T>) {
   const searchId = useId();
   const captionId = useId();
   const firstColumn = columns[0]?.id;
@@ -80,14 +84,14 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
       // Unknown values are undefined so they sort last in both directions.
       accessorFn: row => { const value = column.value(row); return value === null || value === undefined || value === '' ? undefined : value; },
       sortingFn: sortValues as SortingFn<T>,
-      enableSorting: true,
+      enableSorting: column.sortable !== false,
       sortDescFirst: false, // every column starts ascending, including numeric ones
       sortUndefined: 'last' as const,
       cell: ({row}) => (column.cell ? column.cell(row.original) : (() => {
         const value = column.value(row.original);
         return value === null || value === undefined || value === '' ? '—' : String(value);
       })()),
-      meta: {numeric: Boolean(column.numeric), searchable: column.searchable !== false},
+      meta: {numeric: Boolean(column.numeric), searchable: column.searchable !== false, sortable: column.sortable !== false},
     })),
     [columns],
   );
@@ -96,7 +100,9 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
     data,
     columns: defs,
     getRowId,
-    state: {sorting, globalFilter: search},
+    state: server ? {sorting: [{id: server.sort.id, desc: server.sort.desc}], globalFilter: '', pagination: {pageIndex: server.pageIndex, pageSize: PAGE_SIZE}} : {sorting, globalFilter: search},
+    manualSorting: Boolean(server), manualPagination: Boolean(server), manualFiltering: Boolean(server),
+    pageCount: server ? Math.max(1, Math.ceil(server.total / PAGE_SIZE)) : undefined,
     onSortingChange: setSorting,
     onGlobalFilterChange: setSearch,
     enableSortingRemoval: false,
@@ -113,26 +119,26 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
     autoResetPageIndex: true,
   });
 
-  const filteredCount = table.getFilteredRowModel().rows.length;
-  const {pageIndex} = table.getState().pagination;
-  const pageCount = table.getPageCount();
+  const filteredCount = server ? server.total : table.getFilteredRowModel().rows.length;
+  const pageIndex = server ? server.pageIndex : table.getState().pagination.pageIndex;
+  const pageCount = server ? Math.max(1, Math.ceil(server.total / PAGE_SIZE)) : table.getPageCount();
   const first = filteredCount === 0 ? 0 : pageIndex * PAGE_SIZE + 1;
   const last = Math.min(filteredCount, (pageIndex + 1) * PAGE_SIZE);
 
   const exportCsv = () => {
-    const rows = table.getSortedRowModel().rows.map(row => columns.map(column => asCsv(column.value(row.original))));
+    const rows = (server ? table.getRowModel() : table.getSortedRowModel()).rows.map(row => columns.map(column => asCsv(column.value(row.original))));
     downloadCsv(exportName, buildCsv(columns.map(column => column.header), rows));
   };
 
   const body = (
     <>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <div className="relative w-full max-w-sm">
+        {server ? <p className="text-sm text-muted">Sorted and paged by the server, newest first by default.</p> : <div className="relative w-full max-w-sm">
           <label htmlFor={searchId} className="mb-1 block text-xs font-semibold text-muted">Search this table</label>
           <Search aria-hidden="true" className="pointer-events-none absolute bottom-3 left-3 size-4 text-muted" />
           <Input id={searchId} type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Type to filter rows" className="pl-9" autoComplete="off" />
-        </div>
-        <Button variant="outline" onClick={exportCsv} disabled={filteredCount === 0}><Download aria-hidden="true" className="size-4" />Export CSV</Button>
+        </div>}
+        <Button variant="outline" onClick={exportCsv} disabled={filteredCount === 0}><Download aria-hidden="true" className="size-4" />{server ? 'Export this page (CSV)' : 'Export CSV'}</Button>
       </div>
       <div className="max-h-[62vh] overflow-auto rounded-md border border-line">
         <table aria-labelledby={captionId} className="w-full border-collapse text-sm">
@@ -150,11 +156,11 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
                       aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none'}
                       className={cn('sticky top-0 z-10 border-b border-line bg-brand-soft px-3 py-2 text-left font-semibold text-ink', numeric && 'text-right')}
                     >
-                      <button type="button" onClick={header.column.getToggleSortingHandler()} className={cn('inline-flex min-h-11 items-center gap-1 font-semibold', numeric && 'flex-row-reverse')}>
+                      {(header.column.columnDef.meta as {sortable?: boolean} | undefined)?.sortable === false ? <span className="inline-flex min-h-11 items-center font-semibold">{flexRender(header.column.columnDef.header, header.getContext())}</span> : <button type="button" onClick={server ? () => server.onSortChange(header.column.id) : header.column.getToggleSortingHandler()} className={cn('inline-flex min-h-11 items-center gap-1 font-semibold', numeric && 'flex-row-reverse')}>
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {sorted === 'asc' ? <ArrowUp aria-hidden="true" className="size-4" /> : sorted === 'desc' ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUpDown aria-hidden="true" className="size-4 text-muted" />}
                         <span className="sr-only">{sorted === 'asc' ? ', sorted ascending. Activate to sort descending' : sorted === 'desc' ? ', sorted descending. Activate to sort ascending' : ', activate to sort ascending'}</span>
-                      </button>
+                      </button>}
                     </th>
                   );
                 })}
@@ -178,9 +184,9 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
         <p role="status" aria-live="polite">{filteredCount === 0 ? '0 rows' : `Showing ${first}–${last} of ${filteredCount}`}</p>
         {pageCount > 1 ? (
           <nav aria-label={`${caption} pages`} className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} aria-label="Previous page">Previous</Button>
+            <Button variant="outline" size="sm" onClick={() => server ? server.onPageChange(pageIndex - 1) : table.previousPage()} disabled={server ? pageIndex <= 0 : !table.getCanPreviousPage()} aria-label="Previous page">Previous</Button>
             <span aria-current="page">Page {pageIndex + 1} of {pageCount}</span>
-            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} aria-label="Next page">Next</Button>
+            <Button variant="outline" size="sm" onClick={() => server ? server.onPageChange(pageIndex + 1) : table.nextPage()} disabled={server ? pageIndex + 1 >= pageCount : !table.getCanNextPage()} aria-label="Next page">Next</Button>
           </nav>
         ) : null}
       </div>
