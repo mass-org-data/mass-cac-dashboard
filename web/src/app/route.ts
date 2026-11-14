@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 
-export type Route = 'overview' | 'attendance' | 'profiles' | 'assessments' | 'visits' | 'morarji';
+export type Route = 'overview' | 'attendance' | 'profiles' | 'assessments' | 'visits' | 'morarji' | 'donors';
 export const ROUTES: Array<{id: Route; number: number; label: string}> = [
   {id: 'overview', number: 1, label: 'Overview'},
   {id: 'attendance', number: 2, label: 'Attendance'},
@@ -8,6 +8,7 @@ export const ROUTES: Array<{id: Route; number: number; label: string}> = [
   {id: 'assessments', number: 4, label: 'Assessments'},
   {id: 'visits', number: 5, label: 'Visits'},
   {id: 'morarji', number: 6, label: 'Morarji scholarship'},
+  {id: 'donors', number: 7, label: 'Annual donor summary'},
 ];
 
 const parse = (hash: string): Route => ROUTES.find(r => r.id === hash.replace(/^#\/?/, ''))?.id ?? 'overview';

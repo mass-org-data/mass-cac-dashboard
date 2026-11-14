@@ -11,6 +11,7 @@ import {Profiles} from '../pages/Profiles';
 import {Assessments} from '../pages/Assessments';
 import {Visits} from '../pages/Visits';
 import {Morarji} from '../pages/Morarji';
+import {AnnualDonor} from '../pages/AnnualDonor';
 import {ROUTES, useRoute} from './route';
 
 function Shell({backend}: {backend: LiveBackend}) {
@@ -40,7 +41,7 @@ function Shell({backend}: {backend: LiveBackend}) {
       </header>
       <main className="mx-auto max-w-6xl space-y-6 p-4">
         <div role="note" className="rounded-md bg-warn-soft p-4 text-sm text-warn">
-          Preview of the new interface: only the Overview, Attendance, Student profiles, Assessments, Visits and Morarji are built so far. <a className="font-semibold underline" href="../">Use the standard application for everything else</a>.
+          Preview of the new interface: only the Overview, Attendance, Student profiles, Assessments, Visits, Morarji and the Annual donor summary are built so far. <a className="font-semibold underline" href="../">Use the standard application for everything else</a>.
         </div>
         <nav aria-label="Primary" className="flex flex-wrap gap-2">
           {ROUTES.map(item => <a key={item.id} href={`#/${item.id}`} aria-current={route === item.id ? 'page' : undefined} onClick={event => { event.preventDefault(); go(item.id); }} className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-semibold ${route === item.id ? 'bg-brand-dark text-white' : 'border border-line bg-white text-ink hover:bg-brand-soft'}`}>{item.number} {item.label}</a>)}
@@ -50,6 +51,8 @@ function Shell({backend}: {backend: LiveBackend}) {
           ? <Attendance backend={backend} context={state.context} role={state.activeRole} key={`a-${state.activeRole}`} />
           : route === 'profiles'
           ? <Profiles backend={backend} context={state.context} role={state.activeRole} key={`p-${state.activeRole}`} />
+          : route === 'donors'
+          ? <AnnualDonor backend={backend} context={state.context} role={state.activeRole} key={`d-${state.activeRole}`} />
           : route === 'morarji'
           ? <Morarji backend={backend} context={state.context} role={state.activeRole} key={`m-${state.activeRole}`} />
           : route === 'visits'
