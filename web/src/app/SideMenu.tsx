@@ -39,9 +39,9 @@ export function SideMenu({role, route, onNavigate, collapsed, onToggleCollapsed,
       {mobileOpen ? <button type="button" aria-label="Close menu" onClick={onCloseMobile} className="fixed inset-0 z-30 bg-ink/50 md:hidden" /> : null}
       <aside id="side-menu" aria-label="Menu" data-collapsed={collapsed} data-open={mobileOpen}
         className={cn('fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-line bg-white px-3 py-4 shadow-xl transition-transform data-[open=true]:translate-x-0',
-          'md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 md:self-start md:overflow-y-auto md:shadow-none md:transition-[width]', collapsed ? 'md:w-[4.5rem]' : 'md:w-64')}>
+          'md:static md:z-auto md:h-full md:translate-x-0 md:shadow-none md:transition-[width]', collapsed ? 'md:w-[4.5rem]' : 'md:w-64')}>
         <p className={cn('mb-3 px-3 text-xs font-bold uppercase tracking-[0.2em] text-muted', collapsed && 'md:sr-only')}>Programme</p>
-        <nav aria-label="Primary" className="flex-1">
+        <nav aria-label="Primary" className="min-h-0 flex-1 overflow-y-auto">
           <ul className="space-y-1">
             {itemsFor(role).map((item, index) => {
               const Icon = ICONS[item.id];
@@ -69,7 +69,7 @@ export function SideMenu({role, route, onNavigate, collapsed, onToggleCollapsed,
           </ul>
         </nav>
         <button type="button" onClick={onToggleCollapsed} aria-expanded={!collapsed} aria-controls="side-menu"
-          className={cn('mt-4 hidden min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-muted hover:bg-brand-soft hover:text-ink md:flex', collapsed && 'md:justify-center md:px-0')}>
+          className={cn('mt-2 hidden shrink-0 min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-muted hover:bg-brand-soft hover:text-ink md:flex', collapsed && 'md:justify-center md:px-0')}>
           {collapsed ? <PanelLeftOpen aria-hidden="true" className="size-5 shrink-0" /> : <PanelLeftClose aria-hidden="true" className="size-5 shrink-0" />}
           <span className={cn(collapsed && 'sr-only')}>{collapsed ? 'Expand menu' : 'Collapse menu'}</span>
         </button>

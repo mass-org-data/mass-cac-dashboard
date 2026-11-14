@@ -9,6 +9,7 @@ Signing in took 30 to 60 seconds on the Overview, and the vanilla-JS interface w
 - **`/` is the new React interface** (all eight screens: Overview, Attendance, Student profiles, Assessments, Visits, Morarji scholarship, Annual donor summary, About).
 - **`/vanilla/` is the original interface, byte for byte unchanged**, for fallback and for Activities and monthly meetings (not rebuilt by decision). The side menu links to it. The two share the sign-in session (same origin and storage key).
 - `/next` and `/next/...` redirect to `/` (links used during review keep working); `/vanilla` redirects to `/vanilla/`.
+- The header and the side menu are fixed on screen (only the page content scrolls); the collapse button is always at the foot of the menu. Page headings use the menu numbering at one size ("1. Overview").
 - Navigation is a side menu in the original style ("PROGRAMME", numbered items with icons, active item highlighted) that collapses to icons on desktop (choice remembered in the browser) and slides over the page with a scrim on a phone. Each role sees its own screens with fixed numbers: Leadership has no Student profiles (3), only Leadership has the Annual donor summary (7).
 - The header is unchanged except the MASS logo, which was cropped of its blank margin and enlarged (about 64 to 72 px high).
 - One build, no flag: `npm run build` writes the React interface to `dist/` and the original to `dist/vanilla/`; `release.json` records `ui: "react"` and `legacyPath: "/vanilla/"`. `MASS_NEXT_UI` is gone.
@@ -24,8 +25,8 @@ First scorecards 10.6 s to 2.0 s, whole Overview 11.7 s to about 4.7 s, requests
 ## Validation
 `npm run lint`, `check`, `test` (138 frontend tests, 27 workflow checks), `build`, `npm audit --audit-level=high`, `npm run web:typecheck`, `npm run test:web` (177 tests incl. automatic accessibility checks), and `node scripts/perf/attendance-live.mjs` (132 real-browser checks on preview: all screens for Leadership, Teacher and Cluster Officer, numbers checked against database counts, side menu, logo, phone width, `/vanilla/`). Docker-backed suites and the old-interface Playwright suites were not re-run for this change (see "Not covered").
 
-## Tests that freeze the original look
-The three assertions in `tests/frontend/original-parity.test.mjs` and `tests/parity/visual.py` now guard the fallback at `/vanilla/` (it must stay byte-identical to what the manager approved). They were kept, not deleted, because the original interface is still served; behaviour and number checks for the new interface are the web unit tests and the live browser script above. Delete them if the fallback is retired.
+## Tests that froze the original look
+Removed at the owner's request: `tests/frontend/original-parity.test.mjs`, `tests/parity/visual.py` and `tests/parity/original-inventory.json`. Behaviour and number checks for the new interface are the web unit tests and `scripts/perf/attendance-live.mjs`. The original interface at `/vanilla/` is no longer pinned byte for byte by a test.
 
 ## Not covered
 Real phones, many users signing in at once, other browsers, a side-by-side comparison of every screen with the original, the full Docker release gate (`test:sql:portable`, `test:attendance`, `test:browser`, ...), Activities and monthly meetings in the new interface.

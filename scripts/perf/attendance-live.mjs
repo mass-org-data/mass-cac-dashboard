@@ -52,7 +52,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   note('Leadership: no failed RPC calls',failed.length===0,failed.join(', '));
   note('Leadership: no console errors',problems.length===0,problems.join(' | '));
   await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
-  note('Leadership: no horizontal scroll at 375 px',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+  note('Leadership: no horizontal scroll at 375 px',await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
   void table;void firstDates;await context.close();
 }
 
@@ -182,7 +182,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       }
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
-    note(`Profiles, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`Profiles, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
     note(`Profiles, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
     note(`Profiles, ${role}: no console errors`,problems.length===0,problems.join(' | '));
     await context.close();
@@ -235,7 +235,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       await page.getByRole('button',{name:'Cancel'}).click();
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
-    note(`Assessments, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`Assessments, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
     note(`Assessments, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
     note(`Assessments, ${role}: no console errors`,problems.length===0,problems.join(' | '));
     await context.close();
@@ -267,7 +267,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       note('Visits, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
-    note(`Visits, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),await page.evaluate(()=>[...document.querySelectorAll('main *')].filter(e=>e.getBoundingClientRect().right>window.innerWidth+1&&!e.closest('.overflow-auto,.overflow-x-auto')).slice(0,3).map(e=>e.tagName+'.'+String(e.className).slice(0,60)+' '+Math.round(e.getBoundingClientRect().right)).join(' | ')));
+    note(`Visits, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))),await page.evaluate(()=>[...document.querySelectorAll('main *')].filter(e=>e.getBoundingClientRect().right>window.innerWidth+1&&!e.closest('.overflow-auto,.overflow-x-auto')).slice(0,3).map(e=>e.tagName+'.'+String(e.className).slice(0,60)+' '+Math.round(e.getBoundingClientRect().right)).join(' | ')));
     note(`Visits, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
     note(`Visits, ${role}: no console errors`,problems.length===0,problems.join(' | '));
     await context.close();
@@ -302,7 +302,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       note('Morarji, Cluster Officer: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
-    note(`Morarji, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`Morarji, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
     note(`Morarji, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
     note(`Morarji, ${role}: no console errors`,problems.length===0,problems.join(' | '));
     await context.close();
@@ -333,7 +333,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
     note('Annual donor, Leadership: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
-    note('Annual donor, Leadership: no horizontal page scroll at 375 px',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note('Annual donor, Leadership: no horizontal page scroll at 375 px',await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
     note('Annual donor, Leadership: no failed RPC calls',failed.length===0,failed.join(', '));
     note('Annual donor, Leadership: no console errors',problems.length===0,problems.join(' | '));
     await context.close();
@@ -364,7 +364,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       note('About, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
-    note(`About, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`About, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
     note(`About, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
     note(`About, ${role}: no console errors`,problems.length===0,problems.join(' | '));
     await context.close();
@@ -388,7 +388,19 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   const reload=await (async()=>{await page.reload();await page.getByRole('button',{name:'Expand menu'}).waitFor({timeout:60000});return true;})();
   note('Shell: the collapsed choice is remembered across a reload',reload);
   await page.getByRole('button',{name:'Expand menu'}).click();await page.waitForTimeout(400);
-  note('Shell: the menu marks the open screen',await page.getByRole('link',{name:'2. Attendance'}).getAttribute('aria-current')==='page');
+  {
+    await page.getByRole('link',{name:'1. Overview'}).click();await page.waitForTimeout(3000);
+    await page.setViewportSize({width:1280,height:700});await page.waitForTimeout(300);
+    await page.locator('main').evaluate(m=>{m.scrollTop=m.scrollHeight;});await page.waitForTimeout(300);
+    const header=await page.locator('header').boundingBox(),sideBox=await page.getByRole('complementary',{name:'Menu'}).boundingBox(),btn=await page.getByRole('button',{name:/menu$/}).last().boundingBox();
+    note('Shell: header stays frozen at the top after scrolling the page',header.y===0,`header y=${header.y}`);
+    note('Shell: side menu fills the height below the header and stays in place',Math.abs(sideBox.y-header.height)<2&&sideBox.y+sideBox.height<=700+1,`menu y=${Math.round(sideBox.y)} h=${Math.round(sideBox.height)}`);
+    note('Shell: the collapse button is visible without scrolling, at the foot of the menu',btn.y>0&&btn.y+btn.height<=700&&btn.y>sideBox.y+sideBox.height-80,`button y=${Math.round(btn.y)}`);
+    note('Shell: the page heading uses the menu numbering',/^1\. Overview$/.test((await page.getByRole('heading',{level:1}).innerText()).trim()),await page.getByRole('heading',{level:1}).innerText());
+    const sizes=await page.evaluate(()=>({h1:getComputedStyle(document.querySelector('h1')).fontSize,menu:getComputedStyle(document.querySelector('#side-menu nav a')).fontSize}));
+    note('Shell: heading text and number are one size',await page.locator('h1 span').count()===0,JSON.stringify(sizes));
+  }
+  note('Shell: the menu marks the open screen',await page.getByRole('link',{name:'1. Overview'}).getAttribute('aria-current')==='page'&&await page.getByRole('link',{name:'2. Attendance'}).getAttribute('aria-current')===null);
   await page.setViewportSize({width:375,height:812});await page.waitForTimeout(400);
   const hiddenOnPhone=!(await aside.isVisible())||(await aside.boundingBox()).x<0;
   note('Shell: on a phone the menu is hidden until opened',hiddenOnPhone);
@@ -396,7 +408,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   note('Shell: the phone menu opens with a scrim',(await aside.boundingBox()).x>=0&&await page.getByRole('button',{name:'Close menu'}).isVisible());
   await page.getByRole('link',{name:'5. Visits'}).click();await page.waitForTimeout(500);
   note('Shell: choosing a screen on a phone closes the menu',(await aside.boundingBox()).x<0&&await page.evaluate(()=>window.location.hash)==='#/visits');
-  note('Shell: no horizontal page scroll at 375 px',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+  note('Shell: no horizontal page scroll at 375 px',await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
   note('Shell: no failed RPC calls or console errors',failed.length===0&&problems.length===0,[...failed,...problems].join(' | '));
   await context.close();
   const ctx2=await browser.newContext();const p2=await ctx2.newPage();

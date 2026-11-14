@@ -34,8 +34,8 @@ function Shell({backend}: {backend: LiveBackend}) {
   if (state.status === 'error') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="error" errorMessage={state.message} onRetry={() => void controller.start()} /></main>;
   if (state.status === 'signed-out') return <SignIn message={state.message} onSignIn={(email, password) => controller.signIn(email, password)} />;
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-2">
+    <div className="flex h-dvh flex-col">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-2">
         <div className="flex items-center gap-3">
           <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} aria-controls="side-menu" onClick={() => setMobileOpen(true)} className="inline-flex size-11 items-center justify-center rounded-md border border-line md:hidden"><Menu aria-hidden="true" className="size-5" /></button>
           <img src="./mass-logo.jpg" alt="MASS" className="h-14 w-auto sm:h-[4.5rem]" />
@@ -53,10 +53,11 @@ function Shell({backend}: {backend: LiveBackend}) {
           <Button variant="outline" onClick={() => void controller.signOut()}>Sign out</Button>
         </div>
       </header>
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1">
         <SideMenu role={state.activeRole} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} legacyHref="./vanilla/" />
-        <main className="min-w-0 max-w-7xl flex-1 space-y-6 p-4 md:p-6">
-          <h1 className="text-2xl font-bold"><span className="mr-1 text-base font-bold text-brand-dark">{ROUTES.find(r => r.id === route)!.number}</span>{ROUTES.find(r => r.id === route)!.label}</h1>
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <div className="max-w-7xl space-y-6 p-4 md:p-6">
+          <h1 className="text-2xl font-bold text-ink">{ROUTES.find(r => r.id === route)!.number}. {ROUTES.find(r => r.id === route)!.label}</h1>
         {route === 'attendance'
           ? <Attendance backend={backend} context={state.context} role={state.activeRole} key={`a-${state.activeRole}`} />
           : route === 'profiles'
@@ -72,6 +73,7 @@ function Shell({backend}: {backend: LiveBackend}) {
           : route === 'assessments'
           ? <Assessments backend={backend} context={state.context} role={state.activeRole} key={`s-${state.activeRole}`} />
           : <Overview backend={backend} context={state.context} role={state.activeRole} key={`o-${state.activeRole}`} />}
+          </div>
         </main>
       </div>
     </div>
