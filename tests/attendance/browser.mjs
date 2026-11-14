@@ -163,27 +163,6 @@ try{
   await page.locator('[data-filter=month]').selectOption('2026-05');
   await page.locator('[data-action=new-activity]').click();await page.getByRole('heading',{name:'Add activity session',exact:true}).waitFor();
   check(await page.locator('#dialog-form [name=shift]').count()===0);
-  await page.locator('#dialog-form [name=centre]').selectOption(centre);await page.locator('#dialog-form [name=date]').fill('2026-05-21');await page.locator('#dialog-form [name=name]').fill('TEST RECORD both-shift sports');await page.locator('#dialog-form [name=category]').selectOption('Sports');await page.locator('#dialog-form [name=status]').selectOption('Held');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
-  const sharedEvent=(await db.query("SELECT id,shift_code FROM mass_core.activity_events WHERE name='TEST RECORD both-shift sports'")).rows[0];check(sharedEvent.shift_code==='Both shifts');
-  await page.locator('[data-action=activity-entry]').click();await page.locator(`#overlay [data-event="${sharedEvent.id}"]`).click();await page.getByRole('heading',{name:'Session participation',exact:true}).waitFor();
-  const rosterText=await page.locator('#dialog-form .table-scroll').innerText();check(rosterText.includes('Morning')&&rosterText.includes('Evening'));
-  await page.locator(`[data-participation="${eveningChild.enrolment_id}"][data-value=Attended]`).click();await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
-  check((await db.query('SELECT participated FROM mass_core.activity_participation WHERE event_id=$1 AND child_id=$2',[sharedEvent.id,eveningChild.child_id])).rows[0].participated===true);
-  check(Number((await db.query('SELECT count(*) n FROM mass_core.attendance_records WHERE child_id=$1',[eveningChild.child_id])).rows[0].n)===0);
-  await page.locator('[data-action=new-monthly-meeting]').click();await page.getByRole('heading',{name:'Add monthly meeting',exact:true}).waitFor();await page.locator('#dialog-form [name=centre]').selectOption(centre);await page.locator('#dialog-form [name=date]').fill('2026-05-22');await page.locator('#dialog-form [name=status]').selectOption('Held');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
-  const sharedSummary=await rpc('centre_event_summary',{p_centres:[centre],p_from:'2026-05-01',p_until:'2026-06-01'});check(Number(sharedSummary[0].activity_held)===1&&Number(sharedSummary[0].meeting_held)===1);
-  await page.getByRole('heading',{name:/Centre Activities.*Monthly Meetings/}).waitFor();checks++;
-  await page.locator('[data-nav=children]').first().click();await page.locator('[data-action=new-child]').click();await page.getByRole('heading',{name:'Add student',exact:true}).waitFor();check(await page.locator('#dialog-form [type=submit]').isEnabled());await page.locator('#dialog-form [name=name]').fill('TEST RECORD browser registration');await page.locator('#dialog-form [name=centre]').selectOption(centre);await page.locator('#dialog-form [name=grade]').selectOption('4');await page.locator('#dialog-form [name=shift]').selectOption('Morning');await page.locator('#dialog-form [name=enrolled]').fill('2026-04-01');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
-  check(Number((await db.query("SELECT count(*) n FROM mass_core.private_child_profiles WHERE full_name='TEST RECORD browser registration'")).rows[0].n)===1);
-  if(screenshots){await page.locator('[data-nav=activities]').first().click();await page.screenshot({path:path.join(screenshots,'centre-wide-events.png'),fullPage:true});}
-
-  // Explicitly authorized features in this disposable test database only.
-  await db.exec(await fs.readFile(path.join(root,'supabase/configuration/2026-11-11-registration-activities.sql'),'utf8'));
-  const eveningChild=(await rpc('register_student_once',{p_request:randomUUID(),p_centre:centre,p_grade:'6',p_shift:'Evening',p_start:'2026-04-01',p_name:'TEST RECORD evening event participant',p_gender:null}))[0];
-  await page.goto(origin+'/?actor=1');await page.locator('[data-nav=activities]').first().waitFor();await page.locator('[data-nav=activities]').first().click();
-  await page.locator('[data-filter=month]').selectOption('2026-05');
-  await page.locator('[data-action=new-activity]').click();await page.getByRole('heading',{name:'Add activity session',exact:true}).waitFor();
-  check(await page.locator('#dialog-form [name=shift]').count()===0);
   await chooseCentre(centre);await page.locator('#dialog-form [name=date]').fill('2026-05-21');await page.locator('#dialog-form [name=name]').fill('TEST RECORD both-shift sports');await page.locator('#dialog-form [name=category]').selectOption('Sports');await page.locator('#dialog-form [name=status]').selectOption('Held');await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});
   const sharedEvent=(await db.query("SELECT id,shift_code FROM mass_core.activity_events WHERE name='TEST RECORD both-shift sports'")).rows[0];check(sharedEvent.shift_code==='Both shifts');
   await page.locator('[data-action=activity-entry]').click();await page.locator(`#overlay [data-event="${sharedEvent.id}"]`).click();await page.getByRole('heading',{name:'Session participation',exact:true}).waitFor();
