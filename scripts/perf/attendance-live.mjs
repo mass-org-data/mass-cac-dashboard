@@ -273,21 +273,32 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   }
 }
 
-// Morarji (preview has no cohorts, so the empty state is what must show: nothing inferred, nothing zero)
+// Morarji (preview has one synthetic 2026-27 cohort of 150 Grade 5 students; Centre 01 has none)
 {
+  const expected={Leadership:{members:150,attended:104,passed:39,pending:55},'Cluster Officer':null,Teacher:null};
   for(const role of ['Leadership','Teacher','Cluster Officer']){
     const {context,page,problems,failed}=await session(role);
     await page.goto(base+'#/morarji');
-    await page.getByText(/Verified cohort outcomes have not been imported/).or(page.getByRole('alert')).first().waitFor({timeout:90000});
-    await page.waitForTimeout(2500);
-    const text=await page.locator('main').innerText();
-    note(`Morarji, ${role}: no cohorts on preview shows the not-imported note`,/Verified cohort outcomes have not been imported/.test(text));
-    note(`Morarji, ${role}: scorecards say no verified cohort, not zero`,/No verified cohort recorded|Not recorded/.test(text)&&!/Unavailable\s*0/.test(text));
+    await page.getByRole('table',{name:'Cohort sizes compared'}).locator('tbody tr').first().or(page.getByText('No verified cohort recorded').first()).waitFor({timeout:90000});
+    await page.waitForTimeout(3000);
+    const text=(await page.locator('main').innerText()).replace(/\s+/g,' ');
+    const card=label=>new RegExp('6\\.\\d'+label+' ([\\d,]+|—)').exec(text)?.[1]?.replace(/,/g,'');
+    const got={members:Number(card('Children in the training cohort')),attended:Number(card('Took the exam')),passed:Number(card('Children passed')),pending:Number(card('Results pending'))};
+    if(expected[role])note(`Morarji, ${role}: cohort totals match the database`,JSON.stringify(got)===JSON.stringify(expected[role]),JSON.stringify(got));
+    else if(role==='Teacher')note('Morarji, Teacher: Centre 01 has no grade 5 cohort members, so the totals are unknown, not zero',/No verified cohort recorded/.test(text)&&!/6\.1 Children in the training cohort 0/.test(text),JSON.stringify(got));
+    else note('Morarji, Cluster Officer: cohort totals for Centres 01-09',got.members>0,JSON.stringify(got));
+    if(role==='Leadership')note('Morarji, Leadership: no student rows (totals only)',await page.getByRole('table',{name:'Cohort follow-up'}).count()===0);
+    if(role==='Cluster Officer'){
+      const rows=await page.getByRole('table',{name:'Cohort follow-up'}).locator('tbody tr').count();
+      note('Morarji, Cluster Officer: follow-up lists the cohort students of their centres (first page of 10)',rows===Math.min(10,got.members),`${rows} rows of ${got.members}`);
+      const ids=await page.getByRole('table',{name:'Cohort follow-up'}).getByText(/^ST_SY_5_/).count();
+      note('Morarji, Cluster Officer: students show by ID; names stay withheld because this account may not read profiles',ids===rows&&await page.getByRole('table',{name:'Cohort follow-up'}).getByText(/Synthetic Student/).count()===0,`${ids} ids`);
+    }
     note(`Morarji, ${role}: no editing controls on this screen`,await page.getByRole('button',{name:/Add to training cohort|Update/}).count()===0);
-    if(role==='Teacher'){
+    if(role==='Cluster Officer'){
       await page.addScriptTag({url:'/__axe.js'});
       const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
-      note('Morarji, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
+      note('Morarji, Cluster Officer: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
     note(`Morarji, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));

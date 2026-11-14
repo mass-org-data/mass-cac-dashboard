@@ -12,8 +12,11 @@ Date: 14 November 2026. Preview project (synthetic data), real Chromium, `dist/`
 
 ## Checks
 - 156 web tests (13 new), lint, syntax check, 138 frontend tests, both builds, `npm audit --audit-level=high` pass.
-- Real browser, all three roles: preview has no cohorts, so the not-imported note and "not recorded" cards show (nothing inferred, nothing zero), no edit controls, no axe violations incl. contrast, no horizontal scroll at 375 px, no failed calls or console errors.
+- Real browser, all three roles, against the seeded cohort below (95 of 95 checks): Leadership totals 150 / 104 / 39 / 55 pending equal a direct database count; the Cluster Officer (Centres 01-09) sees 13 / 9 / 5 / 4 pending, equal to the database, with a follow-up list shown by student ID (that account may not read profiles, so names are withheld by the server); the Teacher (Centre 01 has no Grade 5 cohort members) sees unknown, not zero; no edit controls, no axe violations incl. contrast, no horizontal scroll at 375 px, no failed calls or console errors.
 
 ## Not covered
-- Real cohort data: preview has none (`programme_cohorts` is empty), so the totals, chart, cohort comparison and follow-up table are verified with fixtures in unit tests only. Seeding synthetic cohorts is a preview data change that needs separate approval.
+- More than one cohort year: preview has one academic year, so the year-on-year chart shows a single bar; the multi-year behaviour (a year without recorded results as a gap) is covered by unit tests only.
 - Numbers against the current Morarji page; concurrent edits; real phones.
+
+## Cohort seed on preview (owner-approved, 14 November 2026)
+Synthetic only, one transaction after a rolled-back dry run, using the importer role with temporary grants: one cohort `2026–27` on the existing academic year, 150 memberships (every current Grade 5 enrolment) and 150 outcomes: 128 applied, 104 took the exam, 39 passed, 95 with a known result (the rest are unknown, so results pending = 55). No outcome has Attended or Passed yes without the earlier step. Memberships and outcomes cannot be deleted by design, so this seed is permanent on preview; the `morarji` write gate stays hard-off.
