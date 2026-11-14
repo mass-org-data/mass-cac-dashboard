@@ -187,6 +187,39 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     await context.close();
   }
 }
+
+// Assessments
+{
+  const openAssessments=async page=>{await page.goto(base+'#/assessments');await page.getByRole('table',{name:'Assessment register'}).or(page.getByRole('alert')).first().waitFor({timeout:90000});};
+  const cards=async page=>page.evaluate(()=>Object.fromEntries([...document.querySelectorAll('article,section,div')].filter(e=>/^4\.[1-4]/.test(e.textContent?.trim()||'')&&e.children.length>0&&e.textContent.length<200).slice(0,0).map(e=>[e.textContent,1])));
+  void cards;
+  for(const role of ['Leadership','Teacher','Cluster Officer']){
+    const {context,page,problems,failed}=await session(role);await openAssessments(page);
+    await page.waitForTimeout(3000);
+    const text=await page.locator('main').innerText();
+    note(`Assessments, ${role}: scorecards show scores for F2 (no Unavailable card)`,/Students with exam scores recorded/.test(text)&&!/Unavailable/.test(text.split('4.5')[0]),text.match(/\d[\d,]* \/ \d[\d,]*/)?.[0]??'');
+    const rows=await page.getByRole('table',{name:'Assessment register'}).locator('tbody tr').count();
+    note(`Assessments, ${role}: assessment register lists saved assessments`,rows>0,`${rows} rows on page 1`);
+    await page.selectOption('select:below(:text("Exam round"))','1').catch(()=>{});
+    if(role==='Teacher'){
+      await page.addScriptTag({url:'/__axe.js'});
+      const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
+      note('Assessments, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
+      await page.getByRole('button',{name:'Enter marks'}).click();
+      await page.getByRole('button',{name:'Continue'}).click();
+      await page.getByRole('table',{name:'Students to score'}).waitFor({timeout:60000});
+      const inputs=await page.getByRole('table',{name:'Students to score'}).getByRole('spinbutton').count();
+      note('Assessments, Teacher: entry roster lists the centre students',inputs>0,`${inputs} students`);
+      note('Assessments, Teacher: entry saving is off while the assessment_entry gate is off',await page.getByRole('button',{name:'Save assessment'}).isDisabled());
+      await page.getByRole('button',{name:'Cancel'}).click();
+    }
+    await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
+    note(`Assessments, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`Assessments, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
+    note(`Assessments, ${role}: no console errors`,problems.length===0,problems.join(' | '));
+    await context.close();
+  }
+}
 await browser.close();server.close();
 console.log(`\n${results.filter(r=>r.ok).length}/${results.length} checks passed`);
 process.exit(results.every(r=>r.ok)?0:1);
