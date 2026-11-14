@@ -29,7 +29,7 @@
     "test:staff-access": "node tests/attendance/staff-access.mjs",
     "perf:overview": "node scripts/perf/overview-waterfall.mjs",
     "web:dev": "vite --config web/vite.config.ts",
-    "web:build": "MASS_NEXT_UI=1 node scripts/build.mjs",
+    "web:build": "node scripts/build.mjs",
     "web:typecheck": "tsc -p web/tsconfig.json",
     "test:web": "vitest run --config web/vite.config.ts"
   },

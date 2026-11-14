@@ -2,13 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('the React interface is built only on request and never inlines script', async () => {
+test('the React interface is the default build at the dist root, the original is kept at /vanilla/, and no script is inlined', async () => {
   const build = await readFile('scripts/build.mjs', 'utf8');
-  assert.match(build, /process\.env\.MASS_NEXT_UI==='1'/);
-  assert.match(build, /if\(nextUi\)\{const \{build:viteBuild\}=await import\('vite'\)/);
+  assert.match(build, /const legacy=path\.join\(output,'vanilla'\)/);
+  assert.match(build, /outdir:legacy/);
+  assert.match(build, /await viteBuild\(\{configFile:path\.join\(root,'web\/vite\.config\.ts'\)/);
+  assert.equal(/MASS_NEXT_UI/.test(build), false);
   const vite = await readFile('web/vite.config.ts', 'utf8');
   assert.match(vite, /polyfill: false/);
-  assert.match(vite, /outDir: fileURLToPath\(new URL\('\.\.\/dist\/next'/);
+  assert.match(vite, /outDir: fileURLToPath\(new URL\('\.\.\/dist'/);
+  assert.match(vite, /emptyOutDir: false/);
+  const vercel = JSON.parse(await readFile('vercel.json', 'utf8'));
+  const redirects = Object.fromEntries(vercel.redirects.map(r => [r.source, r.destination]));
+  assert.equal(redirects['/next'], '/');
+  assert.equal(redirects['/vanilla'], '/vanilla/');
   const html = await readFile('web/index.html', 'utf8');
   assert.equal((html.match(/<script/g) || []).length, 1);
   assert.match(html, /<script type="module" src="\/src\/main\.tsx"><\/script>/);

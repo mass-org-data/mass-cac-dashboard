@@ -4,7 +4,9 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "redirects": [
-    {"source": "/next", "destination": "/next/", "statusCode": 308}
+    {"source": "/next", "destination": "/", "statusCode": 308},
+    {"source": "/next/(.*)", "destination": "/", "statusCode": 308},
+    {"source": "/vanilla", "destination": "/vanilla/", "statusCode": 308}
   ],
   "headers": [
     {

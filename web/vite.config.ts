@@ -24,8 +24,9 @@ export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss(), runtimeConfig()],
   build: {
-    outDir: fileURLToPath(new URL('../dist/next', import.meta.url)),
-    emptyOutDir: true,
+    outDir: fileURLToPath(new URL('../dist', import.meta.url)),
+    // The build script has already written the original app to dist/vanilla and must not be cleared.
+    emptyOutDir: false,
     sourcemap: false,
     // No inline script: the CSP allows script-src 'self' only.
     modulePreload: {polyfill: false},

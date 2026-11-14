@@ -101,7 +101,8 @@ async function main(){
     for(let run=1;run<=runs;run++){
       const context=await browser.newContext();const page=await context.newPage();
       const blocked=[];page.on('console',m=>{if(/Content Security Policy|Refused to connect/i.test(m.text()))blocked.push(m.text().slice(0,200));});
-      await page.goto(`${base}/?perf=1`,{waitUntil:'domcontentloaded'});
+      // The original interface (the one this harness times) lives at /vanilla/ since the cutover.
+      await page.goto(`${base}/vanilla/?perf=1`,{waitUntil:'domcontentloaded'});
       await page.waitForSelector('#sign-in',{timeout:30000});
       await page.fill('#sign-in [name=email]',email);await page.fill('#sign-in [name=password]',password);
       await Promise.all([page.waitForEvent('framenavigated',{timeout:60000}),page.click('#sign-in [type=submit]')]);
