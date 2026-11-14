@@ -205,12 +205,32 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
       await page.addScriptTag({url:'/__axe.js'});
       const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
       note('Assessments, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
+      await page.selectOption('label:has-text("Exam round") select','3');await page.waitForTimeout(3500);
+      const nBefore=Number(/(\d+) \/ \d+/.exec(await page.locator('main').innerText())?.[1]);
       await page.getByRole('button',{name:'Enter marks'}).click();
       await page.getByRole('button',{name:'Continue'}).click();
       await page.getByRole('table',{name:'Students to score'}).waitFor({timeout:60000});
       const inputs=await page.getByRole('table',{name:'Students to score'}).getByRole('spinbutton').count();
       note('Assessments, Teacher: entry roster lists the centre students',inputs>0,`${inputs} students`);
-      note('Assessments, Teacher: entry saving is off while the assessment_entry gate is off',await page.getByRole('button',{name:'Save assessment'}).isDisabled());
+      const gateOn=await page.getByText(/Saving is switched off/).count()===0;
+      if(!gateOn)note('Assessments, Teacher: entry saving is off while the assessment_entry gate is off',await page.getByRole('button',{name:'Save assessment'}).isDisabled());
+      if(gateOn&&process.argv.includes('--assessment')){
+        // Saves permanent synthetic results (they cannot be corrected or deleted), so it only runs with --assessment.
+        const spin=page.getByRole('table',{name:'Students to score'}).getByRole('spinbutton');
+        await spin.nth(0).fill('26');await page.getByRole('button',{name:'Save assessment'}).click();
+        note('Assessments, Teacher: a mark above 25 is refused',(await page.getByRole('dialog').getByRole('alert').innerText()).includes('0–25'));
+        await spin.nth(0).fill('19');await spin.nth(1).fill('22');
+        await page.getByRole('button',{name:'Save assessment'}).click();
+        await page.getByRole('dialog').waitFor({state:'detached',timeout:60000});
+        await page.waitForTimeout(4000);
+        const after=await page.locator('main').innerText();
+        const nAfter=Number(/(\d+) \/ \d+/.exec(after)?.[1]);
+        note('Assessments, Teacher: scorecard count rose by the 2 saved marks',nAfter===nBefore+2,`${nBefore} -> ${nAfter}`);
+        note('Assessments, Teacher: register shows the new F3 record',await page.getByRole('table',{name:'Assessment register'}).getByText('F3').count()>0);
+        await page.getByRole('button',{name:'Enter marks'}).click();await page.getByRole('button',{name:'Continue'}).click();
+        await page.getByRole('table',{name:'Students to score'}).waitFor();
+        note('Assessments, Teacher: saved results reopen as read-only',await page.getByRole('table',{name:'Students to score'}).getByText(/saved; corrections/).count()>=2);
+      }
       await page.getByRole('button',{name:'Cancel'}).click();
     }
     await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);

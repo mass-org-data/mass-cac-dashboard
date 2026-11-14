@@ -1,6 +1,6 @@
 # Phase 5 (Assessments): result
 
-Date: 14 November 2026. Preview project (synthetic data), real Chromium, `dist/` served with the production CSP: `node scripts/perf/attendance-live.mjs` (62 of 62 checks, all screens built so far).
+Date: 14 November 2026. Preview project (synthetic data), real Chromium, `dist/` served with the production CSP: `node scripts/perf/attendance-live.mjs` (65 of 65 checks with `--assessment`, all screens built so far).
 
 ## What was built (`web/src/pages/Assessments.tsx`, `web/src/assessments/`)
 - **Filters:** exam round F1-F4, compare pair (F1→F2, F2→F3, F3→F4, F1→F4), centre, shift, grade, gender.
@@ -14,6 +14,8 @@ Date: 14 November 2026. Preview project (synthetic data), real Chromium, `dist/`
 - Real browser, Leadership, Teacher (Centre 01) and Cluster Officer (Centres 01-09): scorecards fill (Leadership 1,274 / 1,472 for F2, Teacher 13 / 19, Cluster Officer 123 / 152), the register lists saved assessments, entry opens and lists the centre's students (6 of 19 had no result for that round, the rest are shown read-only), Save is disabled while the gate is off, no axe violations including contrast, no horizontal scroll at 375 px, no failed calls, no console errors.
 
 ## Not covered
-- A real save: the `assessment_entry` gate is off on preview. Enabling it is a separate preview change that needs the owner's approval; the batch call is covered by unit tests only.
 - Numbers side by side with the current Learning page (they come from the same report that matched the current Overview in `PHASE-5-OVERVIEW-RESULT.md`).
 - Concurrent edits, real phones, the per-student scores table.
+
+## Live save test (preview, `--assessment`)
+The owner approved enabling `assessment_entry` on preview on 14 November (rollback: set `enabled=false`, `approval_reference=NULL`; `assessment_corrections` stays hard-off). As Teacher (Centre 01), Enter marks for round F3 refused a mark of 26, then saved 19 and 22 for two students in one batch. The dialog closed, the F3 scorecard count rose from 13 to 15, the register gained an F3 row, and reopening showed the two results read-only. Saved results cannot be corrected or deleted through the application, so each `--assessment` run leaves two synthetic scores; the check is opt-in for that reason.
