@@ -51,6 +51,10 @@ describe('Visits page', () => {
     setup({assignments: []});
     expect(await screen.findByRole('alert')).toHaveTextContent(/No verified, dated officer assignment/);
   });
+  it('explains an account linked to several officer identities instead of picking one', async () => {
+    setup({assignments: [assignment, {...assignment, id: 'a2', centre_id: 'c2', officer_id: 'o2'}]});
+    expect(await screen.findByRole('alert')).toHaveTextContent(/linked to 2 different officer identities/);
+  });
   it('shows an error and retry when the server fails', async () => {
     setup({role: 'Leadership', fail: true});
     expect((await screen.findAllByText(/statement timeout/)).length).toBeGreaterThan(0);

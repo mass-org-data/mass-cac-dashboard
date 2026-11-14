@@ -127,7 +127,7 @@ export function Visits({backend, context, role, service: injected}: {backend: Li
   ], [nameOf]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing Visits" rows={5} />;
-  if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">No verified, dated officer assignment is configured for this account. Names and directory observations do not establish permission, so visit coverage is unavailable.</p>;
+  if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{boot.value.assignments.length === 0 ? 'No verified, dated officer assignment is configured for this account. Names and directory observations do not establish permission, so visit coverage is unavailable.' : `This account is linked to ${officerIds.length} different officer identities. Officer-specific targets need one verified staff identity, so visit coverage is unavailable until the assignments are corrected.`}</p>;
   const canRecord = role === 'Cluster Officer' && boot.value.assignments.length > 0 && writable.length > 0;
   const entryEnabled = boot.value.capabilities.writes?.visit_entry === true;
   const msg = data.status === 'error' ? data.message : undefined;

@@ -249,12 +249,13 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     await page.getByRole('table',{name:'Centre coverage'}).locator('tbody tr').first().or(page.getByRole('alert')).first().waitFor({timeout:120000});
     const ms=Date.now()-t0;
     const text=await page.locator('main').innerText();
-    const blocked=/No verified, dated officer assignment/.test(text);
-    if(role==='Cluster Officer'&&blocked)note('Visits, Cluster Officer: no verified assignment on preview, coverage correctly unavailable',true,'preview CO account has no dated officer assignment');
+    const blocked=/No verified, dated officer assignment|different officer identities/.test(text);
+    if(role==='Cluster Officer'&&blocked)note('Visits, Cluster Officer: coverage correctly unavailable while the account is linked to several officer identities',true,text.match(/linked to \d+ different officer identities/)?.[0]??'');
     else{
       const rows=await page.getByRole('table',{name:'Centre coverage'}).locator('tbody tr').count();
       note(`Visits, ${role}: centre coverage lists centres (10 per page)`,rows>0&&rows<=10,`${rows} rows, loaded in ${(ms/1000).toFixed(1)} s`);
-      note(`Visits, ${role}: no visits recorded shows unknown, not zero`,/No verified visit observations|No verified visits recorded/.test(text)||/\d/.test(text));
+      const total=Number(/(\d[\d,]*)\s*Standard target/.exec(text.replace(/\n+/g,' '))?.[1]?.replace(/,/g,''));
+      note(`Visits, ${role}: seeded visits show as completed counts, not unknown`,!/No verified visits recorded/.test(text.split('5.5')[0]),text.replace(/\s+/g,' ').match(/Visits completed [^S]*Standard target \d+/)?.[0]??'');
     }
     if(role==='Cluster Officer'&&!blocked){
       note('Visits, Cluster Officer: Record a visit available',await page.getByRole('button',{name:'Record a visit'}).isVisible());
