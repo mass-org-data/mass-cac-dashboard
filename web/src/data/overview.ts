@@ -5,7 +5,7 @@
 // Heavy reports run through a two-at-a-time queue so they never saturate the database.
 import {createLimiter} from '../../../src/live/limiter.js';
 import {reportingDay, window_ as monthWindow} from '../lib/dates';
-import type {Rpc} from '../session/backend';
+import {CACHE_TTL_MS, memoise, type Rpc} from '../session/backend';
 
 export interface Selection {month: string; centres: string[]; shift: string | null; grade: string | null; gender: string | null}
 export interface Environment {yearId: string; today: string; fromQuarter: number; toQuarter: number; months: string[]; hasSeries: boolean}
@@ -32,16 +32,10 @@ export interface ShiftCounts {Morning: number | null; Evening: number | null}
 export const FUTURE_NOTICE = 'Future reporting periods have no verified observations.';
 export const isFutureMonth = (month: string, today: string) => month > today.slice(0, 7);
 
-export function createOverviewService(rpc: Rpc, limit: (job: () => Promise<unknown>) => Promise<unknown> = createLimiter(2)) {
-  const cache = new Map<string, Promise<unknown>>();
-  const remember = <T>(key: string, load: () => Promise<T>): Promise<T> => {
-    if (!cache.has(key)) {
-      const promise = load();
-      cache.set(key, promise);
-      promise.catch(() => { if (cache.get(key) === promise) cache.delete(key); }); // a failure can be retried
-    }
-    return cache.get(key) as Promise<T>;
-  };
+export function createOverviewService(rpc: Rpc, limit: (job: () => Promise<unknown>) => Promise<unknown> = createLimiter(2), now: () => number = Date.now) {
+  // Kept for five minutes, then read again; a failure is forgotten so it can be retried; saves call clear().
+  const cache = new Map<string, {at: number; value: Promise<unknown>}>();
+  const remember = <T>(key: string, load: () => Promise<T>): Promise<T> => memoise(cache, key, load, now, CACHE_TTL_MS);
   const queued = <T>(job: () => Promise<T>) => limit(job as () => Promise<unknown>) as Promise<T>;
 
   function report(selection: Selection, env: Environment): Promise<Report> {

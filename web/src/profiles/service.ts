@@ -3,7 +3,8 @@
 // operational role's centres), read_students (details for those centres), student_academic_history,
 // read_profile_revision and the protected writes register_student_once, save_student_profile_year and
 // correct_profile. The server enforces scope, versions, activation gates and audit; nothing here weakens them.
-import type {Rpc} from '../session/backend';
+import {createLimiter} from '../../../src/live/limiter.js';
+import {CACHE_TTL_MS, memoise, type Rpc} from '../session/backend';
 
 export interface ProfileCapabilities {version: number; profile_pages?: boolean; profile_sort_v2?: boolean; academic_history?: boolean}
 export type ProfileSort = 'name' | 'id' | 'centre' | 'grade' | 'gender' | 'shift' | 'newest';
@@ -27,8 +28,9 @@ export const isProfileSupported = (c: ProfileCapabilities | null): c is ProfileC
 export interface NewStudent {request: string; centre: string; grade: string; shift: string; start: string; name: string; gender: string | null}
 export interface ProfileEdit {child: string; enrolment: string; revision: number; name: string; gender: string | null; board: boolean | null; year?: {id: string; status: string; version: number}}
 
-export function createProfilesService(rpc: Rpc) {
-  const cache = new Map<string, Promise<Map<string, StudentRow>>>();
+export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unknown>) => Promise<unknown> = createLimiter(6), now: () => number = Date.now) {
+  // Rosters are kept for five minutes (and until a save calls clear()), then read again.
+  const cache = new Map<string, {at: number; value: Promise<Map<string, StudentRow>>}>();
   async function readCentre(centre: string): Promise<Map<string, StudentRow>> {
     const rows = new Map<string, StudentRow>();
     for (let page = 0; page < 100; page++) {
@@ -58,9 +60,7 @@ export function createProfilesService(rpc: Rpc) {
     /** Details for the ids on one page. Each centre is read once and kept until `clear()`. */
     async students(centres: string[], ids: string[]): Promise<StudentRow[]> {
       const maps = await Promise.all(centres.map(centre => {
-        let pending = cache.get(centre);
-        if (!pending) { pending = readCentre(centre); cache.set(centre, pending); pending.catch(() => cache.delete(centre)); }
-        return pending;
+        return memoise(cache, centre, () => limit(() => readCentre(centre)) as Promise<Map<string, StudentRow>>, now, CACHE_TTL_MS);
       }));
       return ids.map(id => maps.map(map => map.get(id)).find(Boolean)).filter((row): row is StudentRow => Boolean(row));
     },

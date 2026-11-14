@@ -7,8 +7,9 @@ import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {academicMonths, monthLabel, monthShort, todayIst} from '../lib/dates';
 import {formatCount, formatPercent, UNKNOWN} from '../lib/format';
-import {createOverviewService, FUTURE_NOTICE, type Environment, type OverviewService, type Report, type Selection} from '../data/overview';
+import {FUTURE_NOTICE, type Environment, type OverviewService, type Report, type Selection} from '../data/overview';
 import {useOverview, type Slice} from '../data/useOverview';
+import {sharedOverview} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -35,7 +36,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 }
 
 export function Overview({backend, context, role, service: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: OverviewService}) {
-  const service = useMemo(() => injected ?? createOverviewService(backend.rpc), [backend, injected]);
+  const service = useMemo(() => injected ?? sharedOverview(backend), [backend, injected]);
   const [boot, setBoot] = useState<Slice<Bootstrap>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
   const [filters, setFilters] = useState({month: '', centre: '', donor: '', shift: '', grade: '', gender: ''});

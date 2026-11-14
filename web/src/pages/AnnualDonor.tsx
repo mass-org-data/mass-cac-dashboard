@@ -4,10 +4,11 @@ import {ChartCard} from '../components/ChartCard';
 import {LineChart} from '../components/charts/LineChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
-import {createOverviewService, type OverviewService, type Report} from '../data/overview';
+import {type OverviewService, type Report} from '../data/overview';
 import {academicMonths, monthShort, todayIst} from '../lib/dates';
 import {formatCount, formatPercent} from '../lib/format';
 import {combineMonthlyAttendance} from '../../../src/live/leadership-report.js';
+import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -34,7 +35,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 }
 
 export function AnnualDonor({backend, context, role, overview: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; overview?: OverviewService}) {
-  const overview = useMemo(() => injected ?? createOverviewService(backend.rpc), [backend, injected]);
+  const overview = useMemo(() => injected ?? sharedOverview(backend), [backend, injected]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; donors: Record<string, string | null>}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);

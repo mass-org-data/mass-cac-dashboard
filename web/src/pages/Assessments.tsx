@@ -7,9 +7,10 @@ import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {Button} from '../components/ui/button';
 import {EntryDialog} from '../assessments/EntryDialog';
 import {createAssessmentsService, type AssessmentsService, type RegisterRow} from '../assessments/service';
-import {createOverviewService, type OverviewService, type Report} from '../data/overview';
+import {type OverviewService, type Report} from '../data/overview';
 import {academicMonths, todayIst} from '../lib/dates';
 import {formatCount} from '../lib/format';
+import {sharedOverview} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -38,7 +39,7 @@ interface CentreRow {id: string; name: string; n: number; mean: number | null}
 
 export function Assessments({backend, context, role, service: injected, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService}) {
   const service = useMemo(() => injected ?? createAssessmentsService(backend.rpc), [backend, injected]);
-  const overview = useMemo(() => injectedOverview ?? createOverviewService(backend.rpc), [backend, injectedOverview]);
+  const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<Boot>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);

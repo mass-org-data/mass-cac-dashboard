@@ -4,11 +4,12 @@ import {ChartCard} from '../components/ChartCard';
 import {ColumnChart} from '../components/charts/ColumnChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
-import {createMorarjiService, resultOf, yesNo, type MorarjiService} from '../morarji/service';
-import {createProfilesService, type ProfilesService, type StudentRow} from '../profiles/service';
-import {createOverviewService, type MorarjiCohort, type OverviewService, type Report} from '../data/overview';
+import {resultOf, yesNo, type MorarjiService} from '../morarji/service';
+import {type ProfilesService, type StudentRow} from '../profiles/service';
+import {type MorarjiCohort, type OverviewService, type Report} from '../data/overview';
 import {academicMonths, todayIst} from '../lib/dates';
 import {formatCount} from '../lib/format';
+import {sharedMorarji, sharedOverview, sharedProfiles} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -34,9 +35,9 @@ interface FollowUp {id: string; cohort: string; name: string | null; studentId: 
 interface CentreLine {id: string; name: string; members: number; applied: number; attended: number; passed: number}
 
 export function Morarji({backend, context, role, service: injected, profiles: injectedProfiles, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: MorarjiService; profiles?: ProfilesService; overview?: OverviewService}) {
-  const service = useMemo(() => injected ?? createMorarjiService(backend.rpc), [backend, injected]);
-  const profiles = useMemo(() => injectedProfiles ?? createProfilesService(backend.rpc), [backend, injectedProfiles]);
-  const overview = useMemo(() => injectedOverview ?? createOverviewService(backend.rpc), [backend, injectedOverview]);
+  const service = useMemo(() => injected ?? sharedMorarji(backend), [backend, injected]);
+  const profiles = useMemo(() => injectedProfiles ?? sharedProfiles(backend), [backend, injectedProfiles]);
+  const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; capabilities: Capabilities}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
