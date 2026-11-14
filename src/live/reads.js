@@ -25,7 +25,7 @@ export function createReadApi(client) {
     references: signal=>call('get_references',{},signal),
     async centre({centre,from,until,yearFrom=from,yearUntil=until,includeAssessments=true,view='all',signal}) {
       const window={p_centre:centre,p_from:from,p_until:until};
-      const needs = module => view==='all'||view==='student-detail'||({attendance:['attendance','calendar','activities','participation'],learning:['assessments'],activities:['activities','participation'],morarji:['morarji'],children:[]}[view]||[]).includes(module);
+      const needs = module => view==='all'||view==='student-detail'||({attendance:['attendance','calendar','activities','participation'],learning:['assessments'],activities:['activities','participation'],morarji:['morarji'],'overview-summary':['attendance','calendar','assessments','activities','participation'],children:[]}[view]||[]).includes(module);
       const [students,attendance,calendar,assessments,activities,participation,morarji]=await Promise.all([
         rows('read_students',{p_centre:centre,p_on:null},signal),
         needs('attendance')?rows('read_attendance',{...window,p_child:null},signal):Promise.resolve([]),

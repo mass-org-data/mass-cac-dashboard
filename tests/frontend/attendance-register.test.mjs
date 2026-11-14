@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {attendanceCodes,changedAttendance,registerSummaryKey,attendanceSummaryDisplay} from '../../src/live/attendance-register.js';
 test('attendance drafts submit only explicit changes without filling unknown students',()=>{
- const roster=[{id:'one'},{id:'two'},{id:'three'}],saved={one:'P'},draft={one:'P',two:'H'};
- assert.deepEqual(changedAttendance(roster,saved,draft),[{enrolment:'two',code:'H'}]);
+ const roster=[{id:'one'},{id:'two'},{id:'three'}],saved={one:'P'},draft={one:'P',two:'A'};
+ assert.deepEqual(changedAttendance(roster,saved,draft),[{enrolment:'two',code:'A'}]);
  assert.deepEqual(saved,{one:'P'});
 });
 test('clearing a saved mark submits an explicit audited clear',()=>{
@@ -27,4 +27,4 @@ test('summary shows present/enrolled and the exact approved percentage fraction'
  assert.equal(partial.ratio,'1/17');assert.equal(partial.percentage,'100.0% (1/1)');assert.equal(partial.incomplete,true);
 });
 
-test('new options exclude legacy codes without changing saved history',()=>{assert.deepEqual(attendanceCodes,['A','P','H']);for(const code of ['MM','L','WO']){assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{one:code}),[]);assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{}),[{enrolment:'one',code:null}]);}});
+test('new options exclude legacy codes without changing saved history',()=>{assert.deepEqual(attendanceCodes,['A','P']);for(const code of ['L','WO']){assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{one:code}),[]);assert.deepEqual(changedAttendance([{id:'one'}],{one:code},{}),[{enrolment:'one',code:null}]);}});

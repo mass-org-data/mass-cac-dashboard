@@ -1,0 +1,89 @@
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import {Menu} from 'lucide-react';
+import {SessionProvider, useSession} from '../session/SessionProvider';
+import {createSessionController} from '../session/controller';
+import {createLiveBackend, type LiveBackend, type RuntimeConfig} from '../session/backend';
+import {AsyncState} from '../components/AsyncState';
+import {Button} from '../components/ui/button';
+import {SignIn} from '../pages/SignIn';
+import {Overview} from '../pages/Overview';
+import {Attendance} from '../pages/Attendance';
+import {Profiles} from '../pages/Profiles';
+import {Assessments} from '../pages/Assessments';
+import {Visits} from '../pages/Visits';
+import {Morarji} from '../pages/Morarji';
+import {AnnualDonor} from '../pages/AnnualDonor';
+import {About} from '../pages/About';
+import {ROUTES, useRoute} from './route';
+import {SideMenu} from './SideMenu';
+
+const MENU_KEY = 'mass-menu-collapsed';
+// Only a convenience: the menu works the same when browser storage is blocked.
+const readCollapsed = () => { try { return window.localStorage.getItem(MENU_KEY) === '1'; } catch { return false; } };
+const writeCollapsed = (value: boolean) => { try { window.localStorage.setItem(MENU_KEY, value ? '1' : '0'); } catch { /* ignore */ } };
+
+function Shell({backend}: {backend: LiveBackend}) {
+  const {state, controller} = useSession();
+  const [route, go] = useRoute();
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const toggleCollapsed = useCallback(() => setCollapsed(value => { writeCollapsed(!value); return !value; }), []);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+  useEffect(() => { document.title = `${ROUTES.find(r => r.id === route)?.label ?? ''} · MASS Children’s Activity Centres`; }, [route]);
+  if (state.status === 'loading') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="loading" loadingLabel="Checking your session" /></main>;
+  if (state.status === 'error') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="error" errorMessage={state.message} onRetry={() => void controller.start()} /></main>;
+  if (state.status === 'signed-out') return <SignIn message={state.message} onSignIn={(email, password) => controller.signIn(email, password)} />;
+  return (
+    <div className="flex h-dvh flex-col">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-2">
+        <div className="flex items-center gap-3">
+          <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} aria-controls="side-menu" onClick={() => setMobileOpen(true)} className="inline-flex size-11 items-center justify-center rounded-md border border-line md:hidden"><Menu aria-hidden="true" className="size-5" /></button>
+          <img src="./mass-logo.jpg" alt="MASS" className="h-14 w-auto sm:h-[4.5rem]" />
+          <strong className="text-brand-dark">Children’s Activity Centres</strong>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {state.roles.length > 1 ? (
+            <label className="flex items-center gap-2 text-sm">
+              <span className="font-semibold">Role</span>
+              <select className="min-h-11 rounded-md border border-line bg-white px-2" value={state.activeRole} onChange={event => controller.selectRole(event.target.value)}>
+                {state.roles.map(role => <option key={role}>{role}</option>)}
+              </select>
+            </label>
+          ) : <span className="text-sm font-semibold">{state.activeRole}</span>}
+          <Button variant="outline" onClick={() => void controller.signOut()}>Sign out</Button>
+        </div>
+      </header>
+      <div className="flex min-h-0 flex-1">
+        <SideMenu role={state.activeRole} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} legacyHref="./vanilla/" />
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <div className="max-w-7xl space-y-6 p-4 md:p-6">
+          <h1 className="text-2xl font-bold text-ink">{ROUTES.find(r => r.id === route)!.number}. {ROUTES.find(r => r.id === route)!.label}</h1>
+        {route === 'attendance'
+          ? <Attendance backend={backend} context={state.context} role={state.activeRole} key={`a-${state.activeRole}`} />
+          : route === 'profiles'
+          ? <Profiles backend={backend} context={state.context} role={state.activeRole} key={`p-${state.activeRole}`} />
+          : route === 'about'
+          ? <About context={state.context} role={state.activeRole} />
+          : route === 'donors'
+          ? <AnnualDonor backend={backend} context={state.context} role={state.activeRole} key={`d-${state.activeRole}`} />
+          : route === 'morarji'
+          ? <Morarji backend={backend} context={state.context} role={state.activeRole} key={`m-${state.activeRole}`} />
+          : route === 'visits'
+          ? <Visits backend={backend} context={state.context} role={state.activeRole} key={`v-${state.activeRole}`} />
+          : route === 'assessments'
+          ? <Assessments backend={backend} context={state.context} role={state.activeRole} key={`s-${state.activeRole}`} />
+          : <Overview backend={backend} context={state.context} role={state.activeRole} key={`o-${state.activeRole}`} />}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function App({config}: {config: RuntimeConfig}) {
+  const {backend, controller} = useMemo(() => {
+    const live = createLiveBackend(config);
+    return {backend: live, controller: createSessionController(live)};
+  }, [config]);
+  return <SessionProvider controller={controller}><Shell backend={backend} /></SessionProvider>;
+}

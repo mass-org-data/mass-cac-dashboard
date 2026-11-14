@@ -14,7 +14,7 @@ export function roleDataPlan(context, role, {aggregateApi = true, view = 'detail
   const roles = authorizedRoles(context);
   if (!roles.includes(role)) throw new Error('Choose an authorized role.');
   const centres = context.centres.filter(centre => centre.roles.includes(role));
-  const overviewOnly = aggregateApi && ['overview','donor','visits'].includes(view);
+  const overviewOnly = aggregateApi && ['overview','donor','visits','attendance','daily'].includes(view);
   const aggregateMode = overviewOnly || role === 'Leadership' || centres.some(centre => !centre.can_read_profiles);
   let detailedCentres = [];
   if (overviewOnly) {

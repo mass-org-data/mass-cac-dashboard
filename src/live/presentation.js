@@ -6,6 +6,7 @@ export const titleCase = title => String(title).replace(/\b[a-z]/g, value => val
 export function applyContentNumbers(root, page) {
  const prefix = pageNumber(page);
  const heading = root.querySelector('.page-head h1');
+ if (heading) heading.textContent=titleCase(heading.textContent);
  if (heading) heading.prepend(reference(`${prefix}.`));
  let index = 0;
  for (const element of root.querySelectorAll('.content .metric-top, .content .card h2')) {

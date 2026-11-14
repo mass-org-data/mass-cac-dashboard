@@ -17,6 +17,8 @@ test('configuration pins the approved project and only accepts publishable keys'
   assert.equal(validateConfig(config).project,'pbkwpfdpdtelmvbkzgvx');
   for(const key of ['sb_secret_not-allowed','service_role','eyJhbGci.invalid.signature',''])assert.throws(()=>validateConfig({...config,publishableKey:key}));
   for(const url of ['https://other.supabase.co','http://pbkwpfdpdtelmvbkzgvx.supabase.co','https://pbkwpfdpdtelmvbkzgvx.supabase.co.evil.test'])assert.throws(()=>validateConfig({...config,url}));
+  assert.equal(validateConfig({...config,url:'https://nilzfsahxoxibvrwsqkd.supabase.co'}).project,'nilzfsahxoxibvrwsqkd');
+  for(const url of ['https://abcdefghijklmnopqrst.supabase.co','https://nilzfsahxoxibvrwsqkd.supabase.co/','https://nilzfsahxoxibvrwsqkd.supabase.co.evil.test','http://nilzfsahxoxibvrwsqkd.supabase.co'])assert.throws(()=>validateConfig({...config,url}));
   assert.deepEqual(validateConfig({mode:'demo'}),{mode:'demo'});
 });
 test('roster filters and bounded stable pagination stay inside mass_api',async()=>{
