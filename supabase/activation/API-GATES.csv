@@ -21,3 +21,5 @@ add_morarji_member,morarji,disabled,prohibited; constrained hard-off,writable en
 record_morarji,morarji,disabled,prohibited; constrained hard-off,existing member enrolment write scope
 reviewed_chart_metrics,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; bounded month/year/filters
 reviewed_attendance_series,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; academic year and filters validated; one month per row up to the reporting day
+reviewed_attendance_by_centre_month,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; academic year and filters validated; one row per centre and month up to the reporting day
+reviewed_shift_counts,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; distinct children per shift on the reporting day; counts only

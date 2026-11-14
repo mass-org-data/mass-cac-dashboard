@@ -8,10 +8,11 @@ import {Scorecard} from '../components/Scorecard';
 import {Button} from '../components/ui/button';
 import {RegisterDialog, type Selection} from '../attendance/RegisterDialog';
 import {createAttendanceService, isSupported, PAGE_SIZE, type AttendanceService, type Distribution, type Filters, type PageRequest, type RegisterCapabilities, type RegisterPage, type RegisterRow, type SortKey} from '../attendance/service';
-import {createOverviewService, type OverviewService, type Report, type Series} from '../data/overview';
+import {type OverviewService, type Report, type Series} from '../data/overview';
 import {academicMonths, monthLabel, monthShort, todayIst} from '../lib/dates';
 import {formatCount, formatPercent} from '../lib/format';
 import {attendanceSummaryDisplay} from '../../../src/live/attendance-register.js';
+import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -36,7 +37,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 
 export function Attendance({backend, context, role, service: injected, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AttendanceService; overview?: OverviewService}) {
   const service = useMemo(() => injected ?? createAttendanceService(backend.rpc), [backend, injected]);
-  const overview = useMemo(() => injectedOverview ?? createOverviewService(backend.rpc), [backend, injectedOverview]);
+  const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
   const today = useMemo(() => todayIst(), []);
 
   const [boot, setBoot] = useState<Slice<{caps: RegisterCapabilities; refs: References; hasSeries: boolean}>>({status: 'loading'});

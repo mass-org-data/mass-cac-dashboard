@@ -76,8 +76,8 @@ async function signIn(page,role){
   await page.getByRole('button',{name:'Sign in'}).click();
 }
 
-const cold={},warm={};
-for(const role of Object.keys(ROLES)){cold[role]={};warm[role]={};for(const [id] of PAGES){cold[role][id]=[];warm[role][id]=[];}}
+const cold={},warm={},revisit={};
+for(const role of Object.keys(ROLES)){cold[role]={};warm[role]={};revisit[role]={};for(const [id] of PAGES){cold[role][id]=[];warm[role][id]=[];revisit[role][id]=[];}}
 const notes={};
 
 for(const role of Object.keys(ROLES)){
@@ -110,6 +110,14 @@ for(const role of Object.keys(ROLES)){
       warm[role][id].push({ms:r.ms,reason:r.reason,requests:tracker.count-before,alerts:r.alerts||[]});
       console.log(`warm ${role} ${number}.${id} run ${run}: ${r.ms===null?'TIMEOUT':r.ms+' ms'} requests=${tracker.count-before}`);
     }
+    // REVISIT: the same screens again in the same session, straight away (what switching back to a loaded tab costs).
+    for(const [id,number,name] of order){
+      const before=tracker.count;
+      const t0=Date.now();await page.getByRole('link',{name:`${number}. ${name}`}).click();
+      const r=await settle(page,tracker,number,t0);
+      revisit[role][id].push({ms:r.ms,reason:r.reason,requests:tracker.count-before,alerts:r.alerts||[]});
+      console.log(`revisit ${role} ${number}.${id} run ${run}: ${r.ms===null?'TIMEOUT':r.ms+' ms'} requests=${tracker.count-before}`);
+    }
     await context.close();
   }
 }
@@ -119,7 +127,7 @@ const median=a=>{const s=a.filter(Number.isFinite).sort((x,y)=>x-y);return s.len
 const worst=a=>{const s=a.filter(Number.isFinite);return s.length?Math.max(...s):null;};
 const sec=ms=>ms===null?'—':(ms/1000).toFixed(1)+' s';
 const lines=[];
-for(const [title,data] of [['Cold: sign-in click to settled screen (new browser each time)',cold],['Warm: menu click to settled screen (already signed in)',warm]]){
+for(const [title,data] of [['Cold: sign-in click to settled screen (new browser each time)',cold],['Warm: menu click to settled screen (already signed in)',warm],['Revisit: returning to a screen already opened in this session',revisit]]){
   lines.push(`\n### ${title}\n`,'| Screen | Leadership | Cluster Officer | Teacher |','|---|---|---|---|');
   for(const [id,number,name] of PAGES){
     const cell=role=>notApplicable(role,id)?'N/A (no access)':(()=>{const v=data[role][id];const m=median(v.map(x=>x.ms)),w=worst(v.map(x=>x.ms));const reqs=median(v.map(x=>x.requests));const bad=v.filter(x=>x.ms===null).length+v.filter(x=>(x.failed||0)>0).length;return v.length?`${sec(m)} (worst ${sec(w)}, ${reqs} req${bad?`, ${bad} problem run${bad>1?'s':''}`:''})`:'—';})();
@@ -127,7 +135,7 @@ for(const [title,data] of [['Cold: sign-in click to settled screen (new browser 
   }
 }
 // A separate table of database requests per screen (median of the runs), with the total for one visit to every screen the role can open.
-for(const [title,data] of [['Database requests per screen, cold',cold],['Database requests per screen, warm',warm]]){
+for(const [title,data] of [['Database requests per screen, cold',cold],['Database requests per screen, warm',warm],['Database requests per screen, revisit (returning to an already-loaded screen)',revisit]]){
   lines.push(`\n### ${title}\n`,'| Screen | Leadership | Cluster Officer | Teacher |','|---|---|---|---|');
   const totals={leadership:0,officer:0,teacher:0};
   for(const [id,number,name] of PAGES){
@@ -138,5 +146,5 @@ for(const [title,data] of [['Database requests per screen, cold',cold],['Databas
 }
 console.log(lines.join('\n'));
 const out=path.join(root,'perf-results');await mkdir(out,{recursive:true});
-await writeFile(path.join(out,`pages-${label}.json`),JSON.stringify({label,base:baseArg?new URL(baseArg).host:'local dist',runs,cold,warm},null,1));
+await writeFile(path.join(out,`pages-${label}.json`),JSON.stringify({label,base:baseArg?new URL(baseArg).host:'local dist',runs,cold,warm,revisit},null,1));
 await writeFile(path.join(out,`pages-${label}.md`),lines.join('\n'));

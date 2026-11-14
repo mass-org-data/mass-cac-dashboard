@@ -45,7 +45,7 @@ function Shell({backend}: {backend: LiveBackend}) {
           {state.roles.length > 1 ? (
             <label className="flex items-center gap-2 text-sm">
               <span className="font-semibold">Role</span>
-              <select className="min-h-11 rounded-md border border-line bg-white px-2" value={state.activeRole} onChange={event => controller.selectRole(event.target.value)}>
+              <select className="min-h-11 rounded-md border border-line bg-white px-2" value={state.activeRole} onChange={event => { backend.reset(); controller.selectRole(event.target.value); }}>
                 {state.roles.map(role => <option key={role}>{role}</option>)}
               </select>
             </label>

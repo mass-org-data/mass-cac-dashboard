@@ -42,8 +42,8 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   const {context,page,problems,failed}=await session('Leadership');
   await openAttendance(page);
   const table=page.getByRole('table',{name:/register/i});
-  await page.waitForFunction(()=>document.querySelectorAll('table tbody tr').length>0,null,{timeout:60000});
-  const rows=await page.locator('table tbody tr').count();
+  await table.locator('tbody tr').first().waitFor({timeout:60000});
+  const rows=await table.locator('tbody tr').count();   // the register table only: faster pages can show another table at the same time
   note('Leadership: register loads, at most 10 rows per page',rows>0&&rows<=10,`${rows} rows`);
   const firstDates=await page.locator('table tbody tr td:nth-child(3)').allTextContents().catch(()=>[]);
   note('Leadership: no Add Attendance button (read-only)',await page.getByRole('button',{name:'Add Attendance'}).count()===0);

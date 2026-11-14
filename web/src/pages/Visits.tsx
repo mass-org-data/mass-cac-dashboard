@@ -73,7 +73,7 @@ export function Visits({backend, context, role, service: injected}: {backend: Li
     let live = true;
     setData({status: 'loading'}); setLog({status: 'loading'});
     const ids = selected.map(c => c.id);
-    Promise.all([service.summary(ids, month, officer), service.officers(ids, month)])
+    Promise.all([service.summary(ids, month, officer), service.officers(ids, month, officer)])
       .then(([summary, officers]) => { if (live) setData({status: 'ready', value: {summary, officers}}); })
       .catch(error => { if (live) setData({status: 'error', message: messageOf(error)}); });
     const logCentres = writable.filter(c => ids.includes(c.id)).map(c => c.id);

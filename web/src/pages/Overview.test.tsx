@@ -136,12 +136,13 @@ describe('Overview', () => {
   });
 
   it('uses the real service with a fake rpc and never makes per-centre calls', async () => {
-    const rpc = vi.fn(async (name: string) => name === 'reviewed_attendance_series' ? [] : report);
+    const rpc = vi.fn(async (name: string) => name === 'reviewed_attendance_series' ? [] : name === 'reviewed_shift_counts' ? {Morning: 300, Evening: 502} : report);
     const backend = {rpc, readReferences: async () => refs, readCapabilities: async () => ({reviewedCharts: true, reviewedAttendanceSeries: true}), readDirectory: async () => []} as unknown as LiveBackend;
     render(<Overview backend={backend} context={context} role="Leadership" service={createOverviewService(rpc as never)} />);
     await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802'));
     await screen.findByRole('img', {name: /Students by shift/});
     expect(rpc.mock.calls.map(c => c[0])).not.toContain('programme_aggregate');
-    expect(rpc.mock.calls.filter(c => c[0] === 'reviewed_chart_metrics')).toHaveLength(3);
+    expect(rpc.mock.calls.filter(c => c[0] === 'reviewed_chart_metrics')).toHaveLength(1);
+    expect(rpc.mock.calls.filter(c => c[0] === 'reviewed_shift_counts')).toHaveLength(1);
   });
 });

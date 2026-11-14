@@ -4,8 +4,9 @@ import {DataTable, type Column} from '../components/DataTable';
 import {Button} from '../components/ui/button';
 import {Input} from '../components/ui/input';
 import {AddStudentDialog, EditStudentDialog} from '../profiles/StudentDialogs';
-import {createProfilesService, isProfileSupported, PROFILE_PAGE_SIZE, type ProfileCapabilities, type ProfilePageRequest, type ProfileSort, type ProfilesService, type StudentRow} from '../profiles/service';
+import {isProfileSupported, PROFILE_PAGE_SIZE, type ProfileCapabilities, type ProfilePageRequest, type ProfileSort, type ProfilesService, type StudentRow} from '../profiles/service';
 import {todayIst} from '../lib/dates';
+import {sharedOverview, sharedProfiles} from '../data/shared';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -32,7 +33,7 @@ function useDebounced(value: string, ms = 350) {
 }
 
 export function Profiles({backend, context, role, service: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: ProfilesService}) {
-  const service = useMemo(() => injected ?? createProfilesService(backend.rpc), [backend, injected]);
+  const service = useMemo(() => injected ?? sharedProfiles(backend), [backend, injected]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{caps: ProfileCapabilities; writes: Record<string, boolean>}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
@@ -83,7 +84,7 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service, requestKey, page.offset, page.sort, page.reverse, refreshKey, supported]);
 
-  const afterSave = useCallback(async (message: string) => { service.clear(); setRefreshKey(k => k + 1); setNotice(message); }, [service]);
+  const afterSave = useCallback(async (message: string) => { service.clear(); sharedOverview(backend).clear(); setRefreshKey(k => k + 1); setNotice(message); }, [service, backend]);
 
   const canEdit = writable.length > 0;
   const columns = useMemo<Column<StudentRow>[]>(() => [

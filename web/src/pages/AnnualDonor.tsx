@@ -4,10 +4,11 @@ import {ChartCard} from '../components/ChartCard';
 import {LineChart} from '../components/charts/LineChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
-import {createOverviewService, type OverviewService, type Report} from '../data/overview';
+import {type OverviewService, type Report} from '../data/overview';
 import {academicMonths, monthShort, todayIst} from '../lib/dates';
 import {formatCount, formatPercent} from '../lib/format';
 import {combineMonthlyAttendance} from '../../../src/live/leadership-report.js';
+import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -34,7 +35,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 }
 
 export function AnnualDonor({backend, context, role, overview: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; overview?: OverviewService}) {
-  const overview = useMemo(() => injected ?? createOverviewService(backend.rpc), [backend, injected]);
+  const overview = useMemo(() => injected ?? sharedOverview(backend), [backend, injected]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; donors: Record<string, string | null>}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
@@ -76,7 +77,11 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
     const env = {yearId: year.id, today, fromQuarter: 1, toQuarter: 2, months: all, hasSeries: false};
     // A heavy report can hit the database statement timeout while it is cold; one automatic retry (the failed call is not cached).
     const load = (month: string) => overview.report({month, centres: ids, shift: null, grade: null, gender: null}, env);
-    Promise.allSettled(months.map(month => load(month).catch(() => load(month)))).then(results => {
+    // One batched call for the whole year when the database has it; otherwise one report per month (older databases).
+    const batched = overview.monthlyByCentre ? overview.monthlyByCentre(ids, env).catch(() => null) : Promise.resolve(null);
+    batched.then(byMonth => (byMonth
+      ? months.map(month => ({status: 'fulfilled', value: byMonth[month] ?? null}) as PromiseSettledResult<Report | null>)
+      : Promise.allSettled(months.map(month => load(month).catch(() => load(month)))))).then(results => {
       if (!live) return;
       const reports = results.map(r => (r.status === 'fulfilled' ? r.value : null));
       const failed = reports.filter(r => r === null).length;

@@ -28,6 +28,13 @@ The application was built in phases (PRs #8 to #17). Claude Code was then used t
 | **Phase 3: one small function** | A batched monthly attendance function replaced seven heavy reports. Identical on 63 test cases and on real preview data. Whole page 4.7 s with 11 requests. |
 | **Phase 4: new foundation** | React interface in `web/`, built only behind a flag. Shared table, scorecard and state components; session and role controller that reuses the old app's checks. |
 | **Phase 5: all screens** | Overview, Attendance, Student profiles, Assessments, Visits, Morarji, Annual donor summary and About rebuilt one per approval. Each was tested in a real browser on the preview data and its numbers checked against a direct database count where possible (for example the annual attendance, 86.0 percent). Every database change on preview (a missed migration, activation switches, seeded visits and a Morarji cohort) was shown first and approved. |
+| **Menu** | All eight numbered items shown for every role; the ones a role cannot open are greyed out, not links, with an accessible reason (PR #18). |
+| **Request audit** | Counted requests per screen per role, found two different problems (too many small round trips; a few heavy reports) and answered the Edge Functions question in writing (not used: they do not reduce database CPU). One owner approval per phase. |
+| **Phase A (client)** | Startup reads shared per session, one shared data service per kind, five-minute in-memory cache. Moving between screens: 219/54/29 requests down to about 6/7/7. |
+| **Phase B (batched reads)** | Five new read functions replaced per-centre loops (Leadership Visits 187 requests to 4; Annual donor 12.4 s to 1.5 s). Each equals the function it replaces, checks scope once for up to 100 centres, and the app falls back if the database lacks it. |
+| **Phase C0/C1 (heavy report)** | `EXPLAIN (ANALYZE)` found a quadratic self-join and per-centre rescans; fixed, 540 results compared equal, 1.24 s to 0.18 s. Overview's two extra reports replaced by one 7 ms function. The covering index and the extra slice functions were measured and dropped. The attendance rollup (C2) was skipped by the owner. |
+| **Revisits** | The owner's HAR showed queries on returning to a loaded page; a read cache cleared by any save made that 0 requests. The security scope re-check was deliberately kept. |
+| **PR #19** | Opened against the PR #18 branch after merging that branch in and resolving the one conflict (this file's task list). |
 
 ## 4. Lessons worth copying
 1. **Measure before fixing.** The database was not slow per call; the app started about 100 requests at once and the heavy ones timed out. A single timing could not have shown that, a request waterfall did.
@@ -42,13 +49,19 @@ The application was built in phases (PRs #8 to #17). Claude Code was then used t
 10. **Keep secrets out of chat and Git.** Test passwords live in a git-ignored file; only host names, key types and status codes were printed.
 11. **Show the SQL first, dry-run, then apply.** Each preview change came with its statement and rollback, ran once as a rolled-back dry run, and only then for real. One switch (profiles) turned out to be blocked by the database on purpose, and was left alone rather than bypassed.
 12. **Be explicit about gaps.** Unbuilt pieces (for example the Teacher student summary table) are listed, not silently dropped.
+13. **Count before you design.** A requests-per-screen table per role, then a plan, found that most waste was call count, not slow SQL; the heavy SQL was a second, separate fix.
+14. **Read the query plan, not the code.** `EXPLAIN (ANALYZE)` pointed at a self-join nobody suspected; two ideas from the plan (an index, a holiday join) showed no gain when measured and were not shipped.
+15. **Measure with the owner's own tool.** The browser-tab complaint was verified by counting requests when returning to a screen, before and after.
+16. **Preview can differ from Production.** Preview's function lacked a patch Production had; the new migration carries the patch so replacing it cannot drop it. Check before replacing.
+17. **A faster page can break a test.** A check that counted every table row failed once the page rendered a second table sooner; the test was scoped, not the page.
+18. **Noisy shared hardware needs repeats.** The same call took 0.18 s or 1.3 s on the shared-CPU instance; use medians and keep the outliers as evidence.
 
 ## 5. Where things stand
-- **Done on the branch:** Overview speed fix (targets met on preview), batched monthly function (applied to preview only), and all eight screens of the new interface (activities and monthly meetings excluded by decision).
-- **Not on Production:** nothing from this work is deployed. The series migration is not on the production database; the client copes without it.
-- **Open for the owner:** create Teacher and Cluster Officer roles on real accounts when needed; decide whether activities and monthly meetings are discarded (left untouched meanwhile); decide when to open the PR (base `fix/centre-event-review`, merge #11 to #15 first); a gated production release process is proposed but not built.
-- **Next:** Phase 6 cutover (switch the default, replace the look-freezing parity tests with behaviour tests, release note), then the PR when you ask.
-- **Not measured yet:** mobile networks, several people signing in at once (the likely cause of the 30 to 60 s reports), and the Playwright attendance suites in this environment.
+- **Done on branches:** Overview speed fix, batched monthly function, all eight screens of the new interface as the default at `/` (original at `/vanilla/`), the all-eight greyed-out menu (PR #18), and the request and CPU reduction (PR #19, Phases A, B, C0, C1, revisit cache; C2 skipped).
+- **Results (Preview, real browser):** one cold pass through every screen is 34 requests for each role (was 225/61/38); moving between screens 6 to 7; returning to a loaded screen 0; Annual donor 1.2 s (was 12.4 s); the heavy report 0.18 s (was 1.24 s).
+- **Not on Production:** nothing from this work is deployed. Three new migrations (`20261114120000`, `130000`, `140000`) and the earlier series migration exist only on the Preview database; the client works without them.
+- **Open for the owner:** the gated Production release process (proposed, not built); merge order (#18, then #19; the earlier stack #11 to #15 first); create Teacher and Cluster Officer roles on real accounts; real visits data; Phase D (larger database compute) only if the CPU graph shows throttling; later tasks: Leadership editing student profiles (needs a permission decision).
+- **Not measured yet:** the deployed Vercel preview with these changes, Production data volumes, mobile networks, several people signing in at once.
 
 ## 6. How to prompt well
 1. State the **scope** ("preview only", "read-only").

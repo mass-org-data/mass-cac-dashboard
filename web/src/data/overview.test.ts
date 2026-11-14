@@ -1,13 +1,14 @@
 import {describe, expect, it, vi} from 'vitest';
 import {createOverviewService, isFutureMonth, type Environment, type Selection} from './overview';
 import type {Rpc} from '../session/backend';
+import {missingFunction} from '../test/legacy';
 
 const months = ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03'];
 const env = (overrides: Partial<Environment> = {}): Environment => ({yearId: 'y1', today: '2026-11-14', fromQuarter: 1, toQuarter: 2, months, hasSeries: true, ...overrides});
 const selection = (overrides: Partial<Selection> = {}): Selection => ({month: '2026-11', centres: ['c1', 'c2'], shift: null, grade: null, gender: null, ...overrides});
 const reportFor = (children: number, pct: number | null = 86) => ({children, grades: {}, genders: {}, attendance: {p: 1, a: 0, l: 0, excluded: 0, percentage: pct}, quarters: [], centres: []});
 
-function fakeRpc() {
+function fakeRpc(options: {shiftCounts?: boolean} = {}) {
   let running = 0, peak = 0;
   const calls: Array<{name: string; args: Record<string, unknown>}> = [];
   const rpc = vi.fn(async (name: string, args: Record<string, unknown> = {}) => {
@@ -15,6 +16,7 @@ function fakeRpc() {
     await new Promise(resolve => setTimeout(resolve, 5));
     running--;
     if (name === 'reviewed_chart_metrics') return reportFor(args.p_shift === 'Morning' ? 40 : args.p_shift === 'Evening' ? 60 : 100, args.p_from === '2026-11-01' ? 85.9 : 86);
+    if (name === 'reviewed_shift_counts') { if (options.shiftCounts === false) throw missingFunction(); return {Morning: 40, Evening: 60}; }
     if (name === 'reviewed_attendance_series') return [{month: '2026-07', percentage: '86.0'}, {month: '2026-08', percentage: null}];
     throw new Error('unexpected ' + name);
   }) as unknown as Rpc;
@@ -22,15 +24,22 @@ function fakeRpc() {
 }
 
 describe('Overview service', () => {
-  it('asks for one report, two shift reports and one series call, never per-centre calls', async () => {
+  it('asks for one report, one small shift-count call and one series call, never per-centre calls', async () => {
     const {rpc, calls} = fakeRpc();
     const service = createOverviewService(rpc);
     const [report, shifts, series] = await Promise.all([service.report(selection(), env()), service.shifts(selection(), env()), service.series(selection(), env())]);
     expect(report.children).toBe(100);
     expect(shifts).toEqual({Morning: 40, Evening: 60});
     expect(series).toEqual({'2026-07': 86, '2026-08': null});
-    expect(calls.map(c => c.name).sort()).toEqual(['reviewed_attendance_series', 'reviewed_chart_metrics', 'reviewed_chart_metrics', 'reviewed_chart_metrics']);
+    expect(calls.map(c => c.name).sort()).toEqual(['reviewed_attendance_series', 'reviewed_chart_metrics', 'reviewed_shift_counts']);
     expect(calls.some(c => c.name === 'programme_aggregate')).toBe(false);
+    expect(calls.find(c => c.name === 'reviewed_shift_counts')!.args).toEqual({p_centres: ['c1', 'c2'], p_on: '2026-11-14'});
+  });
+
+  it('falls back to one full report per shift when the shift-count function is not installed', async () => {
+    const {rpc, calls} = fakeRpc({shiftCounts: false});
+    expect(await createOverviewService(rpc).shifts(selection(), env())).toEqual({Morning: 40, Evening: 60});
+    expect(calls.filter(c => c.name === 'reviewed_chart_metrics')).toHaveLength(2);
   });
 
   it('sends the selected scope, the reporting day and the month window to the server', async () => {

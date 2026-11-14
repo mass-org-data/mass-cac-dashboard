@@ -4,11 +4,12 @@ import {ChartCard} from '../components/ChartCard';
 import {ColumnChart} from '../components/charts/ColumnChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
-import {createMorarjiService, resultOf, yesNo, type MorarjiService} from '../morarji/service';
-import {createProfilesService, type ProfilesService, type StudentRow} from '../profiles/service';
-import {createOverviewService, type MorarjiCohort, type OverviewService, type Report} from '../data/overview';
+import {resultOf, yesNo, type MorarjiService} from '../morarji/service';
+import {type ProfilesService, type StudentRow} from '../profiles/service';
+import {type MorarjiCohort, type OverviewService, type Report} from '../data/overview';
 import {academicMonths, todayIst} from '../lib/dates';
 import {formatCount} from '../lib/format';
+import {sharedMorarji, sharedOverview, sharedProfiles} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 
@@ -34,9 +35,9 @@ interface FollowUp {id: string; cohort: string; name: string | null; studentId: 
 interface CentreLine {id: string; name: string; members: number; applied: number; attended: number; passed: number}
 
 export function Morarji({backend, context, role, service: injected, profiles: injectedProfiles, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: MorarjiService; profiles?: ProfilesService; overview?: OverviewService}) {
-  const service = useMemo(() => injected ?? createMorarjiService(backend.rpc), [backend, injected]);
-  const profiles = useMemo(() => injectedProfiles ?? createProfilesService(backend.rpc), [backend, injectedProfiles]);
-  const overview = useMemo(() => injectedOverview ?? createOverviewService(backend.rpc), [backend, injectedOverview]);
+  const service = useMemo(() => injected ?? sharedMorarji(backend), [backend, injected]);
+  const profiles = useMemo(() => injectedProfiles ?? sharedProfiles(backend), [backend, injectedProfiles]);
+  const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; capabilities: Capabilities}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
@@ -78,9 +79,11 @@ export function Morarji({backend, context, role, service: injected, profiles: in
       .then(value => { if (live) setReport({status: 'ready', value}); }).catch(error => { if (live) setReport({status: 'error', message: messageOf(error)}); });
     if (!operational) { setRows({status: 'ready', value: []}); return () => { live = false; }; }
     service.memberships(ids).then(async members => {
-      const students = new Map((await profiles.students(ids, members.map(m => m.enrolment_id))).map(s => [s.enrolment, s] as [string, StudentRow]));
+      // The batched follow-up already carries the student id and name; only an older database needs the roster reads.
+      const detailed = members.every(m => m.detailed);
+      const students = new Map((detailed ? [] : await profiles.students(ids, members.map(m => m.enrolment_id))).map(s => [s.enrolment, s] as [string, StudentRow]));
       const label = new Map((refs?.programme_cohorts ?? []).map(c => [c.id, c.label]));
-      const list: FollowUp[] = members.map(m => ({id: m.membership_id, cohort: label.get(m.cohort_id) ?? '', name: students.get(m.enrolment_id)?.name ?? null, studentId: students.get(m.enrolment_id)?.studentId ?? '', centre: m.centre, applied: m.applied, attended: m.attended, result: resultOf(m), school: m.school_name}));
+      const list: FollowUp[] = members.map(m => ({id: m.membership_id, cohort: label.get(m.cohort_id) ?? '', name: detailed ? (m.full_name ?? null) : students.get(m.enrolment_id)?.name ?? null, studentId: detailed ? (m.student_id ?? '') : students.get(m.enrolment_id)?.studentId ?? '', centre: m.centre, applied: m.applied, attended: m.attended, result: resultOf(m), school: m.school_name}));
       if (live) setRows({status: 'ready', value: list});
     }).catch(error => { if (live) setRows({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
