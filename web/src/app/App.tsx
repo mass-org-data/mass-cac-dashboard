@@ -1,4 +1,5 @@
-import {useMemo} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import {Menu} from 'lucide-react';
 import {SessionProvider, useSession} from '../session/SessionProvider';
 import {createSessionController} from '../session/controller';
 import {createLiveBackend, type LiveBackend, type RuntimeConfig} from '../session/backend';
@@ -14,18 +15,30 @@ import {Morarji} from '../pages/Morarji';
 import {AnnualDonor} from '../pages/AnnualDonor';
 import {About} from '../pages/About';
 import {ROUTES, useRoute} from './route';
+import {SideMenu} from './SideMenu';
+
+const MENU_KEY = 'mass-menu-collapsed';
+// Only a convenience: the menu works the same when browser storage is blocked.
+const readCollapsed = () => { try { return window.localStorage.getItem(MENU_KEY) === '1'; } catch { return false; } };
+const writeCollapsed = (value: boolean) => { try { window.localStorage.setItem(MENU_KEY, value ? '1' : '0'); } catch { /* ignore */ } };
 
 function Shell({backend}: {backend: LiveBackend}) {
   const {state, controller} = useSession();
   const [route, go] = useRoute();
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const toggleCollapsed = useCallback(() => setCollapsed(value => { writeCollapsed(!value); return !value; }), []);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+  useEffect(() => { document.title = `${ROUTES.find(r => r.id === route)?.label ?? ''} · MASS Children’s Activity Centres`; }, [route]);
   if (state.status === 'loading') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="loading" loadingLabel="Checking your session" /></main>;
   if (state.status === 'error') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="error" errorMessage={state.message} onRetry={() => void controller.start()} /></main>;
   if (state.status === 'signed-out') return <SignIn message={state.message} onSignIn={(email, password) => controller.signIn(email, password)} />;
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-2">
         <div className="flex items-center gap-3">
-          <img src="../mass-logo.jpg" alt="MASS" className="h-10 w-auto" />
+          <button type="button" aria-label="Open menu" aria-expanded={mobileOpen} aria-controls="side-menu" onClick={() => setMobileOpen(true)} className="inline-flex size-11 items-center justify-center rounded-md border border-line md:hidden"><Menu aria-hidden="true" className="size-5" /></button>
+          <img src="./mass-logo.jpg" alt="MASS" className="h-14 w-auto sm:h-[4.5rem]" />
           <strong className="text-brand-dark">Children’s Activity Centres</strong>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -40,14 +53,10 @@ function Shell({backend}: {backend: LiveBackend}) {
           <Button variant="outline" onClick={() => void controller.signOut()}>Sign out</Button>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl space-y-6 p-4">
-        <div role="note" className="rounded-md bg-warn-soft p-4 text-sm text-warn">
-          Preview of the new interface. Activities, monthly meetings and the actions listed on each screen stay in <a className="font-semibold underline" href="../">the standard application</a>.
-        </div>
-        <nav aria-label="Primary" className="flex flex-wrap gap-2">
-          {ROUTES.map(item => <a key={item.id} href={`#/${item.id}`} aria-current={route === item.id ? 'page' : undefined} onClick={event => { event.preventDefault(); go(item.id); }} className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-semibold ${route === item.id ? 'bg-brand-dark text-white' : 'border border-line bg-white text-ink hover:bg-brand-soft'}`}>{item.number} {item.label}</a>)}
-        </nav>
-        <h1 className="text-2xl font-bold"><span className="mr-1 text-base font-bold text-brand-dark">{ROUTES.find(r => r.id === route)!.number}</span>{ROUTES.find(r => r.id === route)!.label}</h1>
+      <div className="flex flex-1">
+        <SideMenu role={state.activeRole} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} legacyHref="./vanilla/" />
+        <main className="min-w-0 max-w-7xl flex-1 space-y-6 p-4 md:p-6">
+          <h1 className="text-2xl font-bold"><span className="mr-1 text-base font-bold text-brand-dark">{ROUTES.find(r => r.id === route)!.number}</span>{ROUTES.find(r => r.id === route)!.label}</h1>
         {route === 'attendance'
           ? <Attendance backend={backend} context={state.context} role={state.activeRole} key={`a-${state.activeRole}`} />
           : route === 'profiles'
@@ -63,7 +72,8 @@ function Shell({backend}: {backend: LiveBackend}) {
           : route === 'assessments'
           ? <Assessments backend={backend} context={state.context} role={state.activeRole} key={`s-${state.activeRole}`} />
           : <Overview backend={backend} context={state.context} role={state.activeRole} key={`o-${state.activeRole}`} />}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
