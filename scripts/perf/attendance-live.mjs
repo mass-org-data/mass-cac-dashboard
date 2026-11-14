@@ -307,6 +307,43 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     await context.close();
   }
 }
+
+// Annual donor summary (Leadership only)
+{
+  {
+    const {context,page,problems,failed}=await session('Leadership');
+    const t0=Date.now();await page.goto(base+'#/donors');
+    const T=page.getByRole('table',{name:'Centre comparison'});
+    await T.locator('tbody tr').first().waitFor({timeout:180000});
+    await page.waitForFunction(()=>/across \d+ loaded months/.test(document.body.innerText),null,{timeout:180000});
+    const ms=Date.now()-t0;
+    const text=(await page.locator('main').innerText()).replace(/\s+/g,' ');
+    note('Annual donor, Leadership: loads in a reasonable time',ms<30000,`${(ms/1000).toFixed(1)} s`);
+    const pct=/7\.3Annual recorded attendance ([\d.]+)%/.exec(text)?.[1];
+    note('Annual donor, Leadership: annual attendance equals the P/(P+A+L) total in the database',pct==='86.0',`page ${pct}% vs database 86.0%`);
+    note('Annual donor, Leadership: 92 centres in the selection',/7\.1Centres in this selection 92/.test(text));
+    const rows=await T.locator('tbody tr').count();
+    note('Annual donor, Leadership: centre comparison shows ten centres per page',rows===10,`${rows} rows`);
+    const dl=page.waitForEvent('download',{timeout:15000});
+    await page.getByRole('button',{name:/Export CSV/}).click();
+    const download=await dl;const csv=await (await import('node:fs/promises')).readFile(await download.path(),'utf8');
+    note('Annual donor, Leadership: CSV has a header and one row per centre (92)',csv.trim().split('\n').length===93&&/Current donor association/.test(csv.split('\n')[0]),`${csv.trim().split('\n').length} lines`);
+    await page.addScriptTag({url:'/__axe.js'});
+    const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
+    note('Annual donor, Leadership: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
+    await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
+    note('Annual donor, Leadership: no horizontal page scroll at 375 px',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note('Annual donor, Leadership: no failed RPC calls',failed.length===0,failed.join(', '));
+    note('Annual donor, Leadership: no console errors',problems.length===0,problems.join(' | '));
+    await context.close();
+  }
+  {
+    const {context,page}=await session('Teacher');await page.goto(base+'#/donors');
+    await page.getByText(/part of Leadership reporting/).waitFor({timeout:60000});
+    note('Annual donor, Teacher: Leadership-only note, no report',await page.getByRole('table',{name:'Centre comparison'}).count()===0);
+    await context.close();
+  }
+}
 await browser.close();server.close();
 console.log(`\n${results.filter(r=>r.ok).length}/${results.length} checks passed`);
 process.exit(results.every(r=>r.ok)?0:1);
