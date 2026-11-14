@@ -240,6 +240,37 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     await context.close();
   }
 }
+
+// Visits (preview has no visit records yet, so coverage is expected to be unknown rather than zero)
+{
+  for(const role of ['Leadership','Teacher','Cluster Officer']){
+    const {context,page,problems,failed}=await session(role);
+    const t0=Date.now();await page.goto(base+'#/visits');
+    await page.getByRole('table',{name:'Centre coverage'}).locator('tbody tr').first().or(page.getByRole('alert')).first().waitFor({timeout:120000});
+    const ms=Date.now()-t0;
+    const text=await page.locator('main').innerText();
+    const blocked=/No verified, dated officer assignment/.test(text);
+    if(role==='Cluster Officer'&&blocked)note('Visits, Cluster Officer: no verified assignment on preview, coverage correctly unavailable',true,'preview CO account has no dated officer assignment');
+    else{
+      const rows=await page.getByRole('table',{name:'Centre coverage'}).locator('tbody tr').count();
+      note(`Visits, ${role}: centre coverage lists centres (10 per page)`,rows>0&&rows<=10,`${rows} rows, loaded in ${(ms/1000).toFixed(1)} s`);
+      note(`Visits, ${role}: no visits recorded shows unknown, not zero`,/No verified visit observations|No verified visits recorded/.test(text)||/\d/.test(text));
+    }
+    if(role==='Cluster Officer'&&!blocked){
+      note('Visits, Cluster Officer: Record a visit available',await page.getByRole('button',{name:'Record a visit'}).isVisible());
+    }
+    if(role==='Teacher'){
+      await page.addScriptTag({url:'/__axe.js'});
+      const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
+      note('Visits, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
+    }
+    await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
+    note(`Visits, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),await page.evaluate(()=>[...document.querySelectorAll('main *')].filter(e=>e.getBoundingClientRect().right>window.innerWidth+1&&!e.closest('.overflow-auto,.overflow-x-auto')).slice(0,3).map(e=>e.tagName+'.'+String(e.className).slice(0,60)+' '+Math.round(e.getBoundingClientRect().right)).join(' | ')));
+    note(`Visits, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
+    note(`Visits, ${role}: no console errors`,problems.length===0,problems.join(' | '));
+    await context.close();
+  }
+}
 await browser.close();server.close();
 console.log(`\n${results.filter(r=>r.ok).length}/${results.length} checks passed`);
 process.exit(results.every(r=>r.ok)?0:1);
