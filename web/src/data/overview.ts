@@ -10,7 +10,8 @@ import type {Rpc} from '../session/backend';
 export interface Selection {month: string; centres: string[]; shift: string | null; grade: string | null; gender: string | null}
 export interface Environment {yearId: string; today: string; fromQuarter: number; toQuarter: number; months: string[]; hasSeries: boolean}
 
-export interface QuarterStat {quarter: number; n: number; mean: number | null; above20?: number}
+export interface QuarterStat {quarter: number; n: number; mean: number | null; above20?: number; low?: number; developing?: number; good?: number; strong?: number; precision_review?: number}
+export interface RoundChange {n: number; meanChange: number | null; earlierMean: number | null; laterMean: number | null; improved: number; unchanged: number; declined: number; ambiguous?: number}
 export interface CentreStat {id: string; children: number; attendance: {p: number; a: number; l: number; excluded: number; percentage: number | null}; quarters: QuarterStat[]}
 export interface Report {
   children: number;
@@ -18,6 +19,7 @@ export interface Report {
   genders: Record<string, number>;
   attendance: {p: number; a: number; l: number; excluded: number; percentage: number | null};
   quarters: QuarterStat[];
+  changes?: RoundChange | null;
   centres: CentreStat[];
 }
 export type Series = Record<string, number | null>;

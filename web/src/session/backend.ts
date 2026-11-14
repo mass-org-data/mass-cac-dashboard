@@ -13,7 +13,7 @@ export type Rpc = <T = unknown>(name: string, args?: Record<string, unknown>, si
 export interface References {
   academic_years: Array<{id: string; starts_on: string; ends_before: string}>;
   assessment_periods: Array<{id: string; academic_year_id: string; quarter: number}>;
-  assessment_definitions: Array<{id: string; period_id: string}>;
+  assessment_definitions: Array<{id: string; period_id: string; max_score?: number | string}>;
 }
 
 export interface Capabilities {reviewedCharts: boolean; reviewedAttendanceSeries: boolean; /** Operational write gates from the server's activation control; anything missing means off. */ writes?: Record<string, boolean>}
