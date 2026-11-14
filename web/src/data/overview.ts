@@ -11,6 +11,8 @@ export interface Selection {month: string; centres: string[]; shift: string | nu
 export interface Environment {yearId: string; today: string; fromQuarter: number; toQuarter: number; months: string[]; hasSeries: boolean}
 
 export interface QuarterStat {quarter: number; n: number; mean: number | null; above20?: number; low?: number; developing?: number; good?: number; strong?: number; precision_review?: number}
+export interface MorarjiCohort {cohort: string; cohortId: string; academicYear: string | null; members: number; passed: number | null; knownPassed: number; applied: number | null; attended: number | null}
+export interface MorarjiYear {academicYear: string; members: number; passed: number | null; knownPassed: number}
 export interface RoundChange {n: number; meanChange: number | null; earlierMean: number | null; laterMean: number | null; improved: number; unchanged: number; declined: number; ambiguous?: number}
 export interface CentreStat {id: string; children: number; attendance: {p: number; a: number; l: number; excluded: number; percentage: number | null}; quarters: QuarterStat[]}
 export interface Report {
@@ -20,6 +22,8 @@ export interface Report {
   attendance: {p: number; a: number; l: number; excluded: number; percentage: number | null};
   quarters: QuarterStat[];
   changes?: RoundChange | null;
+  morarji?: MorarjiCohort[];
+  morarjiYears?: MorarjiYear[];
   centres: CentreStat[];
 }
 export type Series = Record<string, number | null>;

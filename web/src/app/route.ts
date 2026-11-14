@@ -1,12 +1,13 @@
 import {useEffect, useState} from 'react';
 
-export type Route = 'overview' | 'attendance' | 'profiles' | 'assessments' | 'visits';
+export type Route = 'overview' | 'attendance' | 'profiles' | 'assessments' | 'visits' | 'morarji';
 export const ROUTES: Array<{id: Route; number: number; label: string}> = [
   {id: 'overview', number: 1, label: 'Overview'},
   {id: 'attendance', number: 2, label: 'Attendance'},
   {id: 'profiles', number: 3, label: 'Student profiles'},
   {id: 'assessments', number: 4, label: 'Assessments'},
   {id: 'visits', number: 5, label: 'Visits'},
+  {id: 'morarji', number: 6, label: 'Morarji scholarship'},
 ];
 
 const parse = (hash: string): Route => ROUTES.find(r => r.id === hash.replace(/^#\/?/, ''))?.id ?? 'overview';

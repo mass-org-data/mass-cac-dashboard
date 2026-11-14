@@ -14,6 +14,7 @@ export interface References {
   academic_years: Array<{id: string; starts_on: string; ends_before: string}>;
   assessment_periods: Array<{id: string; academic_year_id: string; quarter: number}>;
   assessment_definitions: Array<{id: string; period_id: string; max_score?: number | string}>;
+  programme_cohorts?: Array<{id: string; label: string; academic_year_id: string}>;
 }
 
 export interface Capabilities {reviewedCharts: boolean; reviewedAttendanceSeries: boolean; /** Operational write gates from the server's activation control; anything missing means off. */ writes?: Record<string, boolean>}
