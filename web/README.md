@@ -1,10 +1,10 @@
 # New interface (web/)
 
-Vite, React, TypeScript, Tailwind CSS (v4), shadcn/ui-style primitives and TanStack Table (v8). It is built **only when `MASS_NEXT_UI=1`** and is served at `/next/` beside the current application, which stays the default. Production builds do not contain it.
+Vite, React, TypeScript, Tailwind CSS (v4), shadcn/ui-style primitives and TanStack Table (v8). It is the **default interface at `/`**. The original vanilla-JS interface is kept unchanged at `/vanilla/`; `npm run build` builds both.
 
 ```bash
 npm run web:dev        # Vite dev server (needs MASS_SUPABASE_URL / MASS_SUPABASE_PUBLISHABLE_KEY for the preview project)
-npm run web:build      # full build with the flag on, output in dist/next/
+npm run web:build      # same as npm run build: React at dist/, original at dist/vanilla/
 npm run web:typecheck  # tsc, strict
 npm run test:web       # Vitest + Testing Library + axe-core
 ```
