@@ -74,7 +74,9 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
     const ids = selected.map(c => c.id);
     if (!ids.length) { setData({status: 'error', message: 'No centres are in this selection.'}); return; }
     const env = {yearId: year.id, today, fromQuarter: 1, toQuarter: 2, months: all, hasSeries: false};
-    Promise.allSettled(months.map(month => overview.report({month, centres: ids, shift: null, grade: null, gender: null}, env))).then(results => {
+    // A heavy report can hit the database statement timeout while it is cold; one automatic retry (the failed call is not cached).
+    const load = (month: string) => overview.report({month, centres: ids, shift: null, grade: null, gender: null}, env);
+    Promise.allSettled(months.map(month => load(month).catch(() => load(month)))).then(results => {
       if (!live) return;
       const reports = results.map(r => (r.status === 'fulfilled' ? r.value : null));
       const failed = reports.filter(r => r === null).length;

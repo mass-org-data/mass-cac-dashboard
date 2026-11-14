@@ -15,8 +15,10 @@ const att = (p: number, a: number, l = 0) => ({p, a, l, excluded: 0, percentage:
 const month = (n: number): Report => ({children: 30, grades: {}, genders: {}, attendance: att(100 * n, 10 * n), quarters: [], centres: [{id: 'c1', children: 18, attendance: att(60 * n, 5 * n), quarters: []}, {id: 'c2', children: 12, attendance: att(40 * n, 5 * n), quarters: []}]});
 const byMonth: Record<string, Report> = {'2026-04': month(1), '2026-05': month(2), '2026-06': month(3), '2026-07': month(4), '2026-08': month(5), '2026-09': month(6)};
 
-function setup(options: {role?: string; failMonth?: string; failAll?: boolean} = {}) {
+function setup(options: {role?: string; failMonth?: string; failAll?: boolean; failOnce?: string} = {}) {
+  const seen = new Set<string>();
   const report = vi.fn(async (selection: Selection) => {
+    if (options.failOnce === selection.month && !seen.has(selection.month)) { seen.add(selection.month); throw new Error('statement timeout'); }
     if (options.failAll || selection.month === options.failMonth) throw new Error('statement timeout');
     return byMonth[selection.month]!;
   });
@@ -58,6 +60,13 @@ describe('Annual donor summary', () => {
     await comparison();
     expect(await screen.findByText(/1 of 6 monthly reports could not be loaded/)).toBeInTheDocument();
     expect(screen.getByText(/across 5 loaded months/)).toBeInTheDocument();
+  });
+  it('retries a month once on a transient failure, so no month is lost', async () => {
+    const {report} = setup({failOnce: '2026-07'});
+    await comparison();
+    await screen.findByText(/across 6 loaded months/);
+    expect(screen.queryByText(/monthly reports could not be loaded/)).not.toBeInTheDocument();
+    expect(report.mock.calls.filter(c => c[0].month === '2026-07')).toHaveLength(2);
   });
   it('shows an error with retry when every month fails', async () => {
     setup({failAll: true});
