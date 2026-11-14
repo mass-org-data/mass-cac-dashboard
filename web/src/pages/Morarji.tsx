@@ -79,9 +79,11 @@ export function Morarji({backend, context, role, service: injected, profiles: in
       .then(value => { if (live) setReport({status: 'ready', value}); }).catch(error => { if (live) setReport({status: 'error', message: messageOf(error)}); });
     if (!operational) { setRows({status: 'ready', value: []}); return () => { live = false; }; }
     service.memberships(ids).then(async members => {
-      const students = new Map((await profiles.students(ids, members.map(m => m.enrolment_id))).map(s => [s.enrolment, s] as [string, StudentRow]));
+      // The batched follow-up already carries the student id and name; only an older database needs the roster reads.
+      const detailed = members.every(m => m.detailed);
+      const students = new Map((detailed ? [] : await profiles.students(ids, members.map(m => m.enrolment_id))).map(s => [s.enrolment, s] as [string, StudentRow]));
       const label = new Map((refs?.programme_cohorts ?? []).map(c => [c.id, c.label]));
-      const list: FollowUp[] = members.map(m => ({id: m.membership_id, cohort: label.get(m.cohort_id) ?? '', name: students.get(m.enrolment_id)?.name ?? null, studentId: students.get(m.enrolment_id)?.studentId ?? '', centre: m.centre, applied: m.applied, attended: m.attended, result: resultOf(m), school: m.school_name}));
+      const list: FollowUp[] = members.map(m => ({id: m.membership_id, cohort: label.get(m.cohort_id) ?? '', name: detailed ? (m.full_name ?? null) : students.get(m.enrolment_id)?.name ?? null, studentId: detailed ? (m.student_id ?? '') : students.get(m.enrolment_id)?.studentId ?? '', centre: m.centre, applied: m.applied, attended: m.attended, result: resultOf(m), school: m.school_name}));
       if (live) setRows({status: 'ready', value: list});
     }).catch(error => { if (live) setRows({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };

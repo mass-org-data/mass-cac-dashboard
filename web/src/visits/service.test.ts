@@ -1,5 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import {createVisitsService, monthWindow} from './service';
+import {legacy} from '../test/legacy';
 
 const direct = (job: () => Promise<unknown>) => job();
 describe('visits service', () => {
@@ -8,20 +9,46 @@ describe('visits service', () => {
     expect(monthWindow('2026-12')).toEqual({from: '2026-12-01', until: '2027-01-01'});
   });
   it('reads the summary per centre with the officer filter and joins the rows', async () => {
-    const rpc = vi.fn(async (_n: string, args: {p_centre: string}) => [{centre_id: args.p_centre, morning: 2, evening: 1, target_morning: 2, target_evening: 2, achieved: false, recorded_count: 3}]);
+    const rpc = legacy(async (_n: string, args: {p_centre: string}) => [{centre_id: args.p_centre, morning: 2, evening: 1, target_morning: 2, target_evening: 2, achieved: false, recorded_count: 3}]);
     const rows = await createVisitsService(rpc as never, direct).summary(['c1', 'c2'], '2026-11', 'o1');
     expect(rows.map(r => r.centre_id)).toEqual(['c1', 'c2']);
     expect(rpc).toHaveBeenCalledWith('visit_summary', {p_centre: 'c1', p_from: '2026-11-01', p_until: '2026-12-01', p_officer: 'o1'});
   });
   it('tags officer rows with their centre', async () => {
-    const rpc = vi.fn(async () => [{officer_id: 'o1', label: 'Meera', morning: 1, evening: 1, recorded_count: 2}]);
+    const rpc = legacy(async () => [{officer_id: 'o1', label: 'Meera', morning: 1, evening: 1, recorded_count: 2}]);
     expect((await createVisitsService(rpc as never, direct).officers(['c1'], '2026-11'))[0]).toEqual(expect.objectContaining({centre_id: 'c1', label: 'Meera'}));
   });
   it('pages the visit log until a short page', async () => {
-    const rpc = vi.fn(async (_n: string, args: {p_offset: number}) => args.p_offset === 0 ? Array.from({length: 100}, (_, i) => ({id: `v${i}`})) : [{id: 'last'}]);
+    const rpc = legacy(async (_n: string, args: {p_offset: number}) => args.p_offset === 0 ? Array.from({length: 100}, (_, i) => ({id: `v${i}`})) : [{id: 'last'}]);
     const rows = await createVisitsService(rpc as never, direct).log(['c1'], '2026-11');
     expect(rows).toHaveLength(101);
-    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc.mock.calls.filter(c => c[0] === 'read_visits').length).toBe(2);
+  });
+  it('uses one batched call for the summary and the officer rows of many centres', async () => {
+    const rpc = vi.fn(async (_n: string, _a: unknown) => ({summary: [{centre_id: 'c1', morning: 1}, {centre_id: 'c2', morning: 2}], officers: [{centre_id: 'c1', officer_id: 'o1', label: 'Meera'}]}));
+    const service = createVisitsService(rpc as never, direct);
+    const [summary, officers] = await Promise.all([service.summary(['c1', 'c2'], '2026-11', 'o1'), service.officers(['c1', 'c2'], '2026-11', 'o1')]);
+    expect(summary).toHaveLength(2); expect(officers).toHaveLength(1);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('visit_coverage', {p_centres: ['c1', 'c2'], p_from: '2026-11-01', p_until: '2026-12-01', p_officer: 'o1'});
+  });
+  it('splits more than 100 centres into batches of 100', async () => {
+    const rpc = vi.fn(async () => ({summary: [], officers: []}));
+    await createVisitsService(rpc as never, direct).summary(Array.from({length: 250}, (_, i) => `c${i}`), '2026-11', null);
+    expect(rpc).toHaveBeenCalledTimes(3);
+  });
+  it('falls back to the per-centre functions when the batched ones are not installed, and remembers that', async () => {
+    const rpc = legacy(async (_n: string, args: {p_centre: string}) => [{centre_id: args.p_centre, morning: 0}]);
+    const service = createVisitsService(rpc as never, direct);
+    expect(await service.summary(['c1', 'c2'], '2026-11', null)).toHaveLength(2);
+    await service.summary(['c1'], '2026-11', null);
+    expect(rpc.mock.calls.filter(c => c[0] === 'visit_coverage')).toHaveLength(1);
+  });
+  it('reads the visit log of many centres in one batched call, in date order', async () => {
+    const rpc = vi.fn(async () => [{id: 'b', visit_date: '2026-11-03'}, {id: 'a', visit_date: '2026-11-02'}]);
+    const rows = await createVisitsService(rpc as never, direct).log(['c1', 'c2'], '2026-11');
+    expect(rows.map(r => r.id)).toEqual(['a', 'b']);
+    expect(rpc).toHaveBeenCalledWith('read_visits_v2', {p_centres: ['c1', 'c2'], p_from: '2026-11-01', p_until: '2026-12-01', p_limit: 500, p_offset: 0});
   });
   it('records a new visit with expected version 0 and no correction reason', async () => {
     const rpc = vi.fn(async () => 1);

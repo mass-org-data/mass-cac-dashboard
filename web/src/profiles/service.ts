@@ -5,19 +5,20 @@
 // correct_profile. The server enforces scope, versions, activation gates and audit; nothing here weakens them.
 import {createLimiter} from '../../../src/live/limiter.js';
 import {CACHE_TTL_MS, memoise, type Rpc} from '../session/backend';
+import {isMissingFunction} from '../lib/batched';
 
 export interface ProfileCapabilities {version: number; profile_pages?: boolean; profile_sort_v2?: boolean; academic_history?: boolean}
 export type ProfileSort = 'name' | 'id' | 'centre' | 'grade' | 'gender' | 'shift' | 'newest';
 export interface ProfileFilters {centres: string[]; query: string; idQuery: string; grade: string | null; shift: string | null; gender: string | null}
 export interface ProfilePageRequest {offset: number; sort: ProfileSort; reverse: boolean}
-export interface ProfileIds {ids: string[]; total: number}
+export interface ProfileIds {ids: string[]; total: number; rows?: ReadStudent[]}
 
 export interface StudentRow {
   enrolment: string; child: string; studentId: string; name: string | null; centre: string; grade: string; shift: string;
   gender: string | null; enrolled: string; status: string; board: boolean | null; version: number;
 }
-interface ReadStudent {
-  child_id: string; student_id: string; enrolment_id: string; grade_label: string; shift_code: string; starts_on: string;
+export interface ReadStudent {
+  centre_id?: string; child_id: string; student_id: string; enrolment_id: string; grade_label: string; shift_code: string; starts_on: string;
   status_code: string; row_version: number; full_name: string | null; gender_code: string | null; class10_board_passed: boolean | null;
 }
 export interface AcademicYear {academic_year_id: string; enrolment_id: string; label: string; grade: string; status: string | null; version: number; editable: boolean}
@@ -41,6 +42,10 @@ export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unkno
     }
     throw new Error('This centre contains too many records.');
   }
+  // Rows delivered with a page by student_profile_page_v3: the page's details need no roster read.
+  const onPage = new Map<string, StudentRow>();
+  let v3 = true;
+  const toRow = (s: ReadStudent, centre: string): StudentRow => ({enrolment: s.enrolment_id, child: s.child_id, studentId: s.student_id, name: s.full_name, centre, grade: s.grade_label, shift: s.shift_code, gender: s.gender_code, enrolled: s.starts_on, status: s.status_code, board: s.class10_board_passed, version: s.row_version});
   return {
     async capabilities(): Promise<ProfileCapabilities> {
       try { return await rpc<ProfileCapabilities>('get_attendance_register_capabilities'); }
@@ -52,19 +57,30 @@ export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unkno
     },
     async page(filters: ProfileFilters, page: ProfilePageRequest, on: string): Promise<ProfileIds> {
       if (!filters.centres.length) return {ids: [], total: 0};
-      return rpc<ProfileIds>('student_profile_page_v2', {
+      const args = {
         p_centres: filters.centres, p_on: on, p_query: filters.query, p_id_query: filters.idQuery, p_sort: page.sort, p_reverse: page.reverse,
         p_grade: filters.grade, p_shift: filters.shift, p_gender: filters.gender, p_offset: page.offset, p_limit: PROFILE_PAGE_SIZE,
-      });
+      };
+      if (v3) {
+        try {
+          const result = await rpc<ProfileIds>('student_profile_page_v3', args);
+          onPage.clear();
+          for (const s of result.rows ?? []) if (s.centre_id) onPage.set(s.enrolment_id, toRow(s, s.centre_id));
+          return {ids: result.ids, total: result.total};
+        } catch (error) { if (!isMissingFunction(error)) throw error; v3 = false; }
+      }
+      return rpc<ProfileIds>('student_profile_page_v2', args);
     },
     /** Details for the ids on one page. Each centre is read once and kept until `clear()`. */
     async students(centres: string[], ids: string[]): Promise<StudentRow[]> {
+      const delivered = ids.map(id => onPage.get(id));
+      if (ids.length && delivered.every(Boolean)) return delivered as StudentRow[];
       const maps = await Promise.all(centres.map(centre => {
         return memoise(cache, centre, () => limit(() => readCentre(centre)) as Promise<Map<string, StudentRow>>, now, CACHE_TTL_MS);
       }));
       return ids.map(id => maps.map(map => map.get(id)).find(Boolean)).filter((row): row is StudentRow => Boolean(row));
     },
-    clear() { cache.clear(); },
+    clear() { cache.clear(); onPage.clear(); },
     history: (child: string) => rpc<AcademicYear[]>('student_academic_history', {p_child: child}),
     revision: (child: string) => rpc<number>('read_profile_revision', {p_child: child}),
     register: (s: NewStudent) => rpc<unknown>('register_student_once', {p_request: s.request, p_centre: s.centre, p_grade: s.grade, p_shift: s.shift, p_start: s.start, p_name: s.name.trim(), p_gender: s.gender}),

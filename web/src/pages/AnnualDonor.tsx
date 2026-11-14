@@ -77,7 +77,11 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
     const env = {yearId: year.id, today, fromQuarter: 1, toQuarter: 2, months: all, hasSeries: false};
     // A heavy report can hit the database statement timeout while it is cold; one automatic retry (the failed call is not cached).
     const load = (month: string) => overview.report({month, centres: ids, shift: null, grade: null, gender: null}, env);
-    Promise.allSettled(months.map(month => load(month).catch(() => load(month)))).then(results => {
+    // One batched call for the whole year when the database has it; otherwise one report per month (older databases).
+    const batched = overview.monthlyByCentre ? overview.monthlyByCentre(ids, env).catch(() => null) : Promise.resolve(null);
+    batched.then(byMonth => (byMonth
+      ? months.map(month => ({status: 'fulfilled', value: byMonth[month] ?? null}) as PromiseSettledResult<Report | null>)
+      : Promise.allSettled(months.map(month => load(month).catch(() => load(month)))))).then(results => {
       if (!live) return;
       const reports = results.map(r => (r.status === 'fulfilled' ? r.value : null));
       const failed = reports.filter(r => r === null).length;
