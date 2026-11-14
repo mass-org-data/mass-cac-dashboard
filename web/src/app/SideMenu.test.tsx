@@ -2,7 +2,7 @@ import {render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {useState} from 'react';
 import {describe, expect, it, vi} from 'vitest';
-import {itemsFor, SideMenu} from './SideMenu';
+import {itemsFor, SideMenu, unavailableReason} from './SideMenu';
 import type {Route} from './route';
 import {violations} from '../test/axe';
 
@@ -23,15 +23,30 @@ describe('side menu', () => {
   it('shows the numbered screens in the original menu style, with the active one marked', () => {
     render(<Harness role="Cluster Officer" initial="attendance" />);
     expect(screen.getByText('Programme')).toBeInTheDocument();
-    expect(labels().slice(0, 4)).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments']);
+    expect(labels().slice(0, 5)).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments', '5. Visits']);
     expect(screen.getByRole('link', {name: '2. Attendance'})).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', {name: '1. Overview'})).not.toHaveAttribute('aria-current');
   });
-  it('gives each role only its own screens and keeps the numbers fixed', () => {
-    expect(itemsFor('Leadership').map(i => i.number)).toEqual([1, 2, 4, 5, 6, 7, 8]);
-    expect(itemsFor('Teacher').map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, 8]);
-    expect(itemsFor('Cluster Officer').map(i => i.id)).not.toContain('donors');
-    expect(itemsFor('Leadership').map(i => i.id)).not.toContain('profiles');
+  it('lists all eight numbered screens for every role', () => {
+    for (const role of ['Leadership', 'Teacher', 'Cluster Officer']) expect(itemsFor(role).map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+  it('greys out the screens a role cannot open, with the reason, and does not make them links', () => {
+    expect(unavailableReason('Leadership', 'profiles')).toBeTruthy();
+    expect(unavailableReason('Teacher', 'donors')).toBeTruthy();
+    expect(unavailableReason('Cluster Officer', 'donors')).toBeTruthy();
+    expect(unavailableReason('Teacher', 'visits')).toBeTruthy();
+    expect(unavailableReason('Cluster Officer', 'visits')).toBeNull();
+    expect(unavailableReason('Leadership', 'visits')).toBeNull();
+    const view = render(<Harness role="Teacher" />);
+    expect(labels()).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments', '6. Morarji scholarship', '8. About', 'Activities and monthly meetings (standard application)']);
+    const nav = within(screen.getByRole('navigation', {name: 'Primary'}));
+    expect(nav.getByText('7. Annual donor summary').closest('[aria-disabled="true"]')).not.toBeNull();
+    expect(nav.getByText('5. Visits').closest('[aria-disabled="true"]')).not.toBeNull();
+    expect(nav.getByText(/unavailable: Leadership reporting only/)).toBeInTheDocument();
+    view.unmount();
+    render(<Harness role="Leadership" />);
+    expect(screen.getByText('3. Student profiles').closest('[aria-disabled="true"]')).not.toBeNull();
+    expect(labels()).not.toContain('3. Student profiles');
   });
   it('navigates without leaving the page and reports the screen', async () => {
     const user = userEvent.setup();
@@ -73,7 +88,7 @@ describe('side menu', () => {
     await user.click(screen.getByRole('button', {name: 'Close menu'}));
     expect(screen.getByRole('complementary', {name: 'Menu'})).toHaveAttribute('data-open', 'false');
     await user.click(screen.getByRole('button', {name: 'open'}));
-    await user.click(screen.getByRole('link', {name: '5. Visits'}));
+    await user.click(screen.getByRole('link', {name: '4. Assessments'}));
     expect(screen.getByRole('complementary', {name: 'Menu'})).toHaveAttribute('data-open', 'false');
   });
   it('has no automatic accessibility violations, expanded or collapsed', async () => {

@@ -158,6 +158,9 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     await page.getByLabel('Student ID').fill(idText);await page.waitForTimeout(3500);
     const found=await T.locator('tbody tr').count();
     note(`Profiles, ${role}: searching by a student ID narrows to that student`,found===1,`${found} rows`);
+    const greyed=(await page.getByRole('navigation',{name:'Primary'}).locator('[aria-disabled="true"]').allInnerTexts()).map(t=>t.replace(/\s*\(unavailable:.*$/s,'').trim());
+    const wantedGreyed={Leadership:['3. Student profiles'],Teacher:['5. Visits','7. Annual donor summary'],'Cluster Officer':['7. Annual donor summary']}[role];
+    note(`Navigation, ${role}: unavailable screens stay in the menu, greyed out and not links`,JSON.stringify(greyed)===JSON.stringify(wantedGreyed),greyed.join(' | '));
     if(role==='Teacher'){
       await page.addScriptTag({url:'/__axe.js'});
       const axeList=async()=>page.evaluate(async()=>(await window.axe.run(document)).violations.map(v=>v.id+': '+v.nodes.length));
@@ -356,7 +359,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     const expectedCentres={Leadership:92,Teacher:1,'Cluster Officer':9}[role];
     note(`About, ${role}: shows the verified role with its centre count`,new RegExp(role+' \\(active\\): '+expectedCentres+' centre').test(text),text.match(/Verified roles[^]*?(?=Reporting rules)/)?.[0]?.slice(0,160)??'');
     const nav=(await page.getByRole('navigation',{name:'Primary'}).getByRole('link').allInnerTexts()).map(t=>t.trim());
-    const wanted={Leadership:['1. Overview','2. Attendance','4. Assessments','5. Visits','6. Morarji scholarship','7. Annual donor summary','8. About'],Teacher:['1. Overview','2. Attendance','3. Student profiles','4. Assessments','5. Visits','6. Morarji scholarship','8. About'],'Cluster Officer':['1. Overview','2. Attendance','3. Student profiles','4. Assessments','5. Visits','6. Morarji scholarship','8. About']}[role];
+    const wanted={Leadership:['1. Overview','2. Attendance','4. Assessments','5. Visits','6. Morarji scholarship','7. Annual donor summary','8. About'],Teacher:['1. Overview','2. Attendance','3. Student profiles','4. Assessments','6. Morarji scholarship','8. About'],'Cluster Officer':['1. Overview','2. Attendance','3. Student profiles','4. Assessments','5. Visits','6. Morarji scholarship','8. About']}[role];
     note(`Navigation, ${role}: the side menu lists this role's screens with the original numbering`,JSON.stringify(nav.slice(0,wanted.length))===JSON.stringify(wanted)&&/Activities and monthly meetings/.test(nav.at(-1)),nav.join(' | '));
     if(role==='Teacher'){
       await page.addScriptTag({url:'/__axe.js'});

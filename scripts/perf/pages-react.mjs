@@ -22,8 +22,8 @@ if(shareEnv&&!share)throw new Error('The share-link variable is empty.');
 const env={};for(const line of (await readFile(path.join(root,'.env.preview-test-account'),'utf8')).split('\n')){const m=/^([A-Z_]+)=(.*)$/.exec(line);if(m)env[m[1]]=m[2];}
 const ROLES={leadership:['PREVIEW_TEST_EMAIL','PREVIEW_TEST_PASSWORD','Leadership'],teacher:['PREVIEW_TEACHER_EMAIL','PREVIEW_TEACHER_PASSWORD','Teacher'],officer:['PREVIEW_OFFICER_EMAIL','PREVIEW_OFFICER_PASSWORD','Cluster Officer']};
 const PAGES=[['overview',1,'Overview'],['attendance',2,'Attendance'],['profiles',3,'Student profiles'],['assessments',4,'Assessments'],['visits',5,'Visits'],['morarji',6,'Morarji scholarship'],['donors',7,'Annual donor summary'],['about',8,'About']];
-// The same rule as the side menu: Leadership has no Student profiles (private records); only Leadership has the Annual donor summary.
-const notApplicable=(role,id)=>(role==='leadership'&&id==='profiles')||(role!=='leadership'&&id==='donors');
+// The same rule as the side menu (greyed out there): Leadership cannot open Student profiles (private records); only Leadership has the Annual donor summary; Teachers cannot open Visits.
+const notApplicable=(role,id)=>(role==='leadership'&&id==='profiles')||(role!=='leadership'&&id==='donors')||(role==='teacher'&&id==='visits');
 
 async function serveDist(){
   const vercel=JSON.parse(await readFile(path.join(root,'vercel.json'),'utf8'));

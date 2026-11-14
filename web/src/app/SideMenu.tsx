@@ -5,9 +5,15 @@ import {ROUTES, type Route} from './route';
 
 const ICONS: Record<Route, LucideIcon> = {overview: Home, attendance: CalendarDays, profiles: Users, assessments: BookOpen, visits: MapPin, morarji: BarChart3, donors: Heart, about: Info};
 
-/** Which screens a role sees. Student profiles are private records, so Leadership (aggregate only) does not get that entry;
- *  the annual donor summary is Leadership reporting. Numbers stay fixed so a screen keeps the same number for everyone. */
-export const itemsFor = (role: string) => ROUTES.filter(item => (item.id !== 'profiles' || role !== 'Leadership') && (item.id !== 'donors' || role === 'Leadership'));
+/** Every role sees all eight numbered screens so a number always means the same screen. A screen the role cannot use is
+ *  shown greyed out and cannot be opened; `unavailableReason` says why (null means the role can open it). */
+export const unavailableReason = (role: string, id: Route): string | null => {
+  if (id === 'profiles' && role === 'Leadership') return 'Not available to Leadership: student records are private and Leadership sees aggregates only';
+  if (id === 'donors' && role !== 'Leadership') return 'Leadership reporting only';
+  if (id === 'visits' && role === 'Teacher') return 'Not available to Teachers: visits are recorded by Cluster Officers';
+  return null;
+};
+export const itemsFor = (_role: string) => ROUTES;
 
 interface Props {
   role: string;
@@ -43,12 +49,23 @@ export function SideMenu({role, route, onNavigate, collapsed, onToggleCollapsed,
         <p className={cn('mb-3 px-3 text-xs font-bold uppercase tracking-[0.2em] text-muted', collapsed && 'md:sr-only')}>Programme</p>
         <nav aria-label="Primary" className="min-h-0 flex-1 overflow-y-auto">
           <ul className="space-y-1">
-            {itemsFor(role).map((item, index) => {
+            {itemsFor(role).map(item => {
               const Icon = ICONS[item.id];
               const active = route === item.id;
+              const reason = unavailableReason(role, item.id);
+              if (reason) return (
+                <li key={item.id}>
+                  <span aria-disabled="true" title={`${item.number}. ${item.label} - ${reason}`}
+                    className={cn('flex min-h-11 cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-base font-semibold text-muted/50', collapsed && 'md:justify-center md:px-0')}>
+                    <Icon aria-hidden="true" className="size-5 shrink-0" />
+                    {label(`${item.number}. ${item.label}`)}
+                    <span className="sr-only">(unavailable: {reason})</span>
+                  </span>
+                </li>
+              );
               return (
                 <li key={item.id}>
-                  <a ref={index === 0 ? first : undefined} href={`#/${item.id}`} aria-current={active ? 'page' : undefined} title={collapsed ? `${item.number}. ${item.label}` : undefined}
+                  <a ref={item.id === 'overview' ? first : undefined} href={`#/${item.id}`} aria-current={active ? 'page' : undefined} title={collapsed ? `${item.number}. ${item.label}` : undefined}
                     onClick={event => { event.preventDefault(); onNavigate(item.id); onCloseMobile(); }}
                     className={cn('flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-base font-semibold', collapsed && 'md:justify-center md:px-0', active ? 'bg-brand-soft text-brand-dark' : 'text-muted hover:bg-brand-soft hover:text-ink')}>
                     <Icon aria-hidden="true" className="size-5 shrink-0" />
