@@ -272,6 +272,30 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     await context.close();
   }
 }
+
+// Morarji (preview has no cohorts, so the empty state is what must show: nothing inferred, nothing zero)
+{
+  for(const role of ['Leadership','Teacher','Cluster Officer']){
+    const {context,page,problems,failed}=await session(role);
+    await page.goto(base+'#/morarji');
+    await page.getByText(/Verified cohort outcomes have not been imported/).or(page.getByRole('alert')).first().waitFor({timeout:90000});
+    await page.waitForTimeout(2500);
+    const text=await page.locator('main').innerText();
+    note(`Morarji, ${role}: no cohorts on preview shows the not-imported note`,/Verified cohort outcomes have not been imported/.test(text));
+    note(`Morarji, ${role}: scorecards say no verified cohort, not zero`,/No verified cohort recorded|Not recorded/.test(text)&&!/Unavailable\s*0/.test(text));
+    note(`Morarji, ${role}: no editing controls on this screen`,await page.getByRole('button',{name:/Add to training cohort|Update/}).count()===0);
+    if(role==='Teacher'){
+      await page.addScriptTag({url:'/__axe.js'});
+      const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
+      note('Morarji, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
+    }
+    await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
+    note(`Morarji, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`Morarji, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
+    note(`Morarji, ${role}: no console errors`,problems.length===0,problems.join(' | '));
+    await context.close();
+  }
+}
 await browser.close();server.close();
 console.log(`\n${results.filter(r=>r.ok).length}/${results.length} checks passed`);
 process.exit(results.every(r=>r.ok)?0:1);
