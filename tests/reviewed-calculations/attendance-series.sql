@@ -74,3 +74,25 @@ SELECT core_test.expect_error($q$SELECT mass_api.reviewed_attendance_by_centre_m
 SELECT core_test.expect_error($q$SELECT mass_api.reviewed_attendance_by_centre_month(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'20000000-0000-4000-8000-000000000001','2026-10-31','11')$q$,'22023','by-centre-month rejects an unapproved grade');
 SELECT core_test.assert_true(NOT mass_api.reviewed_attendance_by_centre_month(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'20000000-0000-4000-8000-000000000001','2026-10-31')::text LIKE '%Synthetic%','by-centre-month exposes no names or profile text');
 RESET ROLE;
+-- Shift counts equal the children of the Morning and Evening reviewed reports (no grade or gender filter), on several reporting days.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001"}',false);
+DO $$
+DECLARE c uuid[]:=ARRAY['10000000-0000-4000-8000-000000000001']::uuid[];y uuid:='20000000-0000-4000-8000-000000000001';d date;s jsonb;sh text;a date;n int:=0;
+BEGIN
+ FOREACH d IN ARRAY ARRAY['2026-04-30','2026-06-15','2026-08-15','2026-10-31']::date[] LOOP
+  s:=mass_api.reviewed_shift_counts(c,d);a:=date_trunc('month',d)::date;
+  FOREACH sh IN ARRAY ARRAY['Morning','Evening'] LOOP
+   IF (s->>sh)::int IS DISTINCT FROM (mass_api.reviewed_chart_metrics(c,d,a,(a+interval '1 month')::date,y,NULL,sh,NULL)->>'children')::int THEN
+    RAISE EXCEPTION 'shift count differs from reviewed_chart_metrics: % % got % ',d,sh,s;END IF;
+   n:=n+1;
+  END LOOP;
+ END LOOP;
+ IF n<>8 THEN RAISE EXCEPTION 'expected 8 comparisons';END IF;
+END$$;
+SELECT core_test.expect_error($q$SELECT mass_api.reviewed_shift_counts(ARRAY['10000000-0000-4000-8000-000000000002']::uuid[],'2026-10-31')$q$,'42501','shift counts reject another centre');
+SELECT core_test.expect_error($q$SELECT mass_api.reviewed_shift_counts(ARRAY['10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002']::uuid[],'2026-10-31')$q$,'42501','shift counts reject mixed scope');
+SELECT core_test.expect_error($q$SELECT mass_api.reviewed_shift_counts(NULL,'2026-10-31')$q$,'42501','shift counts reject a null scope');
+SELECT core_test.expect_error($q$SELECT mass_api.reviewed_shift_counts(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],NULL)$q$,'22023','shift counts require a reporting day');
+SELECT core_test.assert_true(NOT mass_api.reviewed_shift_counts(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-31')::text LIKE '%Synthetic%','shift counts expose no names');
+RESET ROLE;

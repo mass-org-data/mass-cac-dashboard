@@ -66,7 +66,20 @@ export function createOverviewService(rpc: Rpc, limit: (job: () => Promise<unkno
     })));
   }
 
+  // One small call for the two numbers; an older database without it runs a full report per shift instead.
+  let shiftCountsAvailable = true;
   async function shifts(selection: Selection, env: Environment): Promise<ShiftCounts> {
+    if (shiftCountsAvailable && selection.centres.length) {
+      const day = reportingDay(selection.month, env.today);
+      const key = JSON.stringify(['shift-counts', env.today, day, selection.centres]);
+      try {
+        const counts = await remember(key, () => queued(() => rpc<{Morning: number | string; Evening: number | string}>('reviewed_shift_counts', {p_centres: selection.centres, p_on: day})));
+        return {Morning: Number(counts.Morning), Evening: Number(counts.Evening)};
+      } catch (error) {
+        if (!isMissingFunction(error)) throw error;
+        shiftCountsAvailable = false;
+      }
+    }
     const count = async (shift: 'Morning' | 'Evening') => (await report({...selection, shift, grade: null, gender: null}, env)).children;
     const [Morning, Evening] = await Promise.all([count('Morning'), count('Evening')]);
     return {Morning, Evening};

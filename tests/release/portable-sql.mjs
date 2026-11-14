@@ -38,12 +38,14 @@ try {
  if(gated.length!==1||gated[0].guarded!==true)throw new Error('reviewed_attendance_series must be sealed behind reviewed_reads');
  const gated2=(await db.query("SELECT position('-- MASS_ACTIVATION_GUARD_V1' IN prosrc)>0 AS guarded FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='reviewed_attendance_by_centre_month'")).rows;
  if(gated2.length!==1||gated2[0].guarded!==true)throw new Error('reviewed_attendance_by_centre_month must be sealed behind reviewed_reads');
+ const gated3=(await db.query("SELECT position('-- MASS_ACTIVATION_GUARD_V1' IN prosrc)>0 AS guarded FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='reviewed_shift_counts'")).rows;
+ if(gated3.length!==1||gated3[0].guarded!==true)throw new Error('reviewed_shift_counts must be sealed behind reviewed_reads');
  await db.exec("SET ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false)");
  const caps=(await db.query("SELECT mass_api.get_original_capabilities()->>'reviewed_attendance_series' AS v")).rows;await db.exec('RESET ROLE');
  if(caps[0]?.v!=='1')throw new Error('get_original_capabilities must advertise reviewed_attendance_series when reviewed_reads is enabled');
  await db.exec("SET ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
- const caps2=(await db.query("SELECT mass_api.get_original_capabilities()->>'reviewed_attendance_by_centre_month' AS a,mass_api.get_original_capabilities()->>'batched_reads' AS b")).rows;await db.exec('RESET ROLE');
- if(caps2[0]?.a!=='1'||caps2[0]?.b!=='1')throw new Error('get_original_capabilities must advertise the batched reads');
+ const caps2=(await db.query("SELECT mass_api.get_original_capabilities()->>'reviewed_attendance_by_centre_month' AS a,mass_api.get_original_capabilities()->>'batched_reads' AS b,mass_api.get_original_capabilities()->>'reviewed_shift_counts' AS c")).rows;await db.exec('RESET ROLE');
+ if(caps2[0]?.a!=='1'||caps2[0]?.b!=='1'||caps2[0]?.c!=='1')throw new Error('get_original_capabilities must advertise the batched reads');
  console.log('PASS series is sealed behind reviewed_reads');
  console.log('PASS sealed reviewed calculation API. Native concurrency and managed Auth/browser tests remain separate.');
 } finally {await db.close();fs.rmSync(out,{recursive:true,force:true});}

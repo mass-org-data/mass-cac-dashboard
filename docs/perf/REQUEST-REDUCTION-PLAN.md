@@ -95,7 +95,7 @@ Trigger overhead on the attendance save path; rollup drift if a path writes outs
 | A: client only (memoised startup reads, shared cache, limiters) | done, see PHASE-A-RESULT.md |
 | B: batched read functions (preview migration) | done on preview, see PHASE-B-RESULT.md |
 | C0: install reviewed_chart_metrics as a migration, rewrite hot spots | done on preview, see PHASE-C0-RESULT.md (no index needed) |
-| C1: slice functions | not started |
+| C1: slice functions | done on preview (shift counts; other slices judged not worthwhile), see PHASE-C1-RESULT.md |
 | C2: attendance rollup | not started |
 | D: compute size | only on evidence |
 
