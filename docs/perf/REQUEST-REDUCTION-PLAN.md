@@ -96,7 +96,7 @@ Trigger overhead on the attendance save path; rollup drift if a path writes outs
 | B: batched read functions (preview migration) | done on preview, see PHASE-B-RESULT.md |
 | C0: install reviewed_chart_metrics as a migration, rewrite hot spots | done on preview, see PHASE-C0-RESULT.md (no index needed) |
 | C1: slice functions | done on preview (shift counts; other slices judged not worthwhile), see PHASE-C1-RESULT.md |
-| C2: attendance rollup | not started |
+| C2: attendance rollup | skipped by the owner (15 Nov 2026): after C0 the heavy report takes 0.18 s; revisit only if Production volumes or Phase D evidence call for it |
 | D: compute size | only on evidence |
 
 Baseline measurements for comparison: `docs/perf/PAGE-LOAD-RESULT.md` (cold and warm time per screen and database requests per screen, deployed preview, 3 runs), `docs/perf/DEPLOYED-OVERVIEW-RESULT.md`, `docs/perf/CACHING-OPTIONS.md`.
