@@ -344,6 +344,30 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     await context.close();
   }
 }
+
+// About, and the whole navigation
+{
+  for(const role of ['Leadership','Teacher','Cluster Officer']){
+    const {context,page,problems,failed}=await session(role);
+    await page.goto(base+'#/about');
+    await page.getByRole('heading',{name:'Reporting rules'}).waitFor({timeout:60000});
+    const text=(await page.locator('main').innerText()).replace(/\s+/g,' ');
+    const expectedCentres={Leadership:92,Teacher:1,'Cluster Officer':9}[role];
+    note(`About, ${role}: shows the verified role with its centre count`,new RegExp(role+' \\(active\\): '+expectedCentres+' centre').test(text),text.match(/Verified roles[^]*?(?=Reporting rules)/)?.[0]?.slice(0,160)??'');
+    const nav=await page.getByRole('navigation',{name:'Primary'}).getByRole('link').allInnerTexts();
+    note(`Navigation, ${role}: lists all eight screens`,nav.length===8,nav.join(' | '));
+    if(role==='Teacher'){
+      await page.addScriptTag({url:'/__axe.js'});
+      const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
+      note('About, Teacher: no axe violations in the browser (incl. contrast)',v.length===0,v.join('; '));
+    }
+    await page.setViewportSize({width:375,height:812});await page.waitForTimeout(500);
+    note(`About, ${role}: no horizontal page scroll at 375 px`,await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    note(`About, ${role}: no failed RPC calls`,failed.length===0,failed.join(', '));
+    note(`About, ${role}: no console errors`,problems.length===0,problems.join(' | '));
+    await context.close();
+  }
+}
 await browser.close();server.close();
 console.log(`\n${results.filter(r=>r.ok).length}/${results.length} checks passed`);
 process.exit(results.every(r=>r.ok)?0:1);

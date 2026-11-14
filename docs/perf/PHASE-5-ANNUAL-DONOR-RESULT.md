@@ -19,3 +19,6 @@ Date: 14 November 2026. Preview project (synthetic data), real Chromium, `dist/`
 - The page took 13.9 s to finish on preview (about eight monthly reports at two a time, about 1.7 s each). It is not on the Overview's critical path. A single batched annual call, like the monthly series, would cut this; it needs a reviewed migration, so it is left as an option.
 - "Loaded months" counts months whose report loaded, including months with no attendance yet (April to June on preview), as the current page does.
 - Not covered: numbers side by side with the current page, printing, real phones. The current page's Print report button was not rebuilt.
+
+## Follow-up found during the About run
+One full browser run saw 4 of the 8 monthly reports fail with HTTP 500 (a database statement timeout while cold; the next three runs were clean). The page already showed this honestly (named alert, gaps, Retry). It now also retries each month once automatically (the failed call is not cached); a unit test covers it.

@@ -27,7 +27,7 @@ The application was built in phases (PRs #8 to #17). Claude Code was then used t
 | **Phase 2: fix** | No per-centre calls (totals proved identical), heavy reports queued two at a time, below-the-fold chart loaded on demand, startup trimmed. First scorecards 2.0 s, 10 requests, no failures. |
 | **Phase 3: one small function** | A batched monthly attendance function replaced seven heavy reports. Identical on 63 test cases and on real preview data. Whole page 4.7 s with 11 requests. |
 | **Phase 4: new foundation** | React interface in `web/`, built only behind a flag. Shared table, scorecard and state components; session and role controller that reuses the old app's checks. |
-| **Phase 5: Overview** | Rebuilt and compared value for value with the old Overview for all three roles: identical. Attendance is next. |
+| **Phase 5: all screens** | Overview, Attendance, Student profiles, Assessments, Visits, Morarji, Annual donor summary and About rebuilt one per approval. Each was tested in a real browser on the preview data and its numbers checked against a direct database count where possible (for example the annual attendance, 86.0 percent). Every database change on preview (a missed migration, activation switches, seeded visits and a Morarji cohort) was shown first and approved. |
 
 ## 4. Lessons worth copying
 1. **Measure before fixing.** The database was not slow per call; the app started about 100 requests at once and the heavy ones timed out. A single timing could not have shown that, a request waterfall did.
@@ -40,12 +40,14 @@ The application was built in phases (PRs #8 to #17). Claude Code was then used t
 8. **Pin what you designed for.** The latest table library had a different API, so it was pinned to the version the design assumed.
 9. **Test in two places.** Unit tests with accessibility checks passed, but a real browser found low colour contrast and a skipped heading level. Both fixed.
 10. **Keep secrets out of chat and Git.** Test passwords live in a git-ignored file; only host names, key types and status codes were printed.
-11. **Be explicit about gaps.** Unbuilt pieces (for example the Teacher student summary table) are listed, not silently dropped.
+11. **Show the SQL first, dry-run, then apply.** Each preview change came with its statement and rollback, ran once as a rolled-back dry run, and only then for real. One switch (profiles) turned out to be blocked by the database on purpose, and was left alone rather than bypassed.
+12. **Be explicit about gaps.** Unbuilt pieces (for example the Teacher student summary table) are listed, not silently dropped.
 
 ## 5. Where things stand
-- **Done on the branch:** Overview speed fix (targets met on preview), batched monthly function (applied to preview only), new interface foundation and Overview.
+- **Done on the branch:** Overview speed fix (targets met on preview), batched monthly function (applied to preview only), and all eight screens of the new interface (activities and monthly meetings excluded by decision).
 - **Not on Production:** nothing from this work is deployed. The series migration is not on the production database; the client copes without it.
-- **Open for the owner:** create Teacher and Cluster Officer roles on real accounts when needed; populate visits data; decide whether activities and monthly meetings are discarded (left untouched meanwhile); decide when to open the PR (base `fix/centre-event-review`, merge #11 to #15 first); a gated production release process is proposed but not built.
+- **Open for the owner:** create Teacher and Cluster Officer roles on real accounts when needed; decide whether activities and monthly meetings are discarded (left untouched meanwhile); decide when to open the PR (base `fix/centre-event-review`, merge #11 to #15 first); a gated production release process is proposed but not built.
+- **Next:** Phase 6 cutover (switch the default, replace the look-freezing parity tests with behaviour tests, release note), then the PR when you ask.
 - **Not measured yet:** mobile networks, several people signing in at once (the likely cause of the 30 to 60 s reports), and the Playwright attendance suites in this environment.
 
 ## 6. How to prompt well
