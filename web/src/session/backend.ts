@@ -5,6 +5,7 @@ import {createDirectoryApi} from '../../../src/live/directory.js';
 import {discoverCapabilities} from '../../../src/live/backend-capabilities.js';
 import {BackendError} from '../../../src/live/api.js';
 import type {Backend, ProgrammeContext} from './controller';
+import {createReadCache} from './readCache';
 
 export interface RuntimeConfig {mode: string; url?: string; publishableKey?: string; project?: string; readApi?: string; directoryApi?: string}
 
@@ -64,21 +65,25 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
     return result.data;
   };
   // Argument-free startup probes are asked once and shared by every screen (an abort signal is never passed for them).
-  const rpc: Rpc = <T = unknown>(name: string, args?: Record<string, unknown>, signal?: AbortSignal) => (MEMOISED_RPCS.has(name) && !args && !signal
+  const startupAware: Rpc = <T = unknown>(name: string, args?: Record<string, unknown>, signal?: AbortSignal) => (MEMOISED_RPCS.has(name) && !args && !signal
     ? memoise<unknown>(memo, `rpc|${name}`, () => call(name))
     : call<T>(name, args, signal)) as Promise<T>;
+  // Reads are remembered for five minutes; a save clears them and the shared services (see readCache.ts).
+  const clearServices = () => { for (const value of singletons.values()) { const clear = (value as {clear?: () => void}).clear; if (typeof clear === 'function') clear.call(value); } };
+  const readCache = createReadCache(startupAware, clearServices);
+  const rpc: Rpc = readCache.rpc;
   return {
     rpc,
     shared<T>(key: string, create: () => T): T {
       if (!singletons.has(key)) singletons.set(key, create());
       return singletons.get(key) as T;
     },
-    reset() { memo.clear(); singletons.clear(); },
+    reset() { memo.clear(); readCache.clear(); singletons.clear(); },
     getSession: () => client.auth.getSession(),
     getUser: () => client.auth.getUser(),
-    async signIn(email, password) { memo.clear(); singletons.clear(); await signInVerified(client, email, password, () => clearStoredSession(config)); },
+    async signIn(email, password) { memo.clear(); readCache.clear(); singletons.clear(); await signInVerified(client, email, password, () => clearStoredSession(config)); },
     async signOut() {
-      memo.clear(); singletons.clear();
+      memo.clear(); readCache.clear(); singletons.clear();
       try { await client.auth.signOut({scope: 'local'}); } finally { clearStoredSession(config); }
     },
     readContext: signal => reads.context(signal) as Promise<ProgrammeContext>,
