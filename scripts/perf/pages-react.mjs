@@ -126,6 +126,16 @@ for(const [title,data] of [['Cold: sign-in click to settled screen (new browser 
     lines.push(`| ${number}. ${name} | ${cell('leadership')} | ${cell('officer')} | ${cell('teacher')} |`);
   }
 }
+// A separate table of database requests per screen (median of the runs), with the total for one visit to every screen the role can open.
+for(const [title,data] of [['Database requests per screen, cold',cold],['Database requests per screen, warm',warm]]){
+  lines.push(`\n### ${title}\n`,'| Screen | Leadership | Cluster Officer | Teacher |','|---|---|---|---|');
+  const totals={leadership:0,officer:0,teacher:0};
+  for(const [id,number,name] of PAGES){
+    const cell=role=>{if(notApplicable(role,id))return 'N/A';const v=data[role][id].map(x=>x.requests);if(!v.length)return '—';const m=median(v);totals[role]+=m;const lo=Math.min(...v),hi=Math.max(...v);return lo===hi?String(m):`${m} (${lo}–${hi})`;};
+    lines.push(`| ${number}. ${name} | ${cell('leadership')} | ${cell('officer')} | ${cell('teacher')} |`);
+  }
+  lines.push(`| **All applicable screens, added up** | **${totals.leadership}** | **${totals.officer}** | **${totals.teacher}** |`);
+}
 console.log(lines.join('\n'));
 const out=path.join(root,'perf-results');await mkdir(out,{recursive:true});
 await writeFile(path.join(out,`pages-${label}.json`),JSON.stringify({label,base:baseArg?new URL(baseArg).host:'local dist',runs,cold,warm},null,1));

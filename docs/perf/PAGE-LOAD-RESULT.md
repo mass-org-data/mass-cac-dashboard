@@ -33,6 +33,39 @@ How to read it. Each cell is the median of 3 runs, then the slowest run and the 
 | 7. Annual donor summary | 14.8 s (worst 15.2 s, 12 req) | N/A (no access) | N/A (no access) |
 | 8. About | 0.1 s (worst 0.1 s, 0 req) | 0.1 s (worst 0.1 s, 0 req) | 0.1 s (worst 0.1 s, 0 req) |
 
+## Database requests per screen
+Number of requests to the database API (Supabase `rpc` calls) the screen made while loading, median of 3 runs (the range is shown when runs differed). N/A means no access. The last row adds up one visit to each screen the role can open.
+
+**Cold: a fresh browser, from sign-in** (includes the requests that sign-in itself needs: user context, references, capabilities, directory)
+
+| Screen | Leadership | Cluster Officer | Teacher |
+|---|---|---|---|
+| 1. Overview | 8 | 8 | 8 |
+| 2. Attendance | 8 | 8 | 8 |
+| 3. Student profiles | N/A | 13 | 5 |
+| 4. Assessments | 5 | 5 | 5 |
+| 5. Visits | 187 | 4 | 5 |
+| 6. Morarji scholarship | 4 | 22 | 6 |
+| 7. Annual donor summary | 12 | N/A | N/A |
+| 8. About | 1 | 1 | 1 |
+| **All applicable screens, added up** | **225** | **61** | **38** |
+
+**Warm: opened from the menu while signed in** (the shared startup requests are already made, so these are the screen's own requests)
+
+| Screen | Leadership | Cluster Officer | Teacher |
+|---|---|---|---|
+| 1. Overview | 7 (7–8) | 7 | 7 |
+| 2. Attendance | 7 | 7 | 7 |
+| 3. Student profiles | N/A | 12 | 4 |
+| 4. Assessments | 4 | 4 | 4 |
+| 5. Visits | 186 | 3 | 4 |
+| 6. Morarji scholarship | 3 | 21 | 5 |
+| 7. Annual donor summary | 12 (11–12) | N/A | N/A |
+| 8. About | 0 | 0 | 0 |
+| **All applicable screens, added up** | **219** | **54** | **31** |
+
+Notes: Leadership Visits makes 187 requests because it asks for each of the 92 centres twice (summary and officer summary). Leadership's Annual donor summary makes 12 (eight monthly reports plus startup), Cluster Officer's Morarji makes 21 to 22 (one `read_morarji` per centre plus names). Overview requests did not drop when revisited (7 warm versus 8 cold), so nothing is reused between screens today.
+
 ## What the numbers say
 - **Teacher and Cluster Officer are fast everywhere**: every screen settles in about 0.2 to 1.2 s, except the Teacher's Morarji screen on cold load (2.4 s median; one run took 4.0 s, probably a cold database).
 - **Leadership is slower because it aggregates all 92 centres**: Overview 3.5 s, Attendance 2.6 s cold and 3.9 s warm, Assessments about 2 s, Morarji about 2.5 s. These are the all-centre reviewed reports.
