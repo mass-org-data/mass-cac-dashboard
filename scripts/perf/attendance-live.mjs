@@ -397,7 +397,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     note('Shell: side menu fills the height below the header and stays in place',Math.abs(sideBox.y-header.height)<2&&sideBox.y+sideBox.height<=700+1,`menu y=${Math.round(sideBox.y)} h=${Math.round(sideBox.height)}`);
     note('Shell: the collapse button is visible without scrolling, at the foot of the menu',btn.y>0&&btn.y+btn.height<=700&&btn.y>sideBox.y+sideBox.height-80,`button y=${Math.round(btn.y)}`);
     note('Shell: the page heading uses the menu numbering',/^1\. Overview$/.test((await page.getByRole('heading',{level:1}).innerText()).trim()),await page.getByRole('heading',{level:1}).innerText());
-    const sizes=await page.evaluate(()=>({h1:getComputedStyle(document.querySelector('h1')).fontSize,menu:getComputedStyle(document.querySelector('#side-menu nav a')).fontSize}));
+    const sizes=await page.evaluate(()=>({h1:window.getComputedStyle(document.querySelector('h1')).fontSize,menu:window.getComputedStyle(document.querySelector('#side-menu nav a')).fontSize}));
     note('Shell: heading text and number are one size',await page.locator('h1 span').count()===0,JSON.stringify(sizes));
   }
   note('Shell: the menu marks the open screen',await page.getByRole('link',{name:'1. Overview'}).getAttribute('aria-current')==='page'&&await page.getByRole('link',{name:'2. Attendance'}).getAttribute('aria-current')===null);
