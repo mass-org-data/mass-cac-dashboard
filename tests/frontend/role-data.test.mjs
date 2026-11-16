@@ -11,9 +11,9 @@ const context = {
   ],
 };
 
-test('approved multi-role accounts start with their operational Cluster Officer role',()=>{
+test('multi-role accounts start with Leadership',()=>{
   assert.deepEqual(authorizedRoles(context),['Leadership','Cluster Officer','Teacher']);
-  assert.equal(defaultAuthorizedRole(context),'Cluster Officer');
+  assert.equal(defaultAuthorizedRole(context),'Leadership');
 });
 
 test('each role loads only its own required centre details',()=>{
@@ -32,3 +32,15 @@ test('unknown roles are denied and aggregate fallback is explicit',()=>{
   assert.throws(()=>roleDataPlan(context,'Administrator'),/authorized role/);
   assert.deepEqual(roleDataPlan(context,'Leadership',{aggregateApi:false}).detailedCentres.map(centre=>centre.id),['all','cluster','teacher']);
 });
+
+test('Overview loads aggregate data for each authorized role before operational details',()=>{
+ for(const role of authorizedRoles(context)){
+  const plan=roleDataPlan(context,role,{aggregateApi:true,view:'overview'});
+  assert.equal(plan.aggregateMode,true);
+  assert.deepEqual(plan.detailedCentres,[]);
+  assert(plan.centres.every(centre=>centre.roles.includes(role)));
+ }
+ assert.deepEqual(roleDataPlan(context,'Teacher',{aggregateApi:false,view:'overview'}).detailedCentres.map(c=>c.id),['teacher']);
+});
+
+ test('Attendance reporting never requires individual year-long fact downloads',()=>{for(const role of authorizedRoles(context)){const plan=roleDataPlan(context,role,{aggregateApi:true,view:'attendance'});assert.equal(plan.aggregateMode,true);assert.deepEqual(plan.detailedCentres,[]);}});

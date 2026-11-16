@@ -25,3 +25,10 @@ test('original horizontal and grouped-column chart types and demographic quick f
  for(const n of [3,6,11,18]){assert.match(v(n),/class="bar-row"/);assert.doesNotMatch(v(n),/column-chart/);}
  assert.match(v(16),/column-chart/);assert.match(v(15),/column-chart/);assert.match(v(23),/data-gender-controls="false"/);assert.match(v(25),/engagement-stack/);assert.match(v(25),/data-centre="a"/);
 });
+
+
+test('learning average needs a selected grade while missing results stay unknown',()=>{
+ const m={...metrics,quarters:[{quarter:1,n:2,mean:18}]};
+ assert.equal(reviewedMetric('Average student exam score',m,{periodAssessments:true,exam:'F1'}).value,'—');
+ assert.equal(reviewedMetric('Average student exam score',m,{periodAssessments:true,exam:'F1',grade:'5'}).value,'18.0');
+});

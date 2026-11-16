@@ -128,6 +128,8 @@ class PipelineTests(unittest.TestCase):
   self.assertIn("O''Neil",sql);self.assertNotIn('Unmapped synthetic learner',sql)
   self.assertNotIn('original_name',sql);self.assertNotIn('fingerprint_key_id',sql)
   self.assertNotIn('CREATE TABLE',sql);self.assertNotIn('GRANT ',sql)
+  self.assertIn("old - 'auth_user_id' IS DISTINCT FROM e",sql)
+  self.assertIn("old - 'verification_reference' IS DISTINCT FROM e",sql)
   self.assertRegex(sql,r'DO \$mass_import_[0-9a-f]+\$')
   import re
   delimiter=re.search(r'DO (\$mass_import_[0-9a-f]+\$)',sql).group(1);self.assertEqual(sql.count(delimiter),2)

@@ -23,16 +23,17 @@ export function createReadApi(client) {
     rows,
     context: signal=>call('get_context',{},signal),
     references: signal=>call('get_references',{},signal),
-    async centre({centre,from,until,yearFrom=from,yearUntil=until,includeAssessments=true,signal}) {
+    async centre({centre,from,until,yearFrom=from,yearUntil=until,includeAssessments=true,view='all',signal}) {
       const window={p_centre:centre,p_from:from,p_until:until};
+      const needs = module => view==='all'||view==='student-detail'||({attendance:['attendance','calendar','activities','participation'],learning:['assessments'],activities:['activities','participation'],morarji:['morarji'],'overview-summary':['attendance','calendar','assessments','activities','participation'],children:[]}[view]||[]).includes(module);
       const [students,attendance,calendar,assessments,activities,participation,morarji]=await Promise.all([
         rows('read_students',{p_centre:centre,p_on:null},signal),
-        rows('read_attendance',{...window,p_child:null},signal),
-        rows('read_calendar',window,signal),
-        includeAssessments?rows('read_assessments',{p_centre:centre,p_from:yearFrom,p_until:yearUntil,p_child:null},signal):Promise.resolve([]),
-        rows('read_activities',window,signal),
-        rows('read_participation',{...window,p_event:null,p_child:null},signal),
-        rows('read_morarji',{p_centre:centre,p_cohort:null},signal),
+        needs('attendance')?rows('read_attendance',{...window,p_child:null},signal):Promise.resolve([]),
+        needs('calendar')?rows('read_calendar',window,signal):Promise.resolve([]),
+        includeAssessments&&needs('assessments')?rows('read_assessments',{p_centre:centre,p_from:yearFrom,p_until:yearUntil,p_child:null},signal):Promise.resolve([]),
+        needs('activities')?rows('read_activities',window,signal):Promise.resolve([]),
+        needs('participation')?rows('read_participation',{...window,p_event:null,p_child:null},signal):Promise.resolve([]),
+        needs('morarji')?rows('read_morarji',{p_centre:centre,p_cohort:null},signal):Promise.resolve([]),
       ]);
       return {centre,students,attendance,calendar,assessments,activities,participation,morarji};
     },

@@ -28,7 +28,7 @@ def build(mode='live',read_api='frontend-reads-v1',directory='off'):
          'MASS_SUPABASE_PUBLISHABLE_KEY':'sb_publishable_'+'x'*32,'MASS_READ_API':read_api,'MASS_DIRECTORY_API':directory}
     subprocess.run(['npm','run','build'],cwd=ROOT,env=env,check=True,capture_output=True)
 class Handler(SimpleHTTPRequestHandler):
-    def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(ROOT/'dist'),**kwargs)
+    def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(ROOT/'dist'/'vanilla'),**kwargs)
     def log_message(self,*args):pass
 class Backend:
     def __init__(self):

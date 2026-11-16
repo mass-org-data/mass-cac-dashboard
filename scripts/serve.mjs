@@ -12,7 +12,11 @@ http.createServer(async(req,res)=>{
     const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
     let target=path.resolve(root,'.'+pathname);
     if(target!==root&&!target.startsWith(root+path.sep)) {res.writeHead(403);res.end('Forbidden');return;}
-    if((await stat(target)).isDirectory()) target=path.join(target,'index.html');
+    if((await stat(target)).isDirectory()) {
+      // A directory without a trailing slash would resolve relative asset paths against the parent.
+      if(!pathname.endsWith('/')) {res.writeHead(308,{Location:pathname+'/'+new URL(req.url,'http://localhost').search});res.end();return;}
+      target=path.join(target,'index.html');
+    }
     const bytes=await readFile(target);
     res.writeHead(200,{'Content-Type':types[path.extname(target)]||'application/octet-stream'});
     res.end(bytes);

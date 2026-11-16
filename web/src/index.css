@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/* MASS tokens, taken from the current stylesheet (src/style.css) so both interfaces share one look. */
+@theme {
+  --color-brand: #398593;
+  --color-brand-dark: #286673;
+  --color-brand-soft: #eaf4f5;
+  --color-accent: #ffcf65;
+  --color-ink: #253f43;
+  --color-muted: #5f716e;
+  --color-line: #dde6e4;
+  --color-paper: #f4f8f8;
+  --color-ok: #277b55;
+  --color-ok-soft: #eaf5ed;
+  --color-warn: #86490b;
+  --color-warn-soft: #fff0dd;
+  --color-bad: #a8493e;
+  --color-bad-soft: #fff0ed;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html { font-size: 16px; }
+body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); }
+:focus-visible { outline: 3px solid var(--color-brand); outline-offset: 2px; }

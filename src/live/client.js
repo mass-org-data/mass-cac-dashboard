@@ -1,8 +1,10 @@
 import {createClient} from '@supabase/supabase-js';
+import {perfFetch} from './perf.js';
 
 export function createBackendClient(config, storage = globalThis.localStorage) {
   return createClient(config.url, config.publishableKey, {
     db: {schema: 'mass_api'},
+    global: {fetch: perfFetch()},
     auth: {
       storage,
       storageKey: `mass-auth-${config.project}`,

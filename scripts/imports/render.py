@@ -104,14 +104,19 @@ BEGIN
   IF complete_retry AND NOT EXISTS(SELECT 1 FROM mass_core.staff_members WHERE id=(e->>'id')::uuid) THEN RAISE EXCEPTION 'completed batch directory object missing';END IF;
   INSERT INTO mass_core.staff_members(id,display_name,source_name,source_row_id,source_slot) VALUES((e->>'id')::uuid,e->>'display_name',e->>'source_name',(e->>'source_row_id')::uuid,(e->>'source_slot')::int) ON CONFLICT DO NOTHING;
   SELECT to_jsonb(x) INTO old FROM mass_core.staff_members x WHERE id=(e->>'id')::uuid;
-  IF old IS DISTINCT FROM e THEN RAISE EXCEPTION 'staff identity/source mapping mismatch';END IF;
+  -- Auth linkage is managed separately from the reviewed directory import.
+  -- Reconciliation must neither overwrite it nor treat a later linkage as
+  -- source-identity drift.
+  IF old - 'auth_user_id' IS DISTINCT FROM e THEN RAISE EXCEPTION 'staff identity/source mapping mismatch';END IF;
  END LOOP;
  FOR e IN SELECT value FROM jsonb_array_elements(d#>'{entities,centre_staff_assignments}') LOOP
   IF complete_retry AND NOT EXISTS(SELECT 1 FROM mass_core.centre_staff_assignments WHERE id=(e->>'id')::uuid) THEN RAISE EXCEPTION 'completed batch directory object missing';END IF;
   INSERT INTO mass_core.centre_staff_assignments(id,centre_id,staff_member_id,role_code,shift_code,source_row_id,source_slot)
   VALUES((e->>'id')::uuid,(e->>'centre_id')::uuid,(e->>'staff_member_id')::uuid,e->>'role_code',e->>'shift_code',(e->>'source_row_id')::uuid,(e->>'source_slot')::int) ON CONFLICT DO NOTHING;
   SELECT to_jsonb(x) INTO old FROM mass_core.centre_staff_assignments x WHERE id=(e->>'id')::uuid;
-  IF old IS DISTINCT FROM e THEN RAISE EXCEPTION 'staff relationship/source mapping mismatch';END IF;
+  -- Auth-backed operational verification is approved independently from the
+  -- workbook relationship and must survive exact import retries unchanged.
+  IF old - 'verification_reference' IS DISTINCT FROM e THEN RAISE EXCEPTION 'staff relationship/source mapping mismatch';END IF;
  END LOOP;
  EXECUTE 'SET LOCAL ROLE mass_foundation_ingestor';
  IF NOT complete_retry THEN

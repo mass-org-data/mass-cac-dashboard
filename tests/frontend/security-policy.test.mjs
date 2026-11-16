@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {escapeHtml} from '../../src/live/html.js';
 import {isAuthorizationFailure} from '../../src/live/access-verification.js';
+import {APPROVED_PROJECTS} from '../../src/live/config.js';
 
 test('shared HTML escaping neutralizes element and attribute markup',()=>{
  assert.equal(escapeHtml(`<img src=x onerror="run()">'&`),'&lt;img src=x onerror=&quot;run()&quot;&gt;&#39;&amp;');
@@ -24,6 +25,14 @@ test('Vercel policy blocks script injection and framing on every route',async()=
  assert.match(values['Content-Security-Policy'],/object-src 'none'/);
  assert.equal(values['X-Content-Type-Options'],'nosniff');
  assert.equal(values['X-Frame-Options'],'DENY');
+});
+
+test('connect-src allows exactly self plus the approved Supabase project hosts',async()=>{
+ const config=JSON.parse(await readFile('vercel.json','utf8'));
+ const csp=config.headers.find(rule=>rule.source==='/(.*)').headers.find(h=>h.key==='Content-Security-Policy').value;
+ const connect=csp.split(';').map(part=>part.trim()).find(part=>part.startsWith('connect-src')).split(/\s+/).slice(1);
+ assert.deepEqual(connect.sort(),["'self'",...APPROVED_PROJECTS.map(ref=>`https://${ref}.supabase.co`)].sort());
+ assert.equal(csp.includes('*'),false);
 });
 
 test('application source contains no inline event-handler attributes',async()=>{

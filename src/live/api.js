@@ -4,7 +4,7 @@ const OPTIONS = {
   grade: Array.from({length: 10}, (_, i) => String(i + 1)),
   shift: ['Morning', 'Evening'],
   gender: ['Girl', 'Boy'],
-  attendance: ['P', 'A', 'L', 'WO', 'MM'],
+  attendance: ['P', 'A', 'L', 'WO', 'MM', 'H'],
   status: ['Active', 'CAC dropout', 'Left programme'],
 };
 function uuid(value) {

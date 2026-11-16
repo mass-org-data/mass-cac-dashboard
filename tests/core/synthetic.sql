@@ -40,7 +40,7 @@ SELECT mass_api.record_attendance(core_test.id('A'),d,code,0) FROM (VALUES
 SELECT core_test.assert_true((SELECT present_count=3 AND absent_count=1 AND leave_count=1 AND excluded_count=2 AND percentage=60 FROM mass_api.attendance_summary('10000000-0000-4000-8000-000000000001','2026-04-01','2026-05-01')),'confirmed attendance formula excludes unknown and WO/MM');
 SELECT core_test.assert_true((SELECT percentage IS NULL FROM mass_api.attendance_summary('10000000-0000-4000-8000-000000000001','2026-05-01','2026-06-01')),'no recorded denominator produces unknown rate');
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-08','P',0)$q$,'23514','present on confirmed holiday rejected');
-SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-09','H',0)$q$,'23503','unapproved H code rejected');
+SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-09','INVALID',0)$q$,'23503','unsupported attendance code rejected');
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-03-31','P',0)$q$,'23514','attendance before enrolment rejected');
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-01','A',0)$q$,'PT409','duplicate create cannot overwrite attendance');
 SELECT mass_api.record_assessment(core_test.id('A'),'22000000-0000-4000-8000-000000000001','2026-04-10',25,0);
