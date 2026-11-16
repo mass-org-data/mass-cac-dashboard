@@ -58,6 +58,8 @@ test('exactly one policy applies to a host: strict unless the host is a preview 
  assert.equal(relaxedRule.has[0].type,'host');
  const preview=new RegExp(relaxedRule.has[0].value);
  assert.equal(preview.test('mass-cac-dashboard.vercel.app'),false);          // Production is never relaxed
+ for(const host of ['preview-mass-cac-dashboard.vercel.app','mass-cac-dashboard-ngjzqyqp0-mass-data-dashboard.vercel.app','mass-cac-dashboard-git-feature-verce-5ac113-mass-data-dashboard.vercel.app'])assert.equal(preview.test(host),true,host);   // staging domain, deployment URL, branch URL
+ for(const host of ['preview-mass-cac-dashboard.vercel.app.evil.com','xpreview-mass-cac-dashboard.vercel.app','mass-cac-dashboard-mass-data-dashboard.vercel.app.evil.com','mass-cac-dashboard.com'])assert.equal(preview.test(host),false,host);
  assert.equal(preview.test('mass-cac-dashboard.vercel.app.evil.com'),false);
  assert.equal(preview.test('evil.com'),false);
  assert.match(relaxedRule.has[0].value,/^\^.*\$$/);                           // anchored: no partial host matches

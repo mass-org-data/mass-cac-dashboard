@@ -55,7 +55,7 @@
       "missing": [
         {
           "type": "host",
-          "value": "^mass-cac-dashboard-[a-z0-9]{9}-mass-data-dashboard\\.vercel\\.app$"
+          "value": "^(preview-mass-cac-dashboard|mass-cac-dashboard-.+-mass-data-dashboard)\\.vercel\\.app$"
         }
       ],
       "headers": [
@@ -70,7 +70,7 @@
       "has": [
         {
           "type": "host",
-          "value": "^mass-cac-dashboard-[a-z0-9]{9}-mass-data-dashboard\\.vercel\\.app$"
+          "value": "^(preview-mass-cac-dashboard|mass-cac-dashboard-.+-mass-data-dashboard)\\.vercel\\.app$"
         }
       ],
       "headers": [
