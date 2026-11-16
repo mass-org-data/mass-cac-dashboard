@@ -4,21 +4,80 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "redirects": [
-    {"source": "/next", "destination": "/", "statusCode": 308},
-    {"source": "/next/(.*)", "destination": "/", "statusCode": 308},
-    {"source": "/vanilla", "destination": "/vanilla/", "statusCode": 308}
+    {
+      "source": "/next",
+      "destination": "/",
+      "statusCode": 308
+    },
+    {
+      "source": "/next/(.*)",
+      "destination": "/",
+      "statusCode": 308
+    },
+    {
+      "source": "/vanilla",
+      "destination": "/vanilla/",
+      "statusCode": 308
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        {"key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; connect-src 'self' https://pbkwpfdpdtelmvbkzgvx.supabase.co https://nilzfsahxoxibvrwsqkd.supabase.co; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests"},
-        {"key": "Cross-Origin-Opener-Policy", "value": "same-origin"},
-        {"key": "Permissions-Policy", "value": "camera=(), geolocation=(), microphone=(), payment=(), usb=()"},
-        {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"},
-        {"key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload"},
-        {"key": "X-Content-Type-Options", "value": "nosniff"},
-        {"key": "X-Frame-Options", "value": "DENY"}
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(preview-mass-cac-dashboard|mass-cac-dashboard-.+-mass-data-dashboard)\\.vercel\\.app$"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; connect-src 'self' https://pbkwpfdpdtelmvbkzgvx.supabase.co https://nilzfsahxoxibvrwsqkd.supabase.co; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "^(preview-mass-cac-dashboard|mass-cac-dashboard-.+-mass-data-dashboard)\\.vercel\\.app$"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; connect-src 'self' https://pbkwpfdpdtelmvbkzgvx.supabase.co https://nilzfsahxoxibvrwsqkd.supabase.co https://vercel.live https://vercel.com https://*.pusher.com wss://*.pusher.com; font-src 'self' https://vercel.live https://assets.vercel.com; form-action 'self'; frame-ancestors 'none'; frame-src https://vercel.live; img-src 'self' data: blob: https://vercel.live https://vercel.com https://*.vercel.com https://sockjs-mt1.pusher.com; object-src 'none'; script-src 'self' https://vercel.live; style-src 'self' 'unsafe-inline' https://vercel.live; upgrade-insecure-requests"
+        }
       ]
     }
   ]

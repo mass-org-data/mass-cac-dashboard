@@ -38,6 +38,12 @@ All six PRs had green GitHub `frontend` and `portable-sql` checks and Ready prot
 
 The intended merge order for the stack is #10, #11, #12, #13, #14, #15. Do not merge, rebase the stack, or deploy Production without the user's approval. Create actual ready PRs rather than draft PRs unless the user explicitly changes that preference.
 
+## Branch workflow and Vercel preview feedback (16 November 2026)
+
+- Workflow: feature branches into `staging`; only `staging` is merged into `main`. The Vercel domain `preview-mass-cac-dashboard.vercel.app` serves the `staging` branch; Production is `mass-cac-dashboard.vercel.app` (`main`). Open PRs against `staging`, not `main`, unless the owner says otherwise.
+- `vercel.json` sends three header rules: the common security headers, the strict Content-Security-Policy for every host except preview hosts (this is Production), and a relaxed policy only for preview hosts (the staging domain, `mass-cac-dashboard-<hash>-mass-data-dashboard.vercel.app` and branch URLs) that additionally allows the Vercel toolbar hosts (`vercel.live`, Vercel and Pusher) so preview users can leave Vercel Comments. `tests/frontend/security-policy.test.mjs` pins this: Production is never relaxed, and the relaxed policy only adds those hosts. After any change to these rules, check `curl -sI https://mass-cac-dashboard.vercel.app` shows the strict policy (one `script-src 'self'`, no `vercel.live`).
+- Reading preview comments: `vercel comments` (Vercel CLI) lists unresolved threads for the linked project and branch; resolve each with a short note once fixed.
+
 ## Release records
 
 Read the relevant dated record before modifying a completed area:
