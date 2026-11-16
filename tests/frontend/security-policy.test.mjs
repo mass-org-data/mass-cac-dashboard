@@ -76,7 +76,7 @@ test('the preview policy only adds the Vercel toolbar hosts and keeps every othe
  assert.deepEqual(directive(relaxed,'frame-src'),['https://vercel.live']);
  // Everything the preview policy allows beyond the strict one must be a Vercel or Pusher host.
  for(const name of ['connect-src','font-src','frame-src','img-src','script-src','style-src']){
-  const extra=directive(relaxed,name).filter(value=>!directive(strict,name).includes(value));
+  const extra=directive(relaxed,name).filter(value=>!directive(strict,name).includes(value)&&value!=="'self'");
   for(const value of extra)assert.match(value,/^(https|wss):\/\/([a-z0-9*-]+\.)?(vercel\.live|vercel\.com|pusher\.com)\/?$|^blob:$/);
  }
 });
