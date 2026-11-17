@@ -194,7 +194,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
   );
 
   return (
-    <section aria-labelledby={`${captionId}-title`} className="rounded-lg border border-line bg-white p-4 shadow-sm">
+    <section data-audit-ref={reference} data-audit-kind="table" aria-labelledby={`${captionId}-title`} className="rounded-lg border border-line bg-white p-4 shadow-sm">
       <h2 id={`${captionId}-title`} className="mb-3 text-lg font-semibold text-ink">{reference ? <span className="mr-1 text-xs font-bold text-brand-dark">{reference}</span> : null}{caption}</h2>
       <AsyncState state={state === 'ready' && data.length === 0 ? 'empty' : state} errorMessage={errorMessage} emptyMessage={emptyMessage} onRetry={onRetry}>{body}</AsyncState>
     </section>

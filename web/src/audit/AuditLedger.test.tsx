@@ -1,0 +1,10 @@
+import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {describe,it,expect,vi} from 'vitest';
+import {AuditLedger} from './AuditLedger';
+import {CATALOG} from '../../../scripts/audit/catalog.mjs';
+
+describe('audit ledger',()=>{
+ it('starts with an honest inventory, including blocked definitions, without manufacturing matches',()=>{render(<AuditLedger/>);expect(screen.getByRole('heading',{name:'Indicator Verification Ledger'})).toBeInTheDocument();expect(screen.getByText(/No numeric checks have passed/)).toBeInTheDocument();expect(screen.getAllByRole('row')).toHaveLength(26);fireEvent.change(screen.getByLabelText('Dashboard page'),{target:{value:'Morarji'}});expect(screen.getAllByText('Cutoff unverifiable').length).toBeGreaterThan(0);});
+ it('loads source values in memory and never treats them as dashboard checks',async()=>{const network=vi.spyOn(globalThis,'fetch');render(<AuditLedger/>);const reference={schemaVersion:1,project:'fixture',fingerprint:'one',extractedAt:'2026-11-17T00:00:00Z',scenario:{project:'fixture',environment:'synthetic',role:'Leadership',month:'2026-10',centres:[{id:'10000000-0000-4000-8000-000000000001',label:'Fixture'}]},facts:[{key:'students',dimension:'All',value:0}]};const file=new File([''], 'reference.json',{type:'application/json'});Object.defineProperty(file,'text',{value:async()=>JSON.stringify(reference)});fireEvent.change(screen.getByLabelText('Audit JSON file'),{target:{files:[file]}});await waitFor(()=>expect(screen.getByText('synthetic')).toBeInTheDocument());expect(screen.getByText('0 / 0 comparable cases')).toBeInTheDocument();expect(network).not.toHaveBeenCalled();network.mockRestore();});
+ it('does not accept a wrong cutoff or report it as loaded',async()=>{render(<AuditLedger/>);const file=new File([''], 'bad.json');Object.defineProperty(file,'text',{value:async()=>JSON.stringify({schemaVersion:1,cutoff:'2026-11-30',rows:[]})});fireEvent.change(screen.getByLabelText('Audit JSON file'),{target:{files:[file]}});expect(await screen.findByRole('alert')).toHaveTextContent('October');expect(CATALOG.length).toBeGreaterThan(70);});
+});
