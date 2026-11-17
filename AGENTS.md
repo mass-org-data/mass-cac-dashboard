@@ -38,6 +38,12 @@ All six PRs had green GitHub `frontend` and `portable-sql` checks and Ready prot
 
 The intended merge order for the stack is #10, #11, #12, #13, #14, #15. Do not merge, rebase the stack, or deploy Production without the user's approval. Create actual ready PRs rather than draft PRs unless the user explicitly changes that preference.
 
+## Branch workflow and Vercel preview feedback (16 November 2026)
+
+- Workflow: feature branches into `staging`; only `staging` is merged into `main`. The Vercel domain `preview-mass-cac-dashboard.vercel.app` serves the `staging` branch; Production is `mass-cac-dashboard.vercel.app` (`main`). Open PRs against `staging`, not `main`, unless the owner says otherwise.
+- `vercel.json` sends three header rules: the common security headers, the strict Content-Security-Policy for every host except preview hosts (this is Production), and a relaxed policy only for preview hosts (the staging domain, `mass-cac-dashboard-<hash>-mass-data-dashboard.vercel.app` and branch URLs) that additionally allows the Vercel toolbar hosts (`vercel.live`, Vercel and Pusher) so preview users can leave Vercel Comments. `tests/frontend/security-policy.test.mjs` pins this: Production is never relaxed, and the relaxed policy only adds those hosts. After any change to these rules, check `curl -sI https://mass-cac-dashboard.vercel.app` shows the strict policy (one `script-src 'self'`, no `vercel.live`).
+- Reading preview comments: `vercel comments` (Vercel CLI) lists unresolved threads for the linked project and branch; resolve each with a short note once fixed.
+
 ## Release records
 
 Read the relevant dated record before modifying a completed area:
@@ -262,6 +268,8 @@ Branch `perf/overview-load-and-ui-rebuild` (cut from `fix/centre-event-review` `
 Cause: the Overview started about 10 all-centre `reviewed_chart_metrics` reports plus 92 per-centre `programme_aggregate` calls at once; concurrent heavy reports hit the database statement timeout and cards showed "Unavailable". Fixes: the per-centre loop is skipped when reviewed charts exist and the aggregate view is built from the single reviewed report (`reviewed-aggregate.js`); reviewed reports run two at a time (`limiter.js`); the 12-month chart loads when it scrolls into view and uses one `mass_api.reviewed_attendance_series` call (sealed behind `reviewed_reads`, advertised as `reviewed_attendance_series`, falls back to per-month reports if absent); capability probes run in parallel; the startup refresh reuses the just-verified identity and scope. The 30-second scope re-verification is unchanged. Measured on preview: first scorecards 10.6 s to 2.0 s median, whole page 11.7 s to about 4.7 s, requests 111 to 11, failed cards 7 of 7 runs to 0. Production gets this only after merge and release; the series migration `20261113120000` is not on Production and the client tolerates its absence.
 
 ### Drift between Production and a fresh replay (do not guess)
+**Resolved on 17 November 2026:** the owner took a `pg_dump` backup, then eight migrations were applied to Production one transaction each (dry run of the whole chain first), each with `seal.sql` and its `supabase_migrations.schema_migrations` row: `202611060025`, `20261111120000`, `20261112163945`, `20261113120000`, `20261114120000`, `20261114140000`, `20261114130000`, `20261117120000`. A Preview-vs-Production comparison then showed identical functions, columns, indexes, constraints, triggers and policies; only the `attendance_entry` and `registration` gates differ on purpose. Order matters: `20261117120000` must follow `20261114130000` (it restores the centre-event report patch). Record: `docs/releases/2026-11-17/PRODUCTION-DATABASE-RELEASE.md`. The older note below is history.
+
 Production has `assessment_register_summary`, `attendance_register_summary_v4`, `student_profile_page_v2` that preview lacks and lacks the `centre_event_*` functions and two `user_scope_grants` indexes (`202611060025`). `supabase/compatibility/MIGRATIONS.sha256` covers only files up to 023. A gated production workflow (GitHub Environment approval, ledger, preflight/postflight, only unapplied migrations) is proposed but not implemented.
 
 ### New interface (`web/`, the default at `/`; the original interface is kept at `/vanilla/`)
