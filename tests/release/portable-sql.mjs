@@ -52,6 +52,13 @@ try {
  await db.exec("SET ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
  const caps2=(await db.query("SELECT mass_api.get_original_capabilities()->>'reviewed_attendance_by_centre_month' AS a,mass_api.get_original_capabilities()->>'batched_reads' AS b,mass_api.get_original_capabilities()->>'reviewed_shift_counts' AS c")).rows;await db.exec('RESET ROLE');
  if(caps2[0]?.a!=='1'||caps2[0]?.b!=='1'||caps2[0]?.c!=='1')throw new Error('get_original_capabilities must advertise the batched reads');
+ await db.exec("SET ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
+ const pageContext="jsonb_build_object('on',y.starts_on,'from',y.starts_on,'until',y.starts_on+30,'year',y.id,'earlier',1,'later',2,'quarter',2)";
+ await db.query(`WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('reviewed_centres',c.ids,${pageContext},'','centre',false,0,10) FROM y,c`);
+ await db.query("WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('assessment_register',c.ids,jsonb_build_object('year',y.id),'','date',true,0,10),mass_api.dashboard_table_page('annual_centres',c.ids,jsonb_build_object('year',y.id,'today',least(y.ends_before-1,y.starts_on+180)),'','name',false,0,10),mass_api.attendance_register_page_v2(c.ids,y.starts_on,y.starts_on+30,NULL,NULL,NULL,0,10,'date',true,'') FROM y,c");
+ await db.query("WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('visit_centres',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','centre',false,0,10),mass_api.dashboard_table_page('visit_officers',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','label',false,0,10),mass_api.dashboard_table_page('morarji_cohorts',c.ids,'{}','','cohort',false,0,10) FROM c");
+ await db.exec('RESET ROLE');
+ console.log('PASS bounded table pages execute under authenticated scoped reads');
  console.log('PASS series is sealed behind reviewed_reads');
  console.log('PASS sealed reviewed calculation API. Native concurrency and managed Auth/browser tests remain separate.');
 } finally {await db.close();fs.rmSync(out,{recursive:true,force:true});}
