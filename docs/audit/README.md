@@ -50,7 +50,7 @@ Load `run.json` in `/audit/`. Or generate an expected-only run by omitting `--da
 
 ## Current execution boundaries
 
-The initial real-data extraction has been executed read-only for the all-centre Leadership October selection. Private values and centre lists are not committed or published in the preview bundle. Actual signed-in dashboard capture still requires an authorized browser session/credentials; the initial register records untested cases rather than claiming a match.
+The initial real-data extraction has been executed read-only for the all-centre Leadership October selection. Private values and centre lists are not committed or published in the preview bundle. The first authorized signed-in Leadership October capture is complete (see continuation results below); additional scenarios still require an authorized session.
 
 The current Profiles, Assessments, Annual Donor and Morarji React pages have no October roster/end-month selector. Their current November values cannot be represented as October values; the capture runner records this limitation. Profile and write availability follows the existing backend. The audit does not install missing production functions or activate features. A definition review is also recorded for relative percentage improvement versus the earlier mark-change wording; display agreement alone does not approve programme logic.
 
@@ -59,3 +59,15 @@ Field-level identities, names, free-text feedback and audit actors are not quant
 ## Verification
 
 `npm run test:audit` checks comparator rules, cutoff, scenario mismatch, CSV injection, data-stability fingerprints and independently seeded PostgreSQL facts (holiday, true zero, missing data and undated quarter boundaries). `npm run test:audit:browser` checks the actual built ledger, source-file loading, filters, pagination, CSV export and phone overflow. `npm run web:typecheck`, `npm run test:web`, frontend workflows, lint/check and build remain required. Use `MASS_CHROMIUM_MODULE` or `MASS_CHROMIUM_EXECUTABLE` when the environment needs its packaged Chromium runtime.
+
+## Continuation check — 17 November 2026
+
+The first authorized production browser run is now captured for Leadership, all permitted centres, October. Before/after independent source fingerprints agree. The private run contains the actual rendered Overview cards, categories and all centre-table pages, October Visits availability, the Attendance page's installed-API error and the checked historical-control limitations. This is one scenario; other roles/months/filter combinations have not been run. The native verification sheet still contains the earlier expected-only snapshot; refreshing that external destination requires owner authorization.
+
+174 numeric comparisons match; none differ. Coverage is only 4.6%: 810 cases have no eligible source observation, 1,917 have no comparable dashboard display, 847 cannot certify the cutoff, seven lack a settled calculation and six do not apply to Leadership. These categories must not be described as successful checks. The current production Attendance page explicitly reports an older register API; this audit records the failure and does not install or activate functions.
+
+The capture adapter supports current deployed markup without requiring the new audit attributes. It removes accessibility sort announcements from table headers, normalizes documented category aliases (Girls/Girl, Boys/Boy, Sept/Sep), and waits for actual pagination changes. Duplicate centre labels are disambiguated by UUID in independent reference dimensions; when the dashboard gives no identity for the repeated label, those rows are unavailable rather than arbitrarily paired. Duplicate source dimensions are rejected on import/run construction.
+
+`release.json` identifies Production commit `441f8ecfec9d2a98fccc73372cfdfd42dad291dc` and reports a tracked `vercel.json` change; that deployment note is retained in the private capture. No private case values or browser session material are in Git. The private JSON can be loaded into `/audit/` to view this execution; a new visitor sees the indicator inventory until importing a run.
+
+Continuation validation: 13 audit tests (including seeded SQL and duplicate-label regression), 13 built-ledger/browser adapter checks, lint and syntax checks, plus the existing web suite. The earlier full GitHub run passed frontend, portable SQL and browser acceptance; check the latest PR run after this follow-up commit.

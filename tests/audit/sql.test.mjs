@@ -41,5 +41,9 @@ test('independent SQL respects October, holiday exclusions, true zero, undated q
  assert.equal(get('centre_students','Fixture B'),0);assert.equal(get('centre_attendance','Fixture B'),null);
  // Changing a filter changes the underlying cohort instead of reusing an all-student denominator.
  const next=await db.exec(referenceSql({...scenario,gender:'Girl'}));const ref2=next.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;assert.equal(ref2.facts.find(f=>f.key==='students').value,1);
+ // Distinct centres with the same label keep distinct identities in every reference key.
+ await db.exec(`UPDATE mass_core.centres SET label='Repeated';`);
+ const duplicated=await db.exec(referenceSql(scenario));const dupRef=duplicated.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;
+ const centreFacts=dupRef.facts.filter(f=>f.key==='centre_students');assert.equal(centreFacts.length,2);assert.equal(new Set(centreFacts.map(f=>f.dimension)).size,2);assert.ok(centreFacts.every(f=>f.dimension.startsWith('Repeated [')));
  } finally {await db.close();}
 });

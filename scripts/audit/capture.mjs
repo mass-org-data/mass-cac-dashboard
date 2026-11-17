@@ -5,6 +5,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {CATALOG,CUTOFF,validateScenario} from './core.mjs';
+import {locateSurface,cardDisplay,tablePage,waitTableChange,canonicalDimension} from './dom.mjs';
 const args=process.argv.slice(2),opt=(n,d=null)=>{const i=args.indexOf('--'+n);return i<0?d:args[i+1];};
 if(!opt('reference'))throw Error('--reference is required');
 const reference=JSON.parse(await readFile(opt('reference'),'utf8')),scenario=validateScenario(reference.scenario);
@@ -46,7 +47,7 @@ else {
     const authorized=authorization.centres?.filter(c=>c.roles?.includes(scenario.role))||[];if(scenario.centres.some(c=>!authorized.some(a=>a.id===c.id)))throw Error('Reference centre scope is outside the verified role assignments.');
     const month=page.getByLabel('Reporting month');
     if(await month.count()){await month.selectOption(scenario.month);await settle();}
-    else {const note=group+': no historical reporting-date control; current page cannot certify the October roster/cutoff.';result.issues.push(note);for(const metric of metrics){const facts=reference.facts.filter(f=>f.key===metric.source);for(const f of (facts.length?facts:[{dimension:'All'}]))result.cells.push({metric:metric.id,dimension:f.dimension||'All',state:'cutoff',display:null,note});}continue;}
+    else {const alerts=await page.locator('main [role=alert]').allTextContents();if(alerts.length){const note=alerts.join(' ');result.issues.push(group+': '+note);for(const metric of metrics){const facts=reference.facts.filter(f=>f.key===metric.source);for(const f of (facts.length?facts:[{dimension:'All'}]))result.cells.push({metric:metric.id,dimension:f.dimension||'All',state:'unavailable',display:null,note});}continue;}const note=group+': no historical reporting-date control; current page cannot certify the October roster/cutoff.';result.issues.push(note);for(const metric of metrics){const facts=reference.facts.filter(f=>f.key===metric.source);for(const f of (facts.length?facts:[{dimension:'All'}]))result.cells.push({metric:metric.id,dimension:f.dimension||'All',state:'cutoff',display:null,note});}continue;}
     const centre=page.getByLabel('Centre');
     // Verify the role's full readable centre set before selecting any subset.
     if(await centre.count()){
@@ -60,14 +61,14 @@ else {
     await settle();
     const tables=new Map();
     for(const metric of metrics){
-     const root=page.locator(`[data-audit-ref="${metric.ref}"]`);
+     const root=await locateSurface(page,metric.ref);
      if(!await root.count())continue;
      if(metric.kind==='card'){
-      const value=root.locator('[data-audit-display]');const ready=await value.count()>0;
-      result.cells.push({metric:metric.id,dimension:'All',state:ready?'ready':'unavailable',display:ready?await value.innerText():null,note:ready?'':'The rendered card is unavailable.'});
+      const display=await cardDisplay(root);const ready=display!==null;
+      result.cells.push({metric:metric.id,dimension:'All',state:ready?'ready':'unavailable',display,note:ready?'':'The rendered card is unavailable.'});
      }else if(['chart','line'].includes(metric.kind)){
       const titles=await root.locator('svg title').allTextContents();
-      for(const text of titles){const pos=text.lastIndexOf(':');if(pos>=0)result.cells.push({metric:metric.id,dimension:text.slice(0,pos).trim(),state:'ready',display:text.slice(pos+1).trim()});}
+      for(const text of titles){const pos=text.lastIndexOf(':');if(pos>=0)result.cells.push({metric:metric.id,dimension:canonicalDimension(text.slice(0,pos).trim()),state:'ready',display:text.slice(pos+1).trim()});}
      }else if(metric.kind==='definition'){
       const labels={AS09:'Matched students',AS10:'Improved',AS11:'Unchanged',AS12:'Declined',AS13:'Average change (marks)'};
       const values=await root.locator('dl').evaluateAll(nodes=>nodes.flatMap(n=>[...n.querySelectorAll('dt')].map(dt=>({label:dt.textContent,value:dt.nextElementSibling?.textContent}))));
@@ -75,17 +76,16 @@ else {
      }else if(metric.column||metric.kind==='rowcount'){
       let data=tables.get(metric.ref);
       if(!data){data=[];for(let n=0;n<10000;n++){
-       const heads=await root.locator('thead th').allTextContents(),rows=await root.locator('tbody tr').evaluateAll(nodes=>nodes.map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent?.trim()||'')));
-       data.push(...rows.map(r=>Object.fromEntries(heads.map((h,i)=>[h.trim().replace(/[↑↓↕]/g,'').trim(),r[i]]))));
+       data.push(...await tablePage(root));
        const next=root.getByRole('button',{name:'Next page',exact:true});if(!await next.count()||!await next.isEnabled())break;
-       const before=await root.locator('tbody').innerText();await next.click();await settle();await page.waitForFunction(({ref,before})=>document.querySelector(`[data-audit-ref="${ref}"] tbody`)?.textContent?.replace(/\s+/g,' ').trim()!==before.replace(/\s+/g,' ').trim(),{ref:metric.ref,before});
+       const before=await root.locator('tbody').innerText();await next.click();await settle();await waitTableChange(root,before);
       }tables.set(metric.ref,data);}
       if(metric.kind==='rowcount')result.cells.push({metric:metric.id,dimension:'All',state:'ready',display:String(data.length)});
-      else for(const row of data){const dimension=metric.kind==='register'?[row.Centre,row.Shift,row.Date].join(' | '):metric.kind==='assessment-register'?[row.Centre,row.Shift,row['Assessment date'],row.Round].join(' | '):row.Centre||row.Officer||row.Cohort; if(dimension&&Object.hasOwn(row,metric.column))result.cells.push({metric:metric.id,dimension,state:'ready',display:row[metric.column]});}
+      else for(const row of data){const dimension=metric.kind==='register'?[row.centre,row.shift,row.date].join(' | '):metric.kind==='assessment-register'?[row.centre,row.shift,row['assessment date'],row.round].join(' | '):row.centre||row.officer||row.cohort; if(dimension&&Object.hasOwn(row,metric.column.toLowerCase())){const duplicate=scenario.centres.filter(c=>c.label===row.centre);if(duplicate.length>1){for(const c of duplicate)result.cells.push({metric:metric.id,dimension:dimension.replace(row.centre,`${row.centre} [${c.id}]`),state:'unavailable',display:null,note:'Two centres share this displayed name; the table supplies no identity to distinguish their rows.'});}else result.cells.push({metric:metric.id,dimension,state:'ready',display:row[metric.column.toLowerCase()]});}}
      }
     }
     // Evidence crops exclude individual profile rows and free-text visit logs.
-    for(const ref of [...new Set(metrics.filter(m=>['card','chart','line'].includes(m.kind)).map(m=>m.ref))]){const target=page.locator(`[data-audit-ref="${ref}"]`);if(await target.count()){const filename=`${route}-${ref}.png`;await target.screenshot({path:path.join(out,filename)});for(const c of result.cells.filter(c=>metrics.some(m=>m.id===c.metric&&m.ref===ref)))c.evidence=filename;}}
+    for(const ref of [...new Set(metrics.filter(m=>['card','chart','line'].includes(m.kind)).map(m=>m.ref))]){const target=await locateSurface(page,ref);if(await target.count()){const filename=`${route}-${ref}.png`;await target.screenshot({path:path.join(out,filename)});for(const c of result.cells.filter(c=>metrics.some(m=>m.id===c.metric&&m.ref===ref)))c.evidence=filename;}}
    }catch(error){result.issues.push(group+': '+(error instanceof Error?error.message:'Capture failed.'));}
   }
   try {
@@ -108,6 +108,6 @@ else {
    if(await summary.count()){const rows=await summary.locator('tbody tr').evaluateAll(nodes=>nodes.map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent?.trim())));for(const r of rows)for(const [metric,n] of [['AC12',1],['AC13',2]])result.cells.push({metric,dimension:r[0],display:r[n],state:'ready'});}
   }catch(error){result.issues.push('Activities / MM: '+(error instanceof Error?error.message:'Capture failed.'));}
   // Empty/unavailable chart states remain explicit, never synthetic zeros.
-  result.capturedAt=new Date().toISOString();await save();console.log(`Captured ${result.cells.length} displayed cells; ${result.issues.length} pages or prerequisites need review.`);
+  const seen=new Map();result.cells=result.cells.filter(c=>{const k=c.metric+'|'+c.dimension;if(!seen.has(k)){seen.set(k,c);return true;}if(c.state==='unavailable'&&seen.get(k).state==='unavailable')return false;throw Error('Duplicate rendered dimension: '+k);});result.capturedAt=new Date().toISOString();await save();console.log(`Captured ${result.cells.length} displayed cells; ${result.issues.length} pages or prerequisites need review.`);
  } finally {await context.close();await browser.close();}
 }

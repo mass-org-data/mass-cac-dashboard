@@ -44,6 +44,7 @@ export function makeRun(reference,captures=null) {
  if(captures&&(captures.schemaVersion!==1||captures.project!==reference.project||scenarioKey(captures.scenario)!==scenarioKey(scenario)||captures.cutoff!==CUTOFF||!/^[a-f0-9]{40}$/.test(captures.dashboardCommit||'')||!captures.capturedAt||!Array.isArray(captures.cells)))throw Error('Capture environment, scope, cutoff or version does not match the reference.');
  const captureMap=new Map();
  for(const c of captures?.cells||[]){const k=c.metric+'|'+c.dimension;if(captureMap.has(k))throw Error('Duplicate dashboard capture: '+k);captureMap.set(k,c);}
+ const factKeys=new Set();for(const f of reference.facts){const key=f.key+'|'+(f.dimension??'All');if(factKeys.has(key))throw Error('Duplicate reference dimension: '+key);factKeys.add(key);}
  const rows=[];
  for(const metric of CATALOG){
   let facts=reference.facts.filter(f=>f.key===metric.source);
