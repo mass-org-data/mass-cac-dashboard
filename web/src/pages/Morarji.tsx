@@ -137,10 +137,10 @@ export function Morarji({backend, context, role, service: injected, profiles: in
       {none ? <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">Verified cohort outcomes have not been imported. Historical candidates remain under review; no cohort, exam or result is inferred.</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="6.1" label="Children in the training cohort" value={cohortStat ? formatCount(cohortStat.members) : null} hint={cohortLabel || 'No cohort'} state={none || (stats && !cohortStat) ? 'unavailable' : cardState(report)} message={msg ?? 'No verified cohort recorded'} />
-        <Scorecard reference="6.2" label="Took the exam" value={cohortStat?.attended != null ? formatCount(cohortStat.attended) : null} hint="Recorded answers only" state={stats && cohortStat?.attended == null ? 'unavailable' : cardState(report)} message={msg ?? 'Not recorded'} />
-        <Scorecard reference="6.3" label="Children passed" value={cohortStat?.passed != null ? formatCount(cohortStat.passed) : null} hint="Recorded pass results" state={stats && cohortStat?.passed == null ? 'unavailable' : cardState(report)} message={msg ?? 'Not recorded'} />
-        <Scorecard reference="6.4" label="Results pending" value={pending === null ? null : formatCount(pending)} hint="Unknown is not counted as failed" state={stats && pending === null ? 'unavailable' : cardState(report)} message={msg ?? 'Not recorded'} />
+        <Scorecard reference="6.1" label="Children in the training cohort" value={cohortStat ? formatCount(cohortStat.members) : null} state={none || (stats && !cohortStat) ? 'unavailable' : cardState(report)} message={msg ?? 'No verified cohort recorded'} />
+        <Scorecard reference="6.2" label="Took the exam" value={cohortStat?.attended != null ? formatCount(cohortStat.attended) : null} state={stats && cohortStat?.attended == null ? 'unavailable' : cardState(report)} message={msg ?? 'Not recorded'} />
+        <Scorecard reference="6.3" label="Children passed" value={cohortStat?.passed != null ? formatCount(cohortStat.passed) : null} state={stats && cohortStat?.passed == null ? 'unavailable' : cardState(report)} message={msg ?? 'Not recorded'} />
+        <Scorecard reference="6.4" label="Results pending" value={pending === null ? null : formatCount(pending)} state={stats && pending === null ? 'unavailable' : cardState(report)} message={msg ?? 'Not recorded'} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">

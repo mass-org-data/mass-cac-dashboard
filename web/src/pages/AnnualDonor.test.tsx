@@ -52,19 +52,20 @@ describe('Annual donor summary', () => {
     setup();
     await comparison();
     expect(await screen.findByText('2026-04-01 to 2027-04-01 (exclusive)', {exact: false})).toBeInTheDocument();
-    expect(screen.getByText(/across 6 loaded months/)).toBeInTheDocument();
+    expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6');
+    expect(screen.queryByText(/across 6 loaded months/)).not.toBeInTheDocument();
     expect(screen.getAllByText('90.9%').length).toBeGreaterThan(0);  // 2100 / (2100 + 210)
   });
   it('treats a failed month as a gap, says so, and still reports the others', async () => {
     setup({failMonth: '2026-07'});
     await comparison();
     expect(await screen.findByText(/1 of 6 monthly reports could not be loaded/)).toBeInTheDocument();
-    expect(screen.getByText(/across 5 loaded months/)).toBeInTheDocument();
+    expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('5');
   });
   it('retries a month once on a transient failure, so no month is lost', async () => {
     const {report} = setup({failOnce: '2026-07'});
     await comparison();
-    await screen.findByText(/across 6 loaded months/);
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
     expect(screen.queryByText(/monthly reports could not be loaded/)).not.toBeInTheDocument();
     expect(report.mock.calls.filter(c => c[0].month === '2026-07')).toHaveLength(2);
   });
@@ -96,7 +97,7 @@ describe('Annual donor summary', () => {
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();
     await comparison();
-    await screen.findByText(/across 6 loaded months/);
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
     expect(await violations(container)).toEqual([]);
   });
 });

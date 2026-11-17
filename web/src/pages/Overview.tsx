@@ -79,6 +79,9 @@ export function Overview({backend, context, role, service: injected}: {backend: 
   const stats: Report | null = report.status === 'ready' ? report.value : null;
   const quarter = stats?.quarters.find(q => q.quarter === TO_QUARTER);
   const donorCount = new Set(selected.map(c => donors[c.id]).filter(Boolean)).size;
+  const girls = stats?.genders.Girl ?? 0;
+  const boys = stats?.genders.Boy ?? 0;
+  const population = stats?.children ?? 0;
   const reportMessage = report.status === 'error' ? report.message : report.status === 'future' ? FUTURE_NOTICE : undefined;
 
   const rows = useMemo<CentreRow[]>(() => (stats?.centres ?? []).map(c => {
@@ -114,11 +117,11 @@ export function Overview({backend, context, role, service: injected}: {backend: 
 
       {selected.length === 0 ? <AsyncState state="empty" emptyMessage="No centres match these filters." /> : <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Scorecard reference="1.1" label={ROLE_HEADING[role] ?? 'Centres in this selection'} value={formatCount(role === 'Cluster Officer' ? scope.length : selected.length)} hint={role === 'Cluster Officer' ? 'All assigned centres' : 'Current selected scope'} />
-          <Scorecard reference="1.2" label="Students enrolled" value={stats ? formatCount(stats.children) : null} hint="Full filtered population" state={cardState(report)} message={reportMessage} />
-          <Scorecard reference="1.3" label="Girls" value={stats ? formatCount(stats.genders.Girl ?? 0) : null} hint="Full filtered population" state={cardState(report)} message={reportMessage} />
-          <Scorecard reference="1.4" label="Boys" value={stats ? formatCount(stats.genders.Boy ?? 0) : null} hint="Full filtered population" state={cardState(report)} message={reportMessage} />
-          <Scorecard reference="1.5" label="Donors represented" value={formatCount(donorCount)} hint="Current directory associations" />
+          <Scorecard reference="1.1" label={ROLE_HEADING[role] ?? 'Centres in this selection'} value={formatCount(role === 'Cluster Officer' ? scope.length : selected.length)} />
+          <Scorecard reference="1.2" label="Students enrolled" value={stats ? formatCount(stats.children) : null} state={cardState(report)} message={reportMessage} />
+          <Scorecard reference="1.3" label="Girls" value={stats && population > 0 ? formatPercent((girls / population) * 100) : null} hint={stats ? `${formatCount(girls)} students` : undefined} state={cardState(report)} message={reportMessage} />
+          <Scorecard reference="1.4" label="Boys" value={stats && population > 0 ? formatPercent((boys / population) * 100) : null} hint={stats ? `${formatCount(boys)} students` : undefined} state={cardState(report)} message={reportMessage} />
+          <Scorecard reference="1.5" label="Donors represented" value={formatCount(donorCount)} />
           <Scorecard reference="1.6" label="Students with good engagement" state="unavailable" message="Agreed engagement rule; complete records required" />
           <Scorecard reference="1.7" label="Students with low attendance" state="unavailable" message="Below 15 days; complete scheduled-day coverage required" tone="alert" />
           <Scorecard

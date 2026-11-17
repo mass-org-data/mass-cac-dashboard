@@ -136,10 +136,10 @@ export function Assessments({backend, context, role, service: injected, overview
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="4.1" label="Students with exam scores recorded" value={stats ? `${formatCount(q?.n ?? 0)} / ${formatCount(stats.children)}` : null} hint={`${round_label} · selected students`} state={cardState(report)} message={reportMessage} />
-        <Scorecard reference="4.2" label="Average student exam score" value={q?.mean != null ? q.mean.toFixed(1) : null} hint="Combined test · out of 25" state={stats && q?.mean == null ? 'unavailable' : cardState(report)} message={stats && q?.mean == null ? 'No scores are recorded for this round' : reportMessage} />
-        <Scorecard reference="4.3" label="Students without an exam score" value={stats ? formatCount(stats.children - (q?.n ?? 0)) : null} hint="Missing is not a zero score" state={cardState(report)} message={reportMessage} />
-        <Scorecard reference="4.4" label="Average score improvement" value={growth === null ? null : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`} hint={`F${fromQuarter} → F${toQuarter} · ${change?.n ?? 0} matched students`} state={stats && growth === null ? 'unavailable' : cardState(report)} message={stats && growth === null ? 'Needs matched students and a non-zero earlier average' : reportMessage} />
+        <Scorecard reference="4.1" label="Students with exam scores recorded" value={stats ? `${formatCount(q?.n ?? 0)} / ${formatCount(stats.children)}` : null} state={cardState(report)} message={reportMessage} />
+        <Scorecard reference="4.2" label="Average student exam score" value={q?.mean != null ? q.mean.toFixed(1) : null} state={stats && q?.mean == null ? 'unavailable' : cardState(report)} message={stats && q?.mean == null ? 'No scores are recorded for this round' : reportMessage} />
+        <Scorecard reference="4.3" label="Students without an exam score" value={stats ? formatCount(stats.children - (q?.n ?? 0)) : null} state={cardState(report)} message={reportMessage} />
+        <Scorecard reference="4.4" label="Average score improvement" value={growth === null ? null : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`} state={stats && growth === null ? 'unavailable' : cardState(report)} message={stats && growth === null ? 'Needs matched students and a non-zero earlier average' : reportMessage} />
       </div>
       <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>Combined test only.</strong> F1–F4 are separate exam rounds with a maximum of 25 marks. Missing scores stay unknown. Percentage improvement = (later average − earlier average) ÷ earlier average × 100 for the same matched students; it is not the percentage of students who improved. Equal maxima alone do not prove paper comparability.</p>
 

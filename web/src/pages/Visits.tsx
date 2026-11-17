@@ -89,7 +89,6 @@ export function Visits({backend, context, role, service: injected}: {backend: Li
   const count = (shift: 'morning' | 'evening') => (rows && observed ? rows.reduce((n, r) => n + num(r[shift]), 0) : null);
   const morning = count('morning'), evening = count('evening');
   const actual = observed ? (filters.shift === 'Morning' ? morning : filters.shift === 'Evening' ? evening : (morning ?? 0) + (evening ?? 0)) : null;
-  const target = (rows?.length ?? 0) * (filters.shift ? 2 : 4);
   const achieved = rows && observed ? rows.filter(r => r.achieved).length : null;
 
   const officerLines = useMemo<OfficerLine[]>(() => {
@@ -149,10 +148,10 @@ export function Visits({backend, context, role, service: injected}: {backend: Li
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="5.1" label="Visits completed" value={data.status === 'ready' ? (actual === null ? null : formatCount(actual)) : null} hint={observed ? `Standard target ${target} (2 Morning + 2 Evening per centre)` : 'No verified visit observations; planned visits do not count'} state={data.status === 'ready' && actual === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded for this month'} />
-        <Scorecard reference="5.2" label="Morning-shift visits completed" value={morning === null ? null : formatCount(morning)} hint="Standard 2 per applicable centre" state={data.status === 'ready' && morning === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded'} />
-        <Scorecard reference="5.3" label="Evening-shift visits completed" value={evening === null ? null : formatCount(evening)} hint="Standard 2 per applicable centre" state={data.status === 'ready' && evening === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded'} />
-        <Scorecard reference="5.4" label="Centres meeting standard 2 + 2" value={achieved === null ? null : formatCount(achieved)} hint={`Recorded counts · ${rows?.length ?? 0} selected centres`} state={data.status === 'ready' && achieved === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded'} />
+        <Scorecard reference="5.1" label="Visits completed" value={data.status === 'ready' ? (actual === null ? null : formatCount(actual)) : null} state={data.status === 'ready' && actual === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded for this month'} />
+        <Scorecard reference="5.2" label="Morning-shift visits completed" value={morning === null ? null : formatCount(morning)} state={data.status === 'ready' && morning === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded'} />
+        <Scorecard reference="5.3" label="Evening-shift visits completed" value={evening === null ? null : formatCount(evening)} state={data.status === 'ready' && evening === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded'} />
+        <Scorecard reference="5.4" label="Centres meeting standard 2 + 2" value={achieved === null ? null : formatCount(achieved)} state={data.status === 'ready' && achieved === null ? 'unavailable' : cardState(data)} message={msg ?? 'No verified visits recorded'} />
       </div>
       <p className="rounded-md bg-brand-soft p-3 text-sm">Completed visits and monthly targets stay separate. Missing visit data is unknown, not zero, and the applicability of each centre's target is not inferred.</p>
 

@@ -42,8 +42,10 @@ describe('Overview', () => {
     setup();
     await screen.findByRole('group', {name: 'Students enrolled'});
     await waitFor(() => expect(screen.getByRole('group', {name: 'Students enrolled'})).toHaveTextContent('1,470'));
-    expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802');
-    expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('668');
+    expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%');
+    expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802 students');
+    expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('45.4%');
+    expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('668 students');
     expect(screen.getByRole('group', {name: 'Centres in this selection'})).toHaveTextContent('12');
     expect(screen.getByRole('group', {name: 'Donors represented'})).toHaveTextContent('2');
     expect(screen.getByRole('group', {name: 'Students scoring above 20'})).toHaveTextContent('438');
@@ -60,6 +62,8 @@ describe('Overview', () => {
     expect(line.getAttribute('aria-label')).toContain('Aug: 85.0%');
     expect(line.getAttribute('aria-label')).toContain('Nov: unknown');
     expect(line.getAttribute('aria-label')).toContain('Apr: unknown');
+    expect(within(line).getByText('86.0%')).toBeInTheDocument();
+    expect(within(line).getByText('85.0%')).toBeInTheDocument();
   });
 
   it('lists centres in the shared table: ten per page, alphabetical, unknown shown as Unknown', async () => {
@@ -106,7 +110,7 @@ describe('Overview', () => {
     expect(screen.getAllByText(/Unable to reach the service/).length).toBeGreaterThan(0);
     fail = false;
     await user.click(screen.getAllByRole('button', {name: 'Retry'})[0]);
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));
   });
 
   it('explains when the backend lacks the reviewed reports', async () => {
@@ -130,7 +134,7 @@ describe('Overview', () => {
 
   it('has no automatically detectable accessibility violations', async () => {
     const {container} = setup({service: {report: vi.fn(async () => report)}});
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));
     await screen.findByRole('img', {name: /Attendance by month/});
     expect(await violations(container)).toEqual([]);
   });
@@ -139,7 +143,7 @@ describe('Overview', () => {
     const rpc = vi.fn(async (name: string) => name === 'reviewed_attendance_series' ? [] : name === 'reviewed_shift_counts' ? {Morning: 300, Evening: 502} : report);
     const backend = {rpc, readReferences: async () => refs, readCapabilities: async () => ({reviewedCharts: true, reviewedAttendanceSeries: true}), readDirectory: async () => []} as unknown as LiveBackend;
     render(<Overview backend={backend} context={context} role="Leadership" service={createOverviewService(rpc as never)} />);
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));
     await screen.findByRole('img', {name: /Students by shift/});
     expect(rpc.mock.calls.map(c => c[0])).not.toContain('programme_aggregate');
     expect(rpc.mock.calls.filter(c => c[0] === 'reviewed_chart_metrics')).toHaveLength(1);

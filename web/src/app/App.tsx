@@ -56,7 +56,7 @@ function Shell({backend}: {backend: LiveBackend}) {
       <div className="flex min-h-0 flex-1">
         <SideMenu role={state.activeRole} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} legacyHref="./vanilla/" />
         <main className="min-w-0 flex-1 overflow-y-auto">
-          <div className="max-w-7xl space-y-6 p-4 md:p-6">
+          <div className="w-full space-y-6 p-4 md:p-6">
           <h1 className="text-2xl font-bold text-ink">{ROUTES.find(r => r.id === route)!.number}. {ROUTES.find(r => r.id === route)!.label}</h1>
         {route === 'attendance'
           ? <Attendance backend={backend} context={state.context} role={state.activeRole} key={`a-${state.activeRole}`} />

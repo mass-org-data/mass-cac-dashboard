@@ -31,15 +31,15 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; summar
 describe('Visits page', () => {
   it('shows completed counts, target and coverage from the server summary', async () => {
     setup();
-    expect(await screen.findByText('Standard target 8 (2 Morning + 2 Evening per centre)')).toBeInTheDocument();
-    expect(screen.getByText('Visits completed')).toBeInTheDocument();
-    const coverage = screen.getByRole('table', {name: 'Centre coverage'});
+    const coverage = await screen.findByRole('table', {name: 'Centre coverage'});
+    expect(screen.getByRole('group', {name: 'Visits completed'})).toHaveTextContent('5');
+    expect(screen.queryByText(/Standard target 8/)).not.toBeInTheDocument();
     expect(within(coverage).getByText('Recorded target achieved')).toBeInTheDocument();
     expect(within(coverage).getByText('Recorded target not achieved')).toBeInTheDocument();
   });
   it('asks only for the officer own coverage as a Cluster Officer', async () => {
     const {service} = setup();
-    await screen.findByText(/Standard target/);
+    await screen.findByRole('table', {name: 'Centre coverage'});
     expect(vi.mocked(service.summary).mock.calls[0]).toEqual([['c1', 'c2'], '2026-11', 'o1']);
   });
   it('leaves coverage unknown, never zero, when nothing is recorded', async () => {
@@ -61,11 +61,10 @@ describe('Visits page', () => {
   });
   it('is read-only for Leadership and offers an officer filter from the summary', async () => {
     const {service} = setup({role: 'Leadership'});
-    await screen.findByText(/Standard target/);
+    expect(await screen.findByLabelText('Officer')).toBeInTheDocument();
     expect(screen.queryByRole('button', {name: 'Record a visit'})).not.toBeInTheDocument();
     expect(screen.queryByRole('table', {name: 'Visit log'})).not.toBeInTheDocument();
     expect(vi.mocked(service.summary).mock.calls[0]![2]).toBeNull();
-    expect(screen.getByLabelText('Officer')).toBeInTheDocument();
   });
   it('lists the visit log for a Cluster Officer', async () => {
     setup();
@@ -96,7 +95,7 @@ describe('Visits page', () => {
   });
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();
-    await screen.findByText(/Standard target/);
+    await screen.findByRole('table', {name: 'Centre coverage'});
     expect(await violations(container)).toEqual([]);
   });
 });

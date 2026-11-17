@@ -133,10 +133,10 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="7.1" label="Centres in this selection" value={formatCount(selected.length)} hint="Current directory associations" />
-        <Scorecard reference="7.2" label="Students enrolled" value={reportingReport ? formatCount(reportingReport.children) : null} hint="Roster at the reporting date" state={data.status === 'ready' && !reportingReport ? 'unavailable' : cardState(data)} message={msg} />
-        <Scorecard reference="7.3" label="Annual recorded attendance" value={annual ? formatPercent(annual.percentage) : null} hint={annual ? `Present ÷ recorded classroom attendance across ${annual.loaded} loaded months` : undefined} state={data.status === 'ready' && annual?.percentage === null ? 'unavailable' : cardState(data)} message={msg ?? 'No recorded attendance'} />
-        <Scorecard reference="7.4" label="Recorded months" value={annual ? formatCount(annual.loaded) : null} hint={loaded ? `${loaded.months.length} reporting months so far in this year` : undefined} state={cardState(data)} message={msg} />
+        <Scorecard reference="7.1" label="Centres in this selection" value={formatCount(selected.length)} />
+        <Scorecard reference="7.2" label="Students enrolled" value={reportingReport ? formatCount(reportingReport.children) : null} state={data.status === 'ready' && !reportingReport ? 'unavailable' : cardState(data)} message={msg} />
+        <Scorecard reference="7.3" label="Annual recorded attendance" value={annual ? formatPercent(annual.percentage) : null} state={data.status === 'ready' && annual?.percentage === null ? 'unavailable' : cardState(data)} message={msg ?? 'No recorded attendance'} />
+        <Scorecard reference="7.4" label="Recorded months" value={annual ? formatCount(annual.loaded) : null} state={cardState(data)} message={msg} />
       </div>
       {loaded && loaded.failed > 0 ? <p role="alert" className="rounded-md bg-warn-soft p-3 text-sm text-warn">{loaded.failed} of {loaded.months.length} monthly reports could not be loaded. Those months are gaps, not zero, and are left out of the annual figure. <button type="button" className="font-semibold underline" onClick={() => setRefreshKey(k => k + 1)}>Retry</button></p> : null}
 
