@@ -25,3 +25,6 @@ __pycache__/
 
 # Local performance measurement output (never committed).
 perf-results/
+
+# Local session specification; requirements are recorded in reviewed release notes.
+UI-CLEANUP-SPEC.md
