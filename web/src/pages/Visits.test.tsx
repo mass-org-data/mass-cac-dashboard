@@ -6,6 +6,7 @@ import type {Assignment, OfficerRow, SummaryRow, VisitRow, VisitsService} from '
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
@@ -24,7 +25,9 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; summar
   } as unknown as VisitsService;
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: options.writes ?? {}}))} as unknown as LiveBackend;
   const role = options.role ?? 'Cluster Officer';
-  const view = render(<Visits backend={backend} context={ctx([role])} role={role} service={service} />);
+  const summary = options.summary ?? [sum('c1', 2, 2), sum('c2', 1, 0)];
+  const officerLines = [{id: 'o1', label: 'Meera', completed: 5, target: 8, records: 5}];
+  const view = render(<Visits backend={backend} context={ctx([role])} role={role} service={service} tables={testTableService({visit_centres: summary, visit_officers: officerLines, visit_log: [visit]})} />);
   return {service, ...view};
 }
 

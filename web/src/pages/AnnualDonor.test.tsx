@@ -6,6 +6,7 @@ import type {OverviewService, Report, Selection} from '../data/overview';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-09-14'}));
 
@@ -25,7 +26,8 @@ function setup(options: {role?: string; failMonth?: string; failAll?: boolean; f
   const overview = {report, shifts: vi.fn(), series: vi.fn(), clear: vi.fn()} as unknown as OverviewService;
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: {}})), readDirectory: vi.fn(async () => [{centre_id: 'c1', donor_label: 'Donor A'}, {centre_id: 'c2', donor_label: 'Donor B'}])} as unknown as LiveBackend;
   const role = options.role ?? 'Leadership';
-  const view = render(<AnnualDonor backend={backend} context={ctx([role])} role={role} overview={overview} />);
+  const annual = [{id: 'c1', name: 'Centre 01', donor: 'Donor A', students: 18, p: 1260, a: 105, l: 0, percentage: 1260 / 13.65, loaded: 6}, {id: 'c2', name: 'Centre 02', donor: 'Donor B', students: 12, p: 840, a: 105, l: 0, percentage: 840 / 9.45, loaded: 6}];
+  const view = render(<AnnualDonor backend={backend} context={ctx([role])} role={role} overview={overview} tables={testTableService({annual_centres: annual})} />);
   return {report, ...view};
 }
 const comparison = async () => screen.findByRole('table', {name: 'Centre comparison'});
@@ -52,7 +54,7 @@ describe('Annual donor summary', () => {
     setup();
     await comparison();
     expect(await screen.findByText('2026-04-01 to 2027-04-01 (exclusive)', {exact: false})).toBeInTheDocument();
-    expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6');
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
     expect(screen.queryByText(/across 6 loaded months/)).not.toBeInTheDocument();
     expect(screen.getAllByText('90.9%').length).toBeGreaterThan(0);  // 2100 / (2100 + 210)
   });

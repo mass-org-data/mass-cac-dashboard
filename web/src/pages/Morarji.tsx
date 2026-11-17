@@ -1,17 +1,19 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {AsyncState, type LoadState} from '../components/AsyncState';
 import {ChartCard} from '../components/ChartCard';
 import {ColumnChart} from '../components/charts/ColumnChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
-import {resultOf, yesNo, type MorarjiService} from '../morarji/service';
-import {type ProfilesService, type StudentRow} from '../profiles/service';
+import {yesNo, type MorarjiService} from '../morarji/service';
+import {type ProfilesService} from '../profiles/service';
 import {type MorarjiCohort, type OverviewService, type Report} from '../data/overview';
 import {academicMonths, todayIst} from '../lib/dates';
 import {formatCount} from '../lib/format';
-import {sharedMorarji, sharedOverview, sharedProfiles} from '../data/shared';
+import {sharedOverview} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {createTableService, type TableRequest, type TableService} from '../tables/service';
+import {useServerTable} from '../tables/useServerTable';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -34,16 +36,14 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 interface FollowUp {id: string; cohort: string; name: string | null; studentId: string; centre: string; applied: boolean | null; attended: boolean | null; result: string; school: string | null}
 interface CentreLine {id: string; name: string; members: number; applied: number; attended: number; passed: number}
 
-export function Morarji({backend, context, role, service: injected, profiles: injectedProfiles, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: MorarjiService; profiles?: ProfilesService; overview?: OverviewService}) {
-  const service = useMemo(() => injected ?? sharedMorarji(backend), [backend, injected]);
-  const profiles = useMemo(() => injectedProfiles ?? sharedProfiles(backend), [backend, injectedProfiles]);
+export function Morarji({backend, context, role, service: _injected, profiles: _injectedProfiles, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: MorarjiService; profiles?: ProfilesService; overview?: OverviewService; tables?: TableService}) {
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
+  const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; capabilities: Capabilities}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
   const [filters, setFilters] = useState({cohort: '', centre: ''});
   const [report, setReport] = useState<Slice<Report>>({status: 'loading'});
-  const [rows, setRows] = useState<Slice<FollowUp[]>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -66,34 +66,23 @@ export function Morarji({backend, context, role, service: injected, profiles: in
   const cohorts = useMemo(() => [...(refs?.programme_cohorts ?? [])].sort((a, b) => b.label.localeCompare(a.label)), [refs]);
   const cohortLabel = filters.cohort || cohorts[0]?.label || '';
   const yearLabelOf = useMemo(() => new Map((refs?.academic_years ?? []).map(y => [y.id, years(y)])), [refs]);
-  const key = JSON.stringify([selected.map(c => c.id)]);
+  const centreIds = useMemo(() => selected.map(c => c.id), [selected]);
+  const key = JSON.stringify(centreIds);
   const operational = role !== 'Leadership';
 
   useEffect(() => {
     if (!year || boot.status !== 'ready') return;
     let live = true;
-    setReport({status: 'loading'}); setRows({status: 'loading'});
-    const ids = selected.map(c => c.id);
-    if (!ids.length) { setReport({status: 'error', message: 'No centres are in this selection.'}); setRows({status: 'ready', value: []}); return; }
-    overview.report({month: today.slice(0, 7), centres: ids, shift: null, grade: null, gender: null}, {yearId: year.id, today, fromQuarter: 1, toQuarter: 2, months, hasSeries: false})
+    setReport({status: 'loading'});
+    if (!centreIds.length) { setReport({status: 'error', message: 'No centres are in this selection.'}); return; }
+    overview.report({month: today.slice(0, 7), centres: centreIds, shift: null, grade: null, gender: null}, {yearId: year.id, today, fromQuarter: 1, toQuarter: 2, months, hasSeries: false})
       .then(value => { if (live) setReport({status: 'ready', value}); }).catch(error => { if (live) setReport({status: 'error', message: messageOf(error)}); });
-    if (!operational) { setRows({status: 'ready', value: []}); return () => { live = false; }; }
-    service.memberships(ids).then(async members => {
-      // The batched follow-up already carries the student id and name; only an older database needs the roster reads.
-      const detailed = members.every(m => m.detailed);
-      const students = new Map((detailed ? [] : await profiles.students(ids, members.map(m => m.enrolment_id))).map(s => [s.enrolment, s] as [string, StudentRow]));
-      const label = new Map((refs?.programme_cohorts ?? []).map(c => [c.id, c.label]));
-      const list: FollowUp[] = members.map(m => ({id: m.membership_id, cohort: label.get(m.cohort_id) ?? '', name: detailed ? (m.full_name ?? null) : students.get(m.enrolment_id)?.name ?? null, studentId: detailed ? (m.student_id ?? '') : students.get(m.enrolment_id)?.studentId ?? '', centre: m.centre, applied: m.applied, attended: m.attended, result: resultOf(m), school: m.school_name}));
-      if (live) setRows({status: 'ready', value: list});
-    }).catch(error => { if (live) setRows({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overview, service, profiles, key, refreshKey, boot.status]);
+  }, [overview, key, refreshKey, boot.status]);
 
   const stats = report.status === 'ready' ? report.value : null;
   const cohortStat: MorarjiCohort | undefined = stats?.morarji?.find(c => c.cohort === cohortLabel);
-  const all = rows.status === 'ready' ? rows.value : [];
-  const forCohort = all.filter(r => r.cohort === cohortLabel);
   const pending = cohortStat ? (cohortStat.knownPassed ? cohortStat.members - cohortStat.knownPassed : null) : null;
   const trend = (stats?.morarjiYears ?? []).map(y => ({label: yearLabelOf.get(y.academicYear) ?? y.academicYear, value: y.passed})).sort((a, b) => a.label.localeCompare(b.label));
 
@@ -104,10 +93,6 @@ export function Morarji({backend, context, role, service: injected, profiles: in
     {id: 'attended', header: 'Took the exam', value: r => r.attended, numeric: true},
     {id: 'passed', header: 'Passed', value: r => r.passed, numeric: true},
   ], []);
-  const centreLines = useMemo<CentreLine[]>(() => selected.map(c => {
-    const rs = forCohort.filter(r => r.centre === c.id);
-    return {id: c.id, name: nameOf.get(c.id) ?? c.id, members: rs.length, applied: rs.filter(r => r.applied === true).length, attended: rs.filter(r => r.attended === true).length, passed: rs.filter(r => r.result === 'Passed').length};
-  }).filter(line => line.members > 0), [selected, forCohort, nameOf]);
   const centreColumns = useMemo<Column<CentreLine>[]>(() => [
     {id: 'name', header: 'Centre', value: r => r.name},
     {id: 'members', header: 'In training cohort', value: r => r.members, numeric: true},
@@ -122,6 +107,15 @@ export function Morarji({backend, context, role, service: injected, profiles: in
     {id: 'result', header: 'Exam result', value: r => r.result},
     {id: 'school', header: 'School', value: r => r.school ?? 'Not recorded'},
   ], [nameOf]);
+  const cohort = cohorts.find(c => c.label === cohortLabel);
+  const emptyContext = useMemo(() => ({}), []);
+  const cohortContext = useMemo(() => ({cohort: cohort?.id ?? ''}), [cohort?.id]);
+  const loadCohorts = useCallback((request: TableRequest) => tables.page<MorarjiCohort>('morarji_cohorts', centreIds, emptyContext, request), [tables, centreIds, emptyContext]);
+  const loadCentres = useCallback((request: TableRequest) => cohort?.id ? tables.page<CentreLine>('morarji_centres', centreIds, cohortContext, request) : Promise.resolve({rows: [], total: 0}), [tables, centreIds, cohortContext, cohort?.id]);
+  const loadFollowUp = useCallback((request: TableRequest) => cohort?.id ? tables.page<FollowUp>('morarji_followup', centreIds, cohortContext, request) : Promise.resolve({rows: [], total: 0}), [tables, centreIds, cohortContext, cohort?.id]);
+  const cohortTable = useServerTable({key: `${key}:cohorts`, load: loadCohorts, initialSort: 'cohort', refreshKey});
+  const centreTable = useServerTable({key: `${key}:${cohort?.id}:centres`, load: loadCentres, initialSort: 'name', refreshKey});
+  const followTable = useServerTable({key: `${key}:${cohort?.id}:follow`, load: loadFollowUp, initialSort: 'student', refreshKey});
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing Morarji" rows={5} />;
   const msg = report.status === 'error' ? report.message : undefined;
@@ -147,13 +141,13 @@ export function Morarji({backend, context, role, service: injected, profiles: in
         <ChartCard reference="6.5" title="Children passing, year on year" subtitle="Recorded pass results · same centre scope" state={asState(report)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage="No verified cohort outcomes.">
           {trend.length ? <><ColumnChart axis="Children passed" description="Children who passed by cohort year" items={trend} /><p className="mt-2 text-xs text-muted">Counts compare different cohorts; they do not measure change in the same children. A dash is an unrecorded result, not zero.</p></> : <p className="text-sm text-muted">No verified cohort outcomes.</p>}
         </ChartCard>
-        <DataTable<MorarjiCohort> reference="6.6" caption="Cohort sizes compared" columns={cohortColumns} data={stats?.morarji ?? []} getRowId={r => r.cohortId} exportName="MASS-morarji-cohorts" state={asState(report)} errorMessage={msg} emptyMessage="No verified cohort outcomes." onRetry={() => setRefreshKey(k => k + 1)} />
+        <DataTable<MorarjiCohort> reference="6.6" caption="Cohort sizes compared" columns={cohortColumns} data={cohortTable.rows} getRowId={r => r.cohortId} exportName="MASS-morarji-cohorts" state={cohortTable.result.status} errorMessage={cohortTable.error} emptyMessage="No verified cohort outcomes." onRetry={cohortTable.retry} server={cohortTable.server} />
       </div>
 
       {operational ? (
         <>
-          <DataTable<CentreLine> reference="6.7" caption="Morarji results by centre" columns={centreColumns} data={centreLines} getRowId={r => r.id} exportName={`MASS-morarji-by-centre-${cohortLabel}`} state={asState(rows)} errorMessage={rows.status === 'error' ? rows.message : undefined} emptyMessage="No cohort records for the selected year and centres." onRetry={() => setRefreshKey(k => k + 1)} />
-          <DataTable<FollowUp> reference="6.8" caption="Cohort follow-up" columns={followColumns} data={forCohort} getRowId={r => r.id} exportName={`MASS-morarji-follow-up-${cohortLabel}`} state={asState(rows)} errorMessage={rows.status === 'error' ? rows.message : undefined} emptyMessage="No cohort records for the selected year and centres." onRetry={() => setRefreshKey(k => k + 1)} />
+          <DataTable<CentreLine> reference="6.7" caption="Morarji results by centre" columns={centreColumns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-morarji-by-centre-${cohortLabel}`} state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage="No cohort records for the selected year and centres." onRetry={centreTable.retry} server={centreTable.server} />
+          <DataTable<FollowUp> reference="6.8" caption="Cohort follow-up" columns={followColumns} data={followTable.rows} getRowId={r => r.id} exportName={`MASS-morarji-follow-up-${cohortLabel}`} state={followTable.result.status} errorMessage={followTable.error} emptyMessage="No cohort records for the selected year and centres." onRetry={followTable.retry} server={followTable.server} />
         </>
       ) : <p className="text-xs text-muted">Leadership sees cohort totals only; individual follow-up stays with the centre staff.</p>}
       <p className="text-xs text-muted">This screen only reads. Adding a child to a training cohort and updating outcomes use their own approved workflow in the standard application (the database keeps that activation off). No training dates are inferred from cohort labels.</p>

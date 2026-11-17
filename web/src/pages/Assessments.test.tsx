@@ -7,6 +7,7 @@ import type {OverviewService, Report} from '../data/overview';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
@@ -27,7 +28,8 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; report
   const overview = {report: options.reportFn ?? vi.fn(async () => report), shifts: vi.fn(), series: vi.fn(), clear: vi.fn()} as unknown as OverviewService;
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: options.reviewed ?? true, reviewedAttendanceSeries: true, writes: options.writes ?? {}}))} as unknown as LiveBackend;
   const role = options.role ?? 'Teacher';
-  const view = render(<Assessments backend={backend} context={ctx([role], options.write ?? true)} role={role} service={service} overview={overview} />);
+  const centreRows = report.centres.map((r, i) => ({centre_id: r.id, centre_label: `Centre 0${i + 1}`, children: r.children, percentage: null, score_mean: r.quarters[0]?.mean ?? null}));
+  const view = render(<Assessments backend={backend} context={ctx([role], options.write ?? true)} role={role} service={service} overview={overview} tables={testTableService({reviewed_centres: centreRows, assessment_register: rows})} />);
   return {service, overview, ...view};
 }
 

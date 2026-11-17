@@ -9,12 +9,14 @@ import {Button} from '../components/ui/button';
 import {RegisterDialog, type Selection} from '../attendance/RegisterDialog';
 import {createAttendanceService, isSupported, PAGE_SIZE, type AttendanceService, type Distribution, type Filters, type PageRequest, type RegisterCapabilities, type RegisterPage, type RegisterRow, type SortKey} from '../attendance/service';
 import {type OverviewService, type Report, type Series} from '../data/overview';
-import {academicMonths, monthLabel, monthShort, todayIst} from '../lib/dates';
+import {academicMonths, monthLabel, monthShort, reportingDay, todayIst} from '../lib/dates';
 import {formatCount, formatDateTime, formatPercent, formatRelativeTime} from '../lib/format';
 import {attendanceSummaryDisplay} from '../../../src/live/attendance-register.js';
 import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {createTableService, type TableRequest, type TableService} from '../tables/service';
+import {useServerTable} from '../tables/useServerTable';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -35,15 +37,16 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
   );
 }
 
-export function Attendance({backend, context, role, service: injected, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AttendanceService; overview?: OverviewService}) {
+export function Attendance({backend, context, role, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AttendanceService; overview?: OverviewService; tables?: TableService}) {
   const service = useMemo(() => injected ?? createAttendanceService(backend.rpc), [backend, injected]);
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
+  const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const today = useMemo(() => todayIst(), []);
 
   const [boot, setBoot] = useState<Slice<{caps: RegisterCapabilities; refs: References; hasSeries: boolean}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
   const [filters, setFilters] = useState({month: '', centre: '', shift: '', grade: '', gender: ''});
-  const [page, setPage] = useState<PageRequest>({offset: 0, sort: 'date', reverse: false});
+  const [page, setPage] = useState<PageRequest>({offset: 0, sort: 'date', reverse: true});
   const [refreshKey, setRefreshKey] = useState(0);
   const [register, setRegister] = useState<Slice<RegisterPage>>({status: 'loading'});
   const [registerBusy, setRegisterBusy] = useState(false);
@@ -78,7 +81,7 @@ export function Attendance({backend, context, role, service: injected, overview:
   const canWrite = supported && caps.enabled === true && writable.length > 0;
 
   // Filters change the data and return to the first page, newest first.
-  useEffect(() => { setPage({offset: 0, sort: 'date', reverse: false}); }, [queryKey]);
+  useEffect(() => { setPage({offset: 0, sort: 'date', reverse: true}); }, [queryKey]);
 
   useEffect(() => {
     if (!query || !supported || boot.status !== 'ready' || !year) return;
@@ -120,14 +123,14 @@ export function Attendance({backend, context, role, service: injected, overview:
     setEditor({centre, shift: selection?.shift ?? (filters.shift || 'Morning'), date});
   };
 
-  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', present: 'present', percentage: 'percentage'} as Record<SortKey, string>)[page.sort];
+  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', present: 'present', percentage: 'percentage', last_edited_at: 'last_edited_at'} as Record<SortKey, string>)[page.sort];
   const columns = useMemo<Column<RegisterRow>[]>(() => [
     {id: 'centre', header: 'Centre', value: r => nameOf.get(r.centre_id) ?? r.centre_id},
     {id: 'shift', header: 'Shift', value: r => r.shift_code},
     {id: 'date', header: 'Date', value: r => r.attendance_date},
     {id: 'present', header: 'No. of students present', value: r => attendanceSummaryDisplay(r).ratio, numeric: true},
     {id: 'percentage', header: '% students present', value: r => attendanceSummaryDisplay(r).percentage, numeric: true, cell: r => { const d = attendanceSummaryDisplay(r); return <>{d.percentage}{d.incomplete ? <span className="block text-xs text-muted">Incomplete attendance</span> : null}</>; }},
-    {id: 'last_edited_at', header: 'Last edited at', value: r => r.last_edited_at ?? null, sortable: false, cell: r => <time dateTime={r.last_edited_at ?? undefined} title={formatDateTime(r.last_edited_at)}>{formatRelativeTime(r.last_edited_at)}</time>},
+    {id: 'last_edited_at', header: 'Last edited at', value: r => r.last_edited_at ?? null, cell: r => <time dateTime={r.last_edited_at ?? undefined} title={formatDateTime(r.last_edited_at)}>{formatRelativeTime(r.last_edited_at)}</time>},
     {id: 'action', header: 'Edit', sortable: false, value: r => r.session_type === 'Holiday' ? 'Recorded holiday' : writable.some(c => c.id === r.centre_id) && canWrite ? 'Edit' : 'View only',
       cell: r => r.session_type === 'Holiday' ? 'Recorded holiday'
         : writable.some(c => c.id === r.centre_id) && canWrite
@@ -139,18 +142,28 @@ export function Attendance({backend, context, role, service: injected, overview:
   const bandItems = distribution.status === 'ready' ? BANDS.map(([label, test]) => ({label, value: distribution.value.days.filter(d => test(d.days)).reduce((n, d) => n + d.students, 0)})) : [];
   const trend = series.status === 'ready' ? months.map(m => ({label: monthShort(m), value: series.value[m] ?? null})) : [];
   const stats = report.status === 'ready' ? report.value : null;
-  const centreRows = useMemo(() => (stats?.centres ?? []).map(c => ({id: c.id, name: nameOf.get(c.id) ?? c.id, rate: c.attendance.percentage === null ? null : Number(c.attendance.percentage), present: c.attendance.p})), [stats, nameOf]);
-  const centreColumns = useMemo<Column<{id: string; name: string; rate: number | null; present: number}>[]>(() => [
-    {id: 'name', header: 'Centre', value: r => r.name},
-    {id: 'present', header: 'Present student-days', value: r => r.present, numeric: true},
-    {id: 'rate', header: 'Attendance rate', value: r => r.rate === null ? null : Number(r.rate.toFixed(1)), numeric: true, cell: r => r.rate === null ? 'Unknown' : `${r.rate.toFixed(1)}%`},
+  interface CentreRow {centre_id: string; centre_label: string; present: number | string; percentage: number | string | null}
+  const centreContext = useMemo(() => query && year ? {on: reportingDay(month, today), from: `${month}-01`, until: (() => { const d = new Date(`${month}-01T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), year: year.id, grade: query.grade, shift: query.shift, gender: query.gender, earlier: 1, later: 2, quarter: 2} : null, [queryKey, year, month, today]);
+  const loadCentres = useCallback((request: TableRequest) => query && centreContext ? tables.page<CentreRow>('reviewed_centres', query.centres, centreContext, request) : Promise.resolve({rows: [], total: 0}), [tables, queryKey, centreContext]);
+  const centreTable = useServerTable<CentreRow>({key: JSON.stringify([queryKey, centreContext]), load: loadCentres, initialSort: 'centre', refreshKey});
+  const centreColumns = useMemo<Column<CentreRow>[]>(() => [
+    {id: 'centre', header: 'Centre', value: r => r.centre_label},
+    {id: 'present', header: 'Present student-days', value: r => Number(r.present), numeric: true},
+    {id: 'attendance', header: 'Attendance rate', value: r => r.percentage === null ? null : Number(Number(r.percentage).toFixed(1)), numeric: true, cell: r => r.percentage === null ? 'Unknown' : `${Number(r.percentage).toFixed(1)}%`},
   ], []);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing Attendance" rows={5} />;
   if (!supported) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">The attendance register API installed here is older than the new interface supports. Use the standard application for attendance.</p>;
 
   const future = month > today.slice(0, 7);
-  const server = register.status === 'ready' ? {total: register.value.total, pageIndex: page.offset / PAGE_SIZE, onPageChange: (index: number) => setPage(p => ({...p, offset: index * PAGE_SIZE})), sort: {id: sortId, desc: (page.sort === 'date') !== page.reverse}, onSortChange: (id: string) => setPage(p => p.sort === id ? {...p, offset: 0, reverse: !p.reverse} : {offset: 0, sort: id as SortKey, reverse: false})} : undefined;
+  const server = register.status === 'ready' && query ? {total: register.value.total, pageIndex: page.offset / PAGE_SIZE, onPageChange: (index: number) => setPage(p => ({...p, offset: index * PAGE_SIZE})), sort: {id: sortId, desc: page.reverse}, onSortChange: (id: string) => setPage(p => p.sort === id ? {...p, offset: 0, reverse: !p.reverse} : {offset: 0, sort: id as SortKey, reverse: false}), exportRows: async () => {
+    const rows: RegisterRow[] = [];
+    for (let offset = 0; offset <= 1000000; offset += 500) {
+      const found = await service.page(query, {...page, offset, limit: 500}); rows.push(...found.rows);
+      if (rows.length >= found.total || found.rows.length < 500) return rows;
+    }
+    throw new Error('The export is too large. Narrow the filters and try again.');
+  }} : undefined;
 
   return (
     <div className="space-y-6">
@@ -193,9 +206,9 @@ export function Attendance({backend, context, role, service: injected, overview:
           <ColumnChart axis="Students" description="Students by days present" items={bandItems} />
           <p className="mt-2 text-xs text-muted">{formatCount(distribution.status === 'ready' ? distribution.value.recorded_students ?? null : null)} students have recorded attendance in this month; students without records are not counted.</p>
         </ChartCard>
-        <DataTable<{id: string; name: string; rate: number | null; present: number}>
-          reference="2.7" caption="Attendance by centre" columns={centreColumns} data={centreRows} getRowId={r => r.id} exportName={`MASS-attendance-by-centre-${month}`}
-          state={future ? 'empty' : asState(report)} emptyMessage="Future reporting periods have no verified observations." errorMessage={report.status === 'error' ? report.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}
+        <DataTable<CentreRow>
+          reference="2.7" caption="Attendance by centre" columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={`MASS-attendance-by-centre-${month}`}
+          state={future ? 'empty' : centreTable.result.status} server={centreTable.server} emptyMessage={future ? 'Future reporting periods have no verified observations.' : 'No centres match these filters.'} errorMessage={centreTable.error} onRetry={centreTable.retry}
         />
       </div>
 

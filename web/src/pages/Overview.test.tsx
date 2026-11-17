@@ -6,6 +6,7 @@ import {createOverviewService, type OverviewService, type Report} from '../data/
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
@@ -34,7 +35,8 @@ function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttend
     ...options.service,
   } as OverviewService;
   const ctx = options.roles ? {...context, centres: centres.map(c => ({...c, roles: options.roles!}))} : context;
-  return {backend, service, ...render(<Overview backend={backend} context={ctx} role={options.role ?? 'Leadership'} service={service} />)};
+  const tableRows = report.centres.map((row, i) => ({centre_id: row.id, centre_label: centres[i].label, children: row.children, percentage: row.attendance.percentage, score_n: row.quarters[0]?.n ?? null, score_mean: row.quarters[0]?.mean ?? null}));
+  return {backend, service, ...render(<Overview backend={backend} context={ctx} role={options.role ?? 'Leadership'} service={service} tables={testTableService({reviewed_centres: tableRows})} />)};
 }
 
 describe('Overview', () => {

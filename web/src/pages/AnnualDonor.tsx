@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {AsyncState, type LoadState} from '../components/AsyncState';
 import {ChartCard} from '../components/ChartCard';
 import {LineChart} from '../components/charts/LineChart';
@@ -11,6 +11,8 @@ import {combineMonthlyAttendance} from '../../../src/live/leadership-report.js';
 import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {createTableService, type TableRequest, type TableService} from '../tables/service';
+import {useServerTable} from '../tables/useServerTable';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -21,6 +23,7 @@ const combine = combineMonthlyAttendance as (values: Array<{attendance?: {p: num
 
 interface Loaded {months: string[]; reports: Array<Report | null>; failed: number}
 interface Line {id: string; name: string; donor: string; students: number | null; p: number | null; a: number | null; l: number | null; percentage: number | null; loaded: number}
+const EMPTY_DONORS: Record<string, string | null> = {};
 
 function Select({label, value, options, onChange, allLabel}: {label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void; allLabel?: string}) {
   return (
@@ -34,8 +37,9 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
   );
 }
 
-export function AnnualDonor({backend, context, role, overview: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; overview?: OverviewService}) {
+export function AnnualDonor({backend, context, role, overview: injected, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; overview?: OverviewService; tables?: TableService}) {
   const overview = useMemo(() => injected ?? sharedOverview(backend), [backend, injected]);
+  const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; donors: Record<string, string | null>}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
@@ -57,13 +61,13 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
   }, [backend, bootAttempt, leadership]);
 
   const refs = boot.status === 'ready' ? boot.value.refs : null;
-  const donors = boot.status === 'ready' ? boot.value.donors : {};
+  const donors = boot.status === 'ready' ? boot.value.donors : EMPTY_DONORS;
   const scope = useMemo(() => context.centres.filter(c => c.roles.includes('Leadership')), [context]);
-  const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
   const years = useMemo(() => [...(refs?.academic_years ?? [])].sort((a, b) => b.starts_on.localeCompare(a.starts_on)), [refs]);
   const year = years.find(y => y.id === filters.year) ?? years.find(y => y.starts_on <= today && today < y.ends_before) ?? years[0];
   const donorNames = useMemo(() => [...new Set(scope.map(c => donors[c.id]).filter((d): d is string => Boolean(d)))].sort(), [scope, donors]);
   const selected = useMemo(() => scope.filter(c => !filters.donor || donors[c.id] === filters.donor), [scope, filters.donor, donors]);
+  const centreIds = useMemo(() => selected.map(c => c.id), [selected]);
   const key = JSON.stringify([year?.id, selected.map(c => c.id)]);
 
   useEffect(() => {
@@ -96,12 +100,6 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
   const annual = loaded ? combine(loaded.reports) : null;
   const reportingReport = loaded ? [...loaded.reports].reverse().find(r => r !== null) ?? null : null;
   const points = loaded ? loaded.months.map((month, i) => ({label: monthShort(month), value: loaded.reports[i]?.attendance.percentage == null ? null : Number(loaded.reports[i]!.attendance.percentage)})) : [];
-  const lines = useMemo<Line[]>(() => selected.map(c => {
-    const values = loaded ? loaded.reports.map(r => r?.centres.find(x => x.id === c.id) ?? null) : [];
-    const combined = combine(values);
-    const detail = reportingReport?.centres.find(x => x.id === c.id);
-    return {id: c.id, name: nameOf.get(c.id) ?? c.id, donor: donors[c.id] ?? 'Not associated', students: detail?.children ?? null, p: combined.loaded ? combined.p : null, a: combined.loaded ? combined.a : null, l: combined.loaded ? combined.l : null, percentage: combined.percentage, loaded: combined.loaded};
-  }), [selected, loaded, reportingReport, nameOf, donors]);
   const columns = useMemo<Column<Line>[]>(() => [
     {id: 'name', header: 'Centre', value: r => r.name},
     {id: 'donor', header: 'Current donor association', value: r => r.donor},
@@ -112,6 +110,9 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
     {id: 'percentage', header: 'Annual attendance %', value: r => (r.percentage === null ? null : Number(r.percentage.toFixed(1))), numeric: true, cell: r => (r.percentage === null ? 'Unknown' : `${r.percentage.toFixed(1)}%`)},
     {id: 'loaded', header: 'Loaded months', value: r => r.loaded, numeric: true},
   ], []);
+  const tableContext = useMemo(() => ({year: year?.id ?? '', today}), [year?.id, today]);
+  const loadCentres = useCallback((request: TableRequest) => year?.id ? tables.page<Line>('annual_centres', centreIds, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, centreIds, tableContext, year?.id]);
+  const centreTable = useServerTable({key: JSON.stringify([year?.id, centreIds]), load: loadCentres, initialSort: 'name', refreshKey});
 
   if (!leadership) return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">The annual donor summary is part of Leadership reporting. Switch to the Leadership role to view it.</p>;
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing the annual summary" rows={5} />;
@@ -144,8 +145,8 @@ export function AnnualDonor({backend, context, role, overview: injected}: {backe
         <LineChart points={points} description="Attendance by month for the selected academic year" />
       </ChartCard>
 
-      <DataTable<Line> reference="7.6" caption="Centre comparison" columns={columns} data={lines} getRowId={r => r.id} exportName={`MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}`}
-        state={asState(data)} errorMessage={msg} emptyMessage="No centres in this selection." onRetry={() => setRefreshKey(k => k + 1)} />
+      <DataTable<Line> reference="7.6" caption="Centre comparison" columns={columns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}`}
+        state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage="No centres in this selection." onRetry={centreTable.retry} server={centreTable.server} />
       <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>About the export.</strong> The CSV holds one row per centre in the table above (all centres of the selection, sorted and filtered as shown): the current donor association, students at the reporting date, annual present, absent and leave days, annual attendance % and the number of loaded months. Annual attendance adds P, A and L over the loaded months before dividing; it does not average monthly percentages. Unknown values are left as Unknown, never zero.</p>
       <p className="text-xs text-muted">Donor labels are current directory associations. Historical funding validity is not inferred.</p>
     </div>

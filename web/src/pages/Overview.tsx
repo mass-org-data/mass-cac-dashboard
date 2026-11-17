@@ -1,24 +1,27 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {AsyncState, type LoadState} from '../components/AsyncState';
 import {ChartCard} from '../components/ChartCard';
 import {ColumnChart} from '../components/charts/ColumnChart';
 import {LineChart} from '../components/charts/LineChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
-import {academicMonths, monthLabel, monthShort, todayIst} from '../lib/dates';
+import {academicMonths, monthLabel, monthShort, reportingDay, todayIst} from '../lib/dates';
 import {formatCount, formatPercent, UNKNOWN} from '../lib/format';
 import {FUTURE_NOTICE, type Environment, type OverviewService, type Report, type Selection} from '../data/overview';
 import {useOverview, type Slice} from '../data/useOverview';
 import {sharedOverview} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {createTableService, type TableRequest, type TableService} from '../tables/service';
+import {useServerTable} from '../tables/useServerTable';
 
 const ROLE_HEADING: Record<string, string> = {'Cluster Officer': 'Centres assigned to you'};
 const FROM_QUARTER = 1;
 const TO_QUARTER = 2; // the exam shown on the scorecards (F2), as in the current Overview
 
 interface Bootstrap {refs: References; capabilities: Capabilities; donors: Record<string, string | null>}
-interface CentreRow {id: string; name: string; students: number; attendance: number | null; score: number | null}
+interface CentreRow {centre_id: string; centre_label: string; children: number; percentage: number | string | null; score_n: number | string | null; score_mean: number | string | null}
+const EMPTY_DONORS: Record<string, string | null> = {};
 
 const sliceState = <T,>(slice: Slice<T>): LoadState => slice.status === 'ready' ? 'ready' : slice.status === 'error' ? 'error' : slice.status === 'future' ? 'empty' : 'loading';
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status === 'ready' ? 'ready' : slice.status === 'error' ? 'error' : slice.status === 'future' ? 'unavailable' : 'loading';
@@ -35,8 +38,9 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
   );
 }
 
-export function Overview({backend, context, role, service: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: OverviewService}) {
+export function Overview({backend, context, role, service: injected, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: OverviewService; tables?: TableService}) {
   const service = useMemo(() => injected ?? sharedOverview(backend), [backend, injected]);
+  const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const [boot, setBoot] = useState<Slice<Bootstrap>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
   const [filters, setFilters] = useState({month: '', centre: '', donor: '', shift: '', grade: '', gender: ''});
@@ -60,10 +64,9 @@ export function Overview({backend, context, role, service: injected}: {backend: 
   const month = filters.month || defaultMonth;
 
   const scope = useMemo(() => context.centres.filter(centre => centre.roles.includes(role)), [context, role]);
-  const donors = boot.status === 'ready' ? boot.value.donors : {};
+  const donors = boot.status === 'ready' ? boot.value.donors : EMPTY_DONORS;
   const donorNames = useMemo(() => [...new Set(scope.map(c => donors[c.id]).filter((d): d is string => Boolean(d)))].sort(), [scope, donors]);
   const selected = useMemo(() => scope.filter(c => (!filters.centre || c.id === filters.centre) && (!filters.donor || donors[c.id] === filters.donor)), [scope, filters.centre, filters.donor, donors]);
-  const nameOf = useMemo(() => new Map(scope.map(c => [c.id, c.label])), [scope]);
 
   const configuredQuarters = useMemo(() => {
     if (boot.status !== 'ready' || !year) return new Set<number>();
@@ -72,8 +75,8 @@ export function Overview({backend, context, role, service: injected}: {backend: 
   }, [boot, year]);
 
   const leadership = role === 'Leadership';
-  const selection: Selection | null = boot.status === 'ready' && year && month ? {month, centres: selected.map(c => c.id), shift: leadership ? null : filters.shift || null, grade: leadership ? null : filters.grade || null, gender: leadership ? null : filters.gender || null} : null;
-  const env: Environment | null = boot.status === 'ready' && year ? {yearId: year.id, today, fromQuarter: FROM_QUARTER, toQuarter: TO_QUARTER, months, hasSeries: boot.value.capabilities.reviewedAttendanceSeries} : null;
+  const selection: Selection | null = useMemo(() => boot.status === 'ready' && year && month ? {month, centres: selected.map(c => c.id), shift: leadership ? null : filters.shift || null, grade: leadership ? null : filters.grade || null, gender: leadership ? null : filters.gender || null} : null, [boot.status, year, month, selected, leadership, filters.shift, filters.grade, filters.gender]);
+  const env: Environment | null = useMemo(() => boot.status === 'ready' && year ? {yearId: year.id, today, fromQuarter: FROM_QUARTER, toQuarter: TO_QUARTER, months, hasSeries: boot.value.capabilities.reviewedAttendanceSeries} : null, [boot, year, today, months]);
   const {report, shifts, series, retry} = useOverview(service, selection, env);
 
   const stats: Report | null = report.status === 'ready' ? report.value : null;
@@ -84,16 +87,15 @@ export function Overview({backend, context, role, service: injected}: {backend: 
   const population = stats?.children ?? 0;
   const reportMessage = report.status === 'error' ? report.message : report.status === 'future' ? FUTURE_NOTICE : undefined;
 
-  const rows = useMemo<CentreRow[]>(() => (stats?.centres ?? []).map(c => {
-    const q = c.quarters.find(item => item.quarter === TO_QUARTER);
-    return {id: c.id, name: nameOf.get(c.id) ?? c.id, students: c.children, attendance: c.attendance.percentage === null ? null : Number(c.attendance.percentage), score: q && q.n > 0 && q.mean !== null ? Number(q.mean) : null};
-  }), [stats, nameOf]);
+  const tableContext = useMemo(() => selection && env ? {on: reportingDay(selection.month, env.today), from: `${selection.month}-01`, until: (() => { const d = new Date(`${selection.month}-01T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), year: env.yearId, grade: selection.grade, shift: selection.shift, gender: selection.gender, earlier: env.fromQuarter, later: env.toQuarter, quarter: TO_QUARTER} : null, [selection, env]);
+  const loadCentres = useCallback((request: TableRequest) => selection && tableContext ? tables.page<CentreRow>('reviewed_centres', selection.centres, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, selection, tableContext]);
+  const centreTable = useServerTable({key: JSON.stringify([selection, tableContext]), load: loadCentres, initialSort: 'centre'});
 
   const columns = useMemo<Column<CentreRow>[]>(() => [
-    {id: 'name', header: 'Centre', value: row => row.name},
-    {id: 'students', header: 'Students', value: row => row.students, numeric: true},
-    {id: 'attendance', header: 'Attendance Rate', value: row => row.attendance === null ? null : Number(row.attendance.toFixed(1)), numeric: true, cell: row => row.attendance === null ? 'Unknown' : `${row.attendance.toFixed(1)}%`},
-    {id: 'score', header: 'Average Exam Score', value: row => row.score === null ? null : Number(row.score.toFixed(1)), numeric: true, cell: row => row.score === null ? 'Unknown' : `${row.score.toFixed(1)} / 25`},
+    {id: 'centre', header: 'Centre', value: row => row.centre_label},
+    {id: 'students', header: 'Students', value: row => Number(row.children), numeric: true},
+    {id: 'attendance', header: 'Attendance Rate', value: row => row.percentage === null ? null : Number(Number(row.percentage).toFixed(1)), numeric: true, cell: row => row.percentage === null ? 'Unknown' : `${Number(row.percentage).toFixed(1)}%`},
+    {id: 'score', header: 'Average Exam Score', value: row => !Number(row.score_n) || row.score_mean === null ? null : Number(Number(row.score_mean).toFixed(1)), numeric: true, cell: row => !Number(row.score_n) || row.score_mean === null ? 'Unknown' : `${Number(row.score_mean).toFixed(1)} / 25`},
   ], []);
 
   const trend = series.status === 'ready' ? months.map(m => ({label: monthShort(m), value: series.value[m] ?? null})) : [];
@@ -150,9 +152,9 @@ export function Overview({backend, context, role, service: injected}: {backend: 
         </ChartCard>
 
         <DataTable<CentreRow>
-          reference="1.13" caption="Centre comparison" columns={columns} data={rows} getRowId={row => row.id}
-          exportName={`MASS-centre-comparison-${month}`} state={report.status === 'ready' ? 'ready' : report.status === 'error' ? 'error' : report.status === 'future' ? 'empty' : 'loading'}
-          errorMessage={reportMessage} emptyMessage={reportMessage ?? 'No centres match these filters.'} onRetry={retry}
+          reference="1.13" caption="Centre comparison" columns={columns} data={centreTable.rows} getRowId={row => row.centre_id}
+          exportName={`MASS-centre-comparison-${month}`} state={centreTable.result.status} server={centreTable.server}
+          errorMessage={centreTable.error} emptyMessage="No centres match these filters." onRetry={centreTable.retry}
         />
         <p className="text-xs text-muted">Values come from the same authorised reports as the current interface. {UNKNOWN} means not recorded, never zero. {formatPercent(stats?.attendance.percentage ?? null)} is the selected month’s overall attendance rate.</p>
       </>}

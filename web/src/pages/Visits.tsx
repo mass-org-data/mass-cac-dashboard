@@ -1,18 +1,19 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
-import {AsyncState, type LoadState} from '../components/AsyncState';
+import {AsyncState} from '../components/AsyncState';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {Button} from '../components/ui/button';
 import {VisitDialog} from '../visits/VisitDialog';
-import {createVisitsService, type Assignment, type OfficerRow, type SummaryRow, type VisitRow, type VisitsService} from '../visits/service';
+import {createVisitsService, monthWindow, type Assignment, type OfficerRow, type SummaryRow, type VisitRow, type VisitsService} from '../visits/service';
 import {academicMonths, monthLabel, todayIst} from '../lib/dates';
 import {formatCount} from '../lib/format';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {createTableService, type TableRequest, type TableService} from '../tables/service';
+import {useServerTable} from '../tables/useServerTable';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
-const asState = <T,>(slice: Slice<T>): LoadState => slice.status;
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status;
 const num = (value: number | string) => Number(value);
 
@@ -32,14 +33,14 @@ interface Boot {refs: References; capabilities: Capabilities; assignments: Assig
 interface Data {summary: SummaryRow[]; officers: OfficerRow[]}
 interface OfficerLine {id: string; label: string; completed: number; target: number; records: number}
 
-export function Visits({backend, context, role, service: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: VisitsService}) {
+export function Visits({backend, context, role, service: injected, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: VisitsService; tables?: TableService}) {
   const service = useMemo(() => injected ?? createVisitsService(backend.rpc), [backend, injected]);
+  const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<Boot>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
   const [filters, setFilters] = useState({month: '', centre: '', shift: '', officer: ''});
   const [data, setData] = useState<Slice<Data>>({status: 'loading'});
-  const [log, setLog] = useState<Slice<VisitRow[]>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
   const [recording, setRecording] = useState(false);
   const [notice, setNotice] = useState('');
@@ -71,13 +72,11 @@ export function Visits({backend, context, role, service: injected}: {backend: Li
   useEffect(() => {
     if (boot.status !== 'ready' || !month || officerBlocked) return;
     let live = true;
-    setData({status: 'loading'}); setLog({status: 'loading'});
+    setData({status: 'loading'});
     const ids = selected.map(c => c.id);
     Promise.all([service.summary(ids, month, officer), service.officers(ids, month, officer)])
       .then(([summary, officers]) => { if (live) setData({status: 'ready', value: {summary, officers}}); })
       .catch(error => { if (live) setData({status: 'error', message: messageOf(error)}); });
-    const logCentres = writable.filter(c => ids.includes(c.id)).map(c => c.id);
-    service.log(logCentres, month).then(value => { if (live) setLog({status: 'ready', value}); }).catch(error => { if (live) setLog({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service, key, refreshKey, boot.status]);
@@ -91,19 +90,16 @@ export function Visits({backend, context, role, service: injected}: {backend: Li
   const actual = observed ? (filters.shift === 'Morning' ? morning : filters.shift === 'Evening' ? evening : (morning ?? 0) + (evening ?? 0)) : null;
   const achieved = rows && observed ? rows.filter(r => r.achieved).length : null;
 
-  const officerLines = useMemo<OfficerLine[]>(() => {
-    const byOfficer = new Map<string, OfficerLine>();
-    const ids = new Set(selected.map(c => c.id));
-    for (const r of data.status === 'ready' ? data.value.officers : []) {
-      if (!ids.has(r.centre_id) || (officer && r.officer_id !== officer)) continue;
-      const line = byOfficer.get(r.officer_id) ?? {id: r.officer_id, label: r.label, completed: 0, target: 0, records: 0};
-      line.completed += filters.shift === 'Morning' ? num(r.morning) : filters.shift === 'Evening' ? num(r.evening) : num(r.morning) + num(r.evening);
-      line.target += filters.shift ? 2 : 4; line.records += num(r.recorded_count);
-      byOfficer.set(r.officer_id, line);
-    }
-    return [...byOfficer.values()];
-  }, [data, selected, officer, filters.shift]);
   const officerChoices = useMemo(() => [...new Map((data.status === 'ready' ? data.value.officers : []).map(r => [r.officer_id, r.label])).entries()], [data]);
+  const tableContext = useMemo(() => month ? ({...monthWindow(month), officer, shift: filters.shift || null}) : ({from: '', until: '', officer, shift: filters.shift || null}), [month, officer, filters.shift]);
+  const tableKey = JSON.stringify([selected.map(c => c.id), tableContext]);
+  const loadOfficers = useCallback((request: TableRequest) => month ? tables.page<OfficerLine>('visit_officers', selected.map(c => c.id), tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, tableKey, month]);
+  const officerTable = useServerTable<OfficerLine>({key: tableKey, load: loadOfficers, initialSort: 'label', refreshKey});
+  const loadCoverage = useCallback((request: TableRequest) => month ? tables.page<SummaryRow>('visit_centres', selected.map(c => c.id), tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, tableKey, month]);
+  const coverageTable = useServerTable<SummaryRow>({key: tableKey, load: loadCoverage, initialSort: 'centre', refreshKey});
+  const logCentres = useMemo(() => writable.filter(c => selected.some(s => s.id === c.id)).map(c => c.id), [writable, selected]);
+  const loadLog = useCallback((request: TableRequest) => month ? tables.page<VisitRow>('visit_log', logCentres, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, tableKey, logCentres, month]);
+  const logTable = useServerTable<VisitRow>({key: JSON.stringify([tableKey, logCentres]), load: loadLog, initialSort: 'date', initialReverse: true, refreshKey});
 
   const officerColumns = useMemo<Column<OfficerLine>[]>(() => [
     {id: 'label', header: 'Officer', value: r => r.label},
@@ -156,13 +152,13 @@ export function Visits({backend, context, role, service: injected}: {backend: Li
       <p className="rounded-md bg-brand-soft p-3 text-sm">Completed visits and monthly targets stay separate. Missing visit data is unknown, not zero, and the applicability of each centre's target is not inferred.</p>
 
       <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-        <DataTable<OfficerLine> reference="5.5" caption="Visits by officer" columns={officerColumns} data={officerLines} getRowId={r => r.id} exportName={`MASS-visits-by-officer-${month}`} state={asState(data)} errorMessage={msg} emptyMessage="No verified dated officer assignments are configured." onRetry={() => setRefreshKey(k => k + 1)} />
-        <DataTable<SummaryRow> reference="5.6" caption="Centre coverage" columns={coverageColumns} data={rows ?? []} getRowId={r => r.centre_id} exportName={`MASS-visit-coverage-${month}`} state={asState(data)} errorMessage={msg} emptyMessage="No centres in this selection." onRetry={() => setRefreshKey(k => k + 1)} />
+        <DataTable<OfficerLine> reference="5.5" caption="Visits by officer" columns={officerColumns} data={officerTable.rows} getRowId={r => r.id} exportName={`MASS-visits-by-officer-${month}`} state={officerTable.result.status} server={officerTable.server} errorMessage={officerTable.error} emptyMessage="No verified dated officer assignments are configured." onRetry={officerTable.retry} />
+        <DataTable<SummaryRow> reference="5.6" caption="Centre coverage" columns={coverageColumns} data={coverageTable.rows} getRowId={r => r.centre_id} exportName={`MASS-visit-coverage-${month}`} state={coverageTable.result.status} server={coverageTable.server} errorMessage={coverageTable.error} emptyMessage="No centres in this selection." onRetry={coverageTable.retry} />
       </div>
 
       {role === 'Cluster Officer' ? (
-        <DataTable<VisitRow> reference="5.7" caption="Visit log" columns={logColumns} data={log.status === 'ready' ? [...log.value].sort((a, b) => b.visit_date.localeCompare(a.visit_date)) : []} getRowId={r => r.id} exportName={`MASS-visit-log-${month}`}
-          state={asState(log)} errorMessage={log.status === 'error' ? log.message : undefined} emptyMessage="No visits recorded for this month." onRetry={() => setRefreshKey(k => k + 1)} />
+        <DataTable<VisitRow> reference="5.7" caption="Visit log" columns={logColumns} data={logTable.rows} getRowId={r => r.id} exportName={`MASS-visit-log-${month}`}
+          state={logTable.result.status} server={logTable.server} errorMessage={logTable.error} emptyMessage="No visits recorded for this month." onRetry={logTable.retry} />
       ) : null}
       <p className="text-xs text-muted">Correcting a saved visit and its revision history use their own approved workflow in the standard application.</p>
 

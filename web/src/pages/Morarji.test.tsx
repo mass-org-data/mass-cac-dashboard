@@ -8,6 +8,7 @@ import type {OverviewService, Report} from '../data/overview';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
@@ -30,7 +31,14 @@ function setup(options: {role?: string; report?: Report; memberships?: typeof me
   const overview = {report: vi.fn(async () => { if (options.fail) throw new Error('statement timeout'); return options.report ?? withData; }), clear: vi.fn()} as unknown as OverviewService;
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => (options.noCohorts ? {...refs, programme_cohorts: []} : refs)), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: {}}))} as unknown as LiveBackend;
   const role = options.role ?? 'Teacher';
-  const view = render(<Morarji backend={backend} context={ctx([role])} role={role} service={service} profiles={profiles} overview={overview} />);
+  const active = options.memberships ?? members;
+  const follow = active.map(m => ({id: m.membership_id, cohort: m.cohort_id, name: m.enrolment_id === 'e2' ? null : `Student ${m.enrolment_id}`, studentId: `S-${m.enrolment_id}`, centre: m.centre, applied: m.applied, attended: m.attended, result: m.passed === true ? 'Passed' : m.passed === false ? 'Not passed' : 'Pending', school: m.school_name}));
+  const cohortRows = options.report?.morarji ?? withData.morarji ?? [];
+  const tables = testTableService({morarji_cohorts: cohortRows, morarji_followup: context => follow.filter(row => row.cohort === context.cohort), morarji_centres: context => {
+    const rs = follow.filter(row => row.cohort === context.cohort);
+    return ['c1', 'c2'].map((id, i) => { const own = rs.filter(row => row.centre === id); return {id, name: `Centre 0${i + 1}`, members: own.length, applied: own.filter(row => row.applied).length, attended: own.filter(row => row.attended).length, passed: own.filter(row => row.result === 'Passed').length}; }).filter(row => row.members);
+  }});
+  const view = render(<Morarji backend={backend} context={ctx([role])} role={role} service={service} profiles={profiles} overview={overview} tables={tables} />);
   return {service, profiles, overview, ...view};
 }
 

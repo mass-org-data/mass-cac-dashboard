@@ -10,7 +10,7 @@ import {isMissingFunction} from '../lib/batched';
 export interface ProfileCapabilities {version: number; profile_pages?: boolean; profile_sort_v2?: boolean; academic_history?: boolean}
 export type ProfileSort = 'name' | 'id' | 'centre' | 'grade' | 'gender' | 'shift' | 'newest';
 export interface ProfileFilters {centres: string[]; query: string; idQuery: string; grade: string | null; shift: string | null; gender: string | null}
-export interface ProfilePageRequest {offset: number; sort: ProfileSort; reverse: boolean}
+export interface ProfilePageRequest {offset: number; sort: ProfileSort; reverse: boolean; limit?: number}
 export interface ProfileIds {ids: string[]; total: number; rows?: ReadStudent[]}
 
 export interface StudentRow {
@@ -59,7 +59,7 @@ export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unkno
       if (!filters.centres.length) return {ids: [], total: 0};
       const args = {
         p_centres: filters.centres, p_on: on, p_query: filters.query, p_id_query: filters.idQuery, p_sort: page.sort, p_reverse: page.reverse,
-        p_grade: filters.grade, p_shift: filters.shift, p_gender: filters.gender, p_offset: page.offset, p_limit: PROFILE_PAGE_SIZE,
+        p_grade: filters.grade, p_shift: filters.shift, p_gender: filters.gender, p_offset: page.offset, p_limit: page.limit ?? PROFILE_PAGE_SIZE,
       };
       if (v3) {
         try {

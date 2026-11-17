@@ -13,6 +13,8 @@ import {formatCount} from '../lib/format';
 import {sharedOverview} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {createTableService, type TableRequest, type TableService} from '../tables/service';
+import {useServerTable} from '../tables/useServerTable';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -35,17 +37,17 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 }
 
 interface Boot {refs: References; capabilities: Capabilities}
-interface CentreRow {id: string; name: string; n: number; mean: number | null}
+interface CentreRow {centre_id: string; centre_label: string; score_n: number | string | null; score_mean: number | string | null}
 
-export function Assessments({backend, context, role, service: injected, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService}) {
+export function Assessments({backend, context, role, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService; tables?: TableService}) {
   const service = useMemo(() => injected ?? createAssessmentsService(backend.rpc), [backend, injected]);
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
+  const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<Boot>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
   const [filters, setFilters] = useState({round: '2', pair: '1|2', centre: '', shift: '', grade: '', gender: ''});
   const [report, setReport] = useState<Slice<Report>>({status: 'loading'});
-  const [register, setRegister] = useState<Slice<RegisterRow[]>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
   const [entering, setEntering] = useState(false);
   const [notice, setNotice] = useState('');
@@ -75,12 +77,10 @@ export function Assessments({backend, context, role, service: injected, overview
   useEffect(() => {
     if (!year || boot.status !== 'ready') return;
     let live = true;
-    setReport({status: 'loading'}); setRegister({status: 'loading'});
+    setReport({status: 'loading'});
     const env = {yearId: year.id, today, fromQuarter, toQuarter, months, hasSeries: false};
-    if (selection.centres.length === 0) { setReport({status: 'error', message: 'No centres are in this selection.'}); setRegister({status: 'ready', value: []}); return; }
+    if (selection.centres.length === 0) { setReport({status: 'error', message: 'No centres are in this selection.'}); return; }
     overview.report(selection, env).then(value => { if (live) setReport({status: 'ready', value}); }).catch(error => { if (live) setReport({status: 'error', message: messageOf(error)}); });
-    service.register({centres: selection.centres, yearId: year.id, shift: selection.shift, grade: selection.grade, gender: selection.gender})
-      .then(value => { if (live) setRegister({status: 'ready', value}); }).catch(error => { if (live) setRegister({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overview, service, key, refreshKey, boot.status]);
@@ -94,11 +94,15 @@ export function Assessments({backend, context, role, service: injected, overview
   const growth = change && change.earlierMean !== null && change.laterMean !== null && change.earlierMean > 0 ? (change.laterMean - change.earlierMean) / change.earlierMean * 100 : null;
   const bands = q?.n ? [['0–8', q.low], ['9–15', q.developing], ['16–20', q.good], ['21–25', q.strong]].map(([label, value]) => ({label: String(label), value: Number(value ?? 0)})) : [];
   const progress = [1, 2, 3, 4].map(r => ({label: `F${r}`, value: one(stats?.quarters.find(item => item.quarter === r)?.mean)}));
-  const centreRows = useMemo<CentreRow[]>(() => (stats?.centres ?? []).map(c => { const item = c.quarters.find(x => x.quarter === round); return {id: c.id, name: nameOf.get(c.id) ?? c.id, n: item?.n ?? 0, mean: item?.mean ?? null}; }), [stats, nameOf, round]);
+  const tableContext = useMemo(() => year ? {on: today, from: `${today.slice(0, 7)}-01`, until: (() => { const d = new Date(`${today.slice(0, 7)}-01T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), year: year.id, grade: selection.grade, shift: selection.shift, gender: selection.gender, earlier: fromQuarter, later: toQuarter, quarter: round} : null, [year, today, key, round]);
+  const loadCentres = useCallback((request: TableRequest) => tableContext ? tables.page<CentreRow>('reviewed_centres', selection.centres, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, key, tableContext]);
+  const centreTable = useServerTable<CentreRow>({key: JSON.stringify([key, round]), load: loadCentres, initialSort: 'centre', refreshKey});
+  const loadRegister = useCallback((request: TableRequest) => year ? tables.page<RegisterRow>('assessment_register', selection.centres, {year: year.id, shift: selection.shift, grade: selection.grade, gender: selection.gender}, request) : Promise.resolve({rows: [], total: 0}), [tables, key, year]);
+  const registerTable = useServerTable<RegisterRow>({key, load: loadRegister, initialSort: 'date', initialReverse: true, refreshKey});
   const centreColumns = useMemo<Column<CentreRow>[]>(() => [
-    {id: 'name', header: 'Centre', value: r => r.name},
-    {id: 'n', header: 'Students with scores', value: r => r.n, numeric: true},
-    {id: 'mean', header: 'Average score (out of 25)', value: r => one(r.mean), numeric: true, cell: r => r.mean === null ? 'Unknown' : r.mean.toFixed(1)},
+    {id: 'centre', header: 'Centre', value: r => r.centre_label},
+    {id: 'students', header: 'Students with scores', value: r => Number(r.score_n ?? 0), numeric: true},
+    {id: 'score', header: 'Average score (out of 25)', value: r => r.score_mean === null ? null : one(Number(r.score_mean)), numeric: true, cell: r => r.score_mean === null ? 'Unknown' : Number(r.score_mean).toFixed(1)},
   ], []);
   const registerColumns = useMemo<Column<RegisterRow>[]>(() => [
     {id: 'centre', header: 'Centre', value: r => nameOf.get(r.centre_id) ?? r.centre_id},
@@ -154,8 +158,8 @@ export function Assessments({backend, context, role, service: injected, overview
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DataTable<CentreRow> reference="4.7" caption="Average score by centre" columns={centreColumns} data={centreRows} getRowId={r => r.id} exportName={`MASS-assessment-by-centre-${round_label}`}
-          state={asState(report)} errorMessage={reportMessage} emptyMessage="No centres in this selection." onRetry={() => setRefreshKey(k => k + 1)} />
+        <DataTable<CentreRow> reference="4.7" caption="Average score by centre" columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={`MASS-assessment-by-centre-${round_label}`}
+          state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage="No centres in this selection." onRetry={centreTable.retry} />
         <ChartCard reference="4.8" title="Matched comparison" subtitle={`F${fromQuarter} → F${toQuarter} · students with both scores`} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
           {change && change.n > 0 ? (
             <dl className="grid grid-cols-2 gap-2 text-sm">
@@ -170,10 +174,8 @@ export function Assessments({backend, context, role, service: injected, overview
         </ChartCard>
       </div>
 
-      {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
-        <DataTable<RegisterRow> reference="4.9" caption="Assessment register" columns={registerColumns} data={register.status === 'ready' ? register.value : []}
-          getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName="MASS-assessment-register" state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage="No saved assessments for this selection." />
-      )}
+      <DataTable<RegisterRow> reference="4.9" caption="Assessment register" columns={registerColumns} data={registerTable.rows}
+        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName="MASS-assessment-register" state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage="No saved assessments for this selection." />
       <p className="text-xs text-muted">One record per centre, shift, observed date and round. Historical dates remain unknown; no date is invented. Correcting a saved score uses its own approved workflow in the standard application.</p>
 
       {entering && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setEntering(false)} /> : null}

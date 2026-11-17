@@ -8,7 +8,7 @@ import {CACHE_TTL_MS, memoise} from './backend';
 import type {Rpc} from './backend';
 
 export const CACHED_READS = new Set([
-  'attendance_register_page', 'attendance_present_distribution', 'assessment_register_summary', 'student_profile_page_v2', 'student_profile_page_v3',
+  'attendance_register_page', 'attendance_register_page_v2', 'attendance_present_distribution', 'assessment_register_summary', 'student_profile_page_v2', 'student_profile_page_v3', 'dashboard_table_page',
   'visit_coverage', 'visit_summary', 'visit_officer_summary', 'read_visits', 'read_visits_v2', 'get_visit_assignments', 'read_morarji', 'morarji_followup',
   'read_students', 'reviewed_chart_metrics', 'reviewed_attendance_series', 'reviewed_attendance_by_centre_month', 'reviewed_shift_counts',
 ]);

@@ -67,6 +67,7 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
   const supported = isProfileSupported(caps);
   const writes = boot.status === 'ready' ? boot.value.writes : {};
   const requestKey = JSON.stringify([selected.map(c => c.id), query, idQuery, filters.grade, filters.shift, filters.gender]);
+  const profileFilters = useMemo(() => ({centres: selected.map(c => c.id), query: query.trim(), idQuery: idQuery.trim(), grade: filters.grade || null, shift: filters.shift || null, gender: filters.gender || null}), [selected, query, idQuery, filters.grade, filters.shift, filters.gender]);
 
   useEffect(() => { setPage(DEFAULT_PAGE); }, [requestKey]);
 
@@ -75,8 +76,8 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
     let live = true;
     setResult(previous => previous.status === 'ready' ? previous : {status: 'loading'});
     setBusy(true);
-    const ids = selected.map(c => c.id);
-    service.page({centres: ids, query: query.trim(), idQuery: idQuery.trim(), grade: filters.grade || null, shift: filters.shift || null, gender: filters.gender || null}, page, today)
+    const ids = profileFilters.centres;
+    service.page(profileFilters, page, today)
       .then(async found => ({rows: await service.students(ids, found.ids), total: found.total}))
       .then(value => { if (live) { setResult({status: 'ready', value}); setBusy(false); } })
       .catch(error => { if (live) { setResult({status: 'error', message: messageOf(error)}); setBusy(false); } });
@@ -107,6 +108,15 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
     note: 'Searched, sorted and paged by the server, ten students per page.', total: result.value.total, pageIndex: page.offset / PROFILE_PAGE_SIZE,
     onPageChange: (index: number) => setPage(p => ({...p, offset: index * PROFILE_PAGE_SIZE})), sort: {id: page.sort, desc: page.reverse},
     onSortChange: (id: string) => setPage(p => p.sort === id ? {...p, offset: 0, reverse: !p.reverse} : {offset: 0, sort: id as ProfileSort, reverse: false}),
+    exportRows: async () => {
+      const rows: StudentRow[] = [];
+      for (let offset = 0; offset <= 1000000; offset += 500) {
+        const found = await service.page(profileFilters, {...page, offset, limit: 500}, today);
+        rows.push(...await service.students(profileFilters.centres, found.ids));
+        if (rows.length >= found.total || found.ids.length < 500) return rows;
+      }
+      throw new Error('The export is too large. Narrow the filters and try again.');
+    },
   } : undefined;
   const addEnabled = writes.registration === true, editEnabled = writes.profiles === true;
 

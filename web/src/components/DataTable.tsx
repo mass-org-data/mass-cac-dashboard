@@ -49,8 +49,20 @@ export interface DataTableProps<T> {
   onRetry?: () => void;
   /** Page-numbered reference such as 1.13, shown before the title. */
   reference?: string;
-  /** Server-side paging and sorting (for example the saved attendance register). The server returns one page; no search box. */
-  server?: {note?: string; total: number; pageIndex: number; onPageChange: (pageIndex: number) => void; sort: {id: string; desc: boolean}; onSortChange: (columnId: string) => void};
+  /** Server-side paging, sorting and optional search. The server returns one page. */
+  server?: {
+    note?: string;
+    total: number;
+    pageIndex: number;
+    onPageChange: (pageIndex: number) => void;
+    sort: {id: string; desc: boolean};
+    onSortChange: (columnId: string) => void;
+    /** When supplied, search is performed by the server instead of over the visible page. */
+    query?: string;
+    onQueryChange?: (query: string) => void;
+    /** Explicit export action. Must return every filtered row in the current server sort order. */
+    exportRows?: () => Promise<T[]>;
+  };
 }
 
 const collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
@@ -76,6 +88,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
   // ascending, then descending; sorting never goes "off", so the order is always explicit.
   const [sorting, setSorting] = useState<SortingState>(firstColumn ? [{id: firstColumn, desc: false}] : []);
   const [search, setSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const defs = useMemo<ColumnDef<T>[]>(
     () => columns.map(column => ({
@@ -125,20 +138,25 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
   const first = filteredCount === 0 ? 0 : pageIndex * PAGE_SIZE + 1;
   const last = Math.min(filteredCount, (pageIndex + 1) * PAGE_SIZE);
 
-  const exportCsv = () => {
-    const rows = (server ? table.getRowModel() : table.getSortedRowModel()).rows.map(row => columns.map(column => asCsv(column.value(row.original))));
-    downloadCsv(exportName, buildCsv(columns.map(column => column.header), rows));
+  const exportCsv = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const records = server?.exportRows ? await server.exportRows() : (server ? table.getRowModel() : table.getSortedRowModel()).rows.map(row => row.original);
+      const rows = records.map(row => columns.map(column => asCsv(column.value(row))));
+      downloadCsv(exportName, buildCsv(columns.map(column => column.header), rows));
+    } finally { setExporting(false); }
   };
 
   const body = (
     <>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        {server ? <p className="text-sm text-muted">{server.note ?? 'Sorted and paged by the server, newest first by default.'}</p> : <div className="relative w-full max-w-sm">
+        {server && !server.onQueryChange ? <p className="text-sm text-muted">{server.note ?? 'Sorted and paged by the server.'}</p> : <div className="relative w-full max-w-sm">
           <label htmlFor={searchId} className="mb-1 block text-xs font-semibold text-muted">Search this table</label>
           <Search aria-hidden="true" className="pointer-events-none absolute bottom-3 left-3 size-4 text-muted" />
-          <Input id={searchId} type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Type to filter rows" className="pl-9" autoComplete="off" />
+          <Input id={searchId} type="search" value={server ? server.query ?? '' : search} onChange={event => server?.onQueryChange ? server.onQueryChange(event.target.value) : setSearch(event.target.value)} placeholder="Type to filter rows" className="pl-9" autoComplete="off" />
         </div>}
-        <Button variant="outline" onClick={exportCsv} disabled={filteredCount === 0}><Download aria-hidden="true" className="size-4" />{server ? 'Export this page (CSV)' : 'Export CSV'}</Button>
+        <Button variant="outline" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{exporting ? 'Preparing export…' : 'Export CSV'}</Button>
       </div>
       <div className="max-h-[62vh] overflow-auto rounded-md border border-line">
         <table aria-labelledby={captionId} className="w-full border-collapse text-sm">
@@ -178,7 +196,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
             ))}
           </tbody>
         </table>
-        {filteredCount === 0 ? <p role="note" className="p-4 text-sm text-muted">No rows match “{search}”.</p> : null}
+        {filteredCount === 0 ? <p role="note" className="p-4 text-sm text-muted">No rows match “{server?.query ?? search}”.</p> : null}
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
         <p role="status" aria-live="polite">{filteredCount === 0 ? '0 rows' : `Showing ${first}–${last} of ${filteredCount}`}</p>
