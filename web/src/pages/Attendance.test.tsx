@@ -62,12 +62,18 @@ describe('Attendance page', () => {
     expect(within(table).getByRole('columnheader', {name: /Centre/})).toHaveAttribute('aria-sort', 'descending');
   });
 
-  it('shows holiday rows as recorded holidays and the audit columns', async () => {
+  it('shows holiday rows, hides audit identities and formats the last edit time', async () => {
     setup({page: async () => ({rows: [{...row(1), session_type: 'Holiday', total: null, present: 0, percentage: null}, row(2)], total: 2})});
     const table = await register();
     await waitFor(() => expect(bodyRows(table)).toHaveLength(2));
     expect(within(bodyRows(table)[0]).getByText('Recorded holiday', {selector: 'td'})).toBeInTheDocument();
-    expect(within(bodyRows(table)[1]).getAllByRole('cell')[5]).toHaveTextContent('Teacher A');
+    expect(within(table).queryByRole('columnheader', {name: 'Created by'})).not.toBeInTheDocument();
+    expect(within(table).queryByRole('columnheader', {name: 'Last edited by'})).not.toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', {name: 'Last edited at'})).toBeInTheDocument();
+    const edited = within(bodyRows(table)[1]).getAllByRole('cell')[5].querySelector('time');
+    expect(edited).toHaveAttribute('dateTime', '2026-11-13 10:00');
+    expect(edited).toHaveAttribute('title', expect.stringMatching(/2026/));
+    expect(edited).toHaveTextContent(/ago/);
     expect(within(table).getAllByText('Excluded').length).toBe(1);
   });
 
@@ -80,7 +86,7 @@ describe('Attendance page', () => {
     expect(await screen.findByRole('dialog', {name: 'Add attendance'})).toBeInTheDocument();
     expect(service.readRegister).toHaveBeenLastCalledWith('c1', 'Morning', '2026-11-14');
     await user.click(screen.getByRole('button', {name: 'Cancel'}));
-    await user.click(within(table).getAllByRole('button', {name: /^Edit attendance:/})[0]);
+    await user.click(within(table).getAllByRole('button', {name: /^Edit:/})[0]);
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(service.readRegister).toHaveBeenLastCalledWith('c1', 'Morning', '2026-11-29');
   });

@@ -84,6 +84,10 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
   const single = centres.length === 1;
   const holiday = state.sessionType === 'Holiday';
   const busy = status === 'loading' || status === 'saving';
+  const cancelDelete = () => {
+    setFormError('');
+    setState(s => ({...s, deleting: false, confirmDelete: false}));
+  };
 
   return (
     <Dialog open onOpenChange={open => { if (!open) requestClose(); }}>
@@ -168,28 +172,33 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
           </label>
         ) : null}
 
-        {state.recorded > 0 && !holiday ? (
-          <div className="rounded-md border border-bad p-3">
-            <h3 className="font-semibold text-bad">Delete attendance</h3>
-            <p className="text-sm">Remove all {state.recorded} saved marks for this centre, shift and date. Original records remain in restricted audit history.</p>
-            {state.deleting ? (
-              <div className="mt-2 space-y-2">
-                <p className="text-sm">This removes the whole register, including marks outside chart filters.</p>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-5" checked={state.confirmDelete} onChange={event => setState(s => ({...s, confirmDelete: event.target.checked}))} />I understand this deletes the entire register</label>
-                <Button variant="outline" onClick={() => setState(s => ({...s, deleting: false, confirmDelete: false}))}>Keep attendance</Button>
-              </div>
-            ) : <Button variant="outline" className="mt-2 border-bad text-bad" disabled={busy} onClick={() => setState(s => ({...s, deleting: true}))}>Delete Attendance</Button>}
-          </div>
-        ) : null}
-
-        <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{formError}</p>
+        <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{state.deleting ? '' : formError}</p>
         <div className="flex flex-wrap justify-end gap-2">
+          {state.recorded > 0 && !holiday ? <Button variant="outline" className="mr-auto border-bad text-bad" disabled={busy} onClick={() => { setFormError(''); setState(s => ({...s, deleting: true, confirmDelete: false})); }}>Delete</Button> : null}
           <Button variant="outline" onClick={requestClose} disabled={status === 'saving'}>Cancel</Button>
-          <Button onClick={() => void submit()} disabled={!canSubmit(state) || busy || status === 'committed'} className={state.deleting ? 'bg-bad hover:bg-bad' : undefined}>
-            {status === 'saving' ? 'Saving…' : state.deleting ? 'Delete attendance' : holiday ? 'Save Holiday' : 'Save Attendance'}
+          <Button onClick={() => void submit()} disabled={!canSubmit({...state, deleting: false, confirmDelete: false}) || busy || status === 'committed'}>
+            {status === 'saving' ? 'Saving…' : holiday ? 'Save Holiday' : 'Save Attendance'}
           </Button>
         </div>
       </DialogContent>
+
+      <Dialog open={state.deleting} onOpenChange={open => { if (!open && status !== 'saving') cancelDelete(); }}>
+        <DialogContent role="alertdialog" className="z-[70] max-w-lg" overlayClassName="z-[60]" aria-describedby="delete-register-description" onInteractOutside={event => event.preventDefault()}>
+          <div>
+            <DialogTitle>Delete attendance?</DialogTitle>
+            <DialogDescription id="delete-register-description">This removes all {state.recorded} saved marks for this centre, shift and date, including marks outside the current chart filters. Original records remain in restricted audit history.</DialogDescription>
+          </div>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Reason for deletion
+            <Input value={state.reason} disabled={busy} onChange={event => setState(s => ({...s, reason: event.target.value}))} placeholder="Required before this register can be deleted" />
+          </label>
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1 size-5 shrink-0" checked={state.confirmDelete} disabled={busy} onChange={event => setState(s => ({...s, confirmDelete: event.target.checked}))} />I understand this deletes the entire register</label>
+          <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{formError}</p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={cancelDelete} disabled={busy}>Keep attendance</Button>
+            <Button className="bg-bad hover:bg-bad" onClick={() => void submit()} disabled={busy || status === 'committed'}>{status === 'saving' ? 'Deleting…' : 'Delete'}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

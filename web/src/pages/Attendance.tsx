@@ -10,7 +10,7 @@ import {RegisterDialog, type Selection} from '../attendance/RegisterDialog';
 import {createAttendanceService, isSupported, PAGE_SIZE, type AttendanceService, type Distribution, type Filters, type PageRequest, type RegisterCapabilities, type RegisterPage, type RegisterRow, type SortKey} from '../attendance/service';
 import {type OverviewService, type Report, type Series} from '../data/overview';
 import {academicMonths, monthLabel, monthShort, todayIst} from '../lib/dates';
-import {formatCount, formatPercent} from '../lib/format';
+import {formatCount, formatDateTime, formatPercent, formatRelativeTime} from '../lib/format';
 import {attendanceSummaryDisplay} from '../../../src/live/attendance-register.js';
 import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
@@ -127,13 +127,11 @@ export function Attendance({backend, context, role, service: injected, overview:
     {id: 'date', header: 'Date', value: r => r.attendance_date},
     {id: 'present', header: 'No. of students present', value: r => attendanceSummaryDisplay(r).ratio, numeric: true},
     {id: 'percentage', header: '% students present', value: r => attendanceSummaryDisplay(r).percentage, numeric: true, cell: r => { const d = attendanceSummaryDisplay(r); return <>{d.percentage}{d.incomplete ? <span className="block text-xs text-muted">Incomplete attendance</span> : null}</>; }},
-    {id: 'created_by', header: 'Created by', value: r => r.created_by ?? 'Not recorded', sortable: false},
-    {id: 'last_edited_by', header: 'Last edited by', value: r => r.last_edited_by ?? 'Not recorded', sortable: false},
-    {id: 'last_edited_at', header: 'Last edited at', value: r => r.last_edited_at ?? 'Not recorded', sortable: false},
-    {id: 'action', header: 'Action', sortable: false, value: r => r.session_type === 'Holiday' ? 'Recorded holiday' : writable.some(c => c.id === r.centre_id) && canWrite ? 'Edit attendance' : 'View only',
+    {id: 'last_edited_at', header: 'Last edited at', value: r => r.last_edited_at ?? null, sortable: false, cell: r => <time dateTime={r.last_edited_at ?? undefined} title={formatDateTime(r.last_edited_at)}>{formatRelativeTime(r.last_edited_at)}</time>},
+    {id: 'action', header: 'Edit', sortable: false, value: r => r.session_type === 'Holiday' ? 'Recorded holiday' : writable.some(c => c.id === r.centre_id) && canWrite ? 'Edit' : 'View only',
       cell: r => r.session_type === 'Holiday' ? 'Recorded holiday'
         : writable.some(c => c.id === r.centre_id) && canWrite
-          ? <Button variant="ghost" size="sm" aria-label={`Edit attendance: ${nameOf.get(r.centre_id) ?? r.centre_id}, ${r.shift_code}, ${r.attendance_date}`} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>Edit attendance</Button>
+          ? <Button variant="ghost" size="sm" aria-label={`Edit: ${nameOf.get(r.centre_id) ?? r.centre_id}, ${r.shift_code}, ${r.attendance_date}`} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>Edit</Button>
           : <span className="text-xs text-muted">View only</span>},
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [nameOf, writable, canWrite]);
@@ -171,8 +169,8 @@ export function Attendance({backend, context, role, service: injected, overview:
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Scorecard reference="2.1" label="Student attendance rate" value={stats ? formatPercent(stats.attendance.percentage) : null} hint="Present ÷ recorded classroom attendance" state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? 'Future reporting periods have no verified observations.' : report.status === 'error' ? report.message : undefined} />
-        <Scorecard reference="2.2" label="Present student-days" value={stats ? formatCount(stats.attendance.p) : null} hint="Selected month" state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? 'Future reporting periods have no verified observations.' : report.status === 'error' ? report.message : undefined} />
+        <Scorecard reference="2.1" label="Student attendance rate" value={stats ? formatPercent(stats.attendance.percentage) : null} state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? 'Future reporting periods have no verified observations.' : report.status === 'error' ? report.message : undefined} />
+        <Scorecard reference="2.2" label="Present student-days" value={stats ? formatCount(stats.attendance.p) : null} state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? 'Future reporting periods have no verified observations.' : report.status === 'error' ? report.message : undefined} />
         <Scorecard reference="2.3" label="Students with low attendance" state="unavailable" message="Below 15 days; complete scheduled-day coverage required" tone="alert" />
       </div>
 
