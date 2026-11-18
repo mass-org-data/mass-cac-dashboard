@@ -1,6 +1,7 @@
 import type {ReactNode} from 'react';
 import {Button} from './ui/button';
 import {Skeleton} from './ui/skeleton';
+import {useI18n} from '../i18n/I18n';
 
 export type LoadState = 'ready' | 'loading' | 'empty' | 'error';
 
@@ -17,21 +18,22 @@ interface Props {
 }
 
 // One loading, empty and error treatment for every card, chart and table.
-export function AsyncState({state, children, loadingLabel = 'Loading…', emptyMessage = 'No records match.', errorMessage = 'This could not be loaded.', onRetry, rows = 3}: Props) {
+export function AsyncState({state, children, loadingLabel, emptyMessage, errorMessage, onRetry, rows = 3}: Props) {
+  const {t} = useI18n();
   if (state === 'ready') return <>{children}</>;
   if (state === 'loading') {
     return (
       <div role="status" aria-busy="true" className="space-y-2">
-        <span className="sr-only">{loadingLabel}</span>
+        <span className="sr-only">{loadingLabel ?? t('common.loading')}</span>
         {Array.from({length: rows}, (_, index) => <Skeleton key={index} className="h-6 w-full" />)}
       </div>
     );
   }
-  if (state === 'empty') return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm text-ink">{emptyMessage}</p>;
+  if (state === 'empty') return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm text-ink">{emptyMessage ?? t('common.noMatches')}</p>;
   return (
     <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md bg-bad-soft p-4 text-sm text-bad">
-      <span>{errorMessage}</span>
-      {onRetry ? <Button variant="outline" size="sm" onClick={onRetry}>Retry</Button> : null}
+      <span>{errorMessage ?? t('common.loadFailed')}</span>
+      {onRetry ? <Button variant="outline" size="sm" onClick={onRetry}>{t('common.retry')}</Button> : null}
     </div>
   );
 }

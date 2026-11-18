@@ -6,6 +6,7 @@ import {discoverCapabilities} from '../../../src/live/backend-capabilities.js';
 import {BackendError} from '../../../src/live/api.js';
 import type {Backend, ProgrammeContext} from './controller';
 import {createReadCache} from './readCache';
+import type {Language} from '../i18n/I18n';
 
 export interface RuntimeConfig {mode: string; url?: string; publishableKey?: string; project?: string; readApi?: string; directoryApi?: string}
 
@@ -87,6 +88,20 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
       try { await client.auth.signOut({scope: 'local'}); } finally { clearStoredSession(config); }
     },
     readContext: signal => reads.context(signal) as Promise<ProgrammeContext>,
+    async readLanguage() {
+      try {
+        const value = await rpc<{default_language?: string}>('get_user_preferences');
+        return value?.default_language === 'kn' ? 'kn' : 'en';
+      } catch (error) {
+        // During a staged deployment the interface can precede the additive preference migration.
+        if (error instanceof BackendError && (error.status === 404 || error.code === 'PGRST202')) return 'en';
+        throw error;
+      }
+    },
+    async setLanguage(language: Language) {
+      const value = await rpc<{default_language?: string}>('set_default_language', {p_language: language});
+      return value?.default_language === 'kn' ? 'kn' : 'en';
+    },
     readDirectory: () => memoise(memo, 'directory', () => (directory.centres as (options?: {signal?: AbortSignal}) => Promise<Array<{centre_id: string; donor_label?: string | null}>>)({})),
     readReferences: () => memoise(memo, 'references', () => reads.references() as Promise<References>),
     readCapabilities: () => memoise(memo, 'capabilities', async () => {
