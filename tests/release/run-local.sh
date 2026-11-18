@@ -77,6 +77,7 @@ print(s)
 PY
 if [[ "${MASS_BASELINE_BROWSER:-0}" != 1 ]];then
  sql < "$repo_root/tests/security/permission-foundation.sql"
+ sql < "$repo_root/tests/security/permission-reconciliation.sql"
  sql < "$repo_root/tests/release/visits.sql"
  sql < "$repo_root/tests/release/indexes.sql"
  source "$repo_root/tests/release/concurrency.sh"

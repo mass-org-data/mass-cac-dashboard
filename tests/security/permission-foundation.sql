@@ -3,10 +3,14 @@ RESET ROLE;
 SET ROLE mass_core_admin;
 INSERT INTO mass_core.application_users(user_id,role_code,status,starts_at,ends_at,approval_reference,approved_by,approved_at) VALUES
  ('00000000-0000-4000-8000-000000000001','Teacher','Active','1999-01-01','2001-01-01','Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
+ ('00000000-0000-4000-8000-000000000002','Teacher','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
  ('00000000-0000-4000-8000-000000000003','Cluster Officer','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
- ('00000000-0000-4000-8000-000000000004','Leadership','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01');
+ ('00000000-0000-4000-8000-000000000004','Leadership','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
+ ('00000000-0000-4000-8000-000000000007','Teacher','Inactive','1999-01-01','2000-01-01','Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
+ ('00000000-0000-4000-8000-000000000008','Leadership','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01');
 INSERT INTO mass_core.user_centre_assignments(user_id,centre_id,status,starts_at,ends_at,approval_reference,approved_by,approved_at) VALUES
  ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','Active','1999-01-01','2001-01-01','Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
+ ('00000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
  ('00000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000001','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01'),
  ('00000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000002','Active','1999-01-01',NULL,'Synthetic governance test','00000000-0000-4000-8000-000000000006','2000-01-01');
 SELECT core_test.expect_error($q$
@@ -41,4 +45,9 @@ RESET ROLE;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000003"}',false);
 SELECT core_test.assert_true(mass_core.application_role() IS NULL AND NOT mass_core.governed_can_read('10000000-0000-4000-8000-000000000001'),'inactive user loses governed access immediately');
+RESET ROLE;
+SET ROLE mass_core_admin;
+UPDATE mass_core.application_users SET status='Active',row_version=row_version+1 WHERE user_id='00000000-0000-4000-8000-000000000003';
+UPDATE mass_core.user_centre_assignments SET status='Inactive',row_version=row_version+1
+WHERE user_id='00000000-0000-4000-8000-000000000003' AND centre_id='10000000-0000-4000-8000-000000000002';
 RESET ROLE;

@@ -34,6 +34,12 @@ The resulting system must have these properties:
 
 The owner authorized implementation, branch Preview deployment, and changes to the Preview database only. This does not authorize a pull request, merge, Production frontend deployment, Production database change, or Production Auth/configuration change.
 
+### Implementation progress
+
+- Phase 1 deployed to Preview in `20261118120000_permission_governance_foundation.sql`: private forced-RLS user/assignment records, deterministic backfill and candidate authorization helpers. Existing runtime authorization remains authoritative.
+- Phase 2 is implemented in `20261118130000_permission_scope_reconciliation.sql`: trusted dual-read comparison and a mandatory drift assertion. It does not change runtime reads, writes, RLS policies or frontend behavior.
+- Phases 3–8 remain pending.
+
 ## 2. Approved business rules
 
 ### 2.1 Users and roles
