@@ -36,9 +36,10 @@ test('independent SQL respects October, holiday exclusions, true zero, undated q
  const scenario={environment:'synthetic',project:'fixture',role:'Leadership',month:'2026-10',centres:[{id:id(1),label:'Fixture A'},{id:id(2),label:'Fixture B'}]};
  const results=await db.exec(referenceSql(scenario));const ref=results.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;assert.ok(ref);
  const get=(key,dimension='All')=>ref.facts.find(f=>f.key===key&&f.dimension===dimension)?.value;
- assert.equal(get('students'),3);assert.equal(get('attendance'),50);assert.equal(get('present'),1);assert.equal(get('annual_attendance'),200/3);
+ assert.equal(get('grade','1'),0);assert.equal(get('grade','5'),3);assert.equal(get('students'),3);assert.equal(get('attendance'),50);assert.equal(get('present'),1);assert.equal(get('annual_attendance'),200/3);
  assert.equal(get('days_present','Below 15'),2);assert.equal(get('exam_coverage'),'2/3');assert.equal(get('exam_mean'),10);assert.equal(get('quarter_mean','F3'),null);assert.equal(get('matched'),2);assert.equal(get('mark_change'),5);assert.equal(get('growth'),100);assert.equal(get('visits'),null);
  assert.equal(get('centre_students','Fixture B'),0);assert.equal(get('centre_attendance','Fixture B'),null);
+ const april=await db.exec(referenceSql({...scenario,month:'2026-04'}));const aprilRef=april.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;assert.equal(aprilRef.facts.find(f=>f.key==='above20').value,0);assert.equal(aprilRef.facts.find(f=>f.key==='exam_mean').value,null);
  // Changing a filter changes the underlying cohort instead of reusing an all-student denominator.
  const next=await db.exec(referenceSql({...scenario,gender:'Girl'}));const ref2=next.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;assert.equal(ref2.facts.find(f=>f.key==='students').value,1);
  // Distinct centres with the same label keep distinct identities in every reference key.

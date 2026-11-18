@@ -3,7 +3,7 @@
 // node scripts/audit/run.mjs --reference reference.json [--dashboard dashboard.json] --out /private/audit-run
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
-import {CATALOG,CUTOFF,makeRun,summarize,csv,validateScenario} from './core.mjs';
+import {CATALOG,CUTOFF,makeRun,summarize,csv,validateScenario,rowsForExport} from './core.mjs';
 import {referenceSql} from './sql.mjs';
 const args=process.argv.slice(2),option=(name,fallback=null)=>{const n=args.indexOf('--'+name);return n<0?fallback:args[n+1];};
 const read=async file=>JSON.parse(await readFile(file,'utf8'));
@@ -24,11 +24,11 @@ if(option('scenario')) {
 }
 const file=option('reference')||(args.includes('--execute')?path.join(out,'reference.json'):null);
 if(file) {
- const reference=await read(file),capture=option('dashboard')?await read(option('dashboard')):null;
+ const reference=await read(file);if(option('sql'))reference.sql=await readFile(option('sql'),'utf8');const capture=option('dashboard')?await read(option('dashboard')):null;
  if(capture&&option('reference-after')){const after=await read(option('reference-after'));if(JSON.stringify(after.scenario)!==JSON.stringify(reference.scenario))throw Error('Post-capture reference scope differs.');capture.referenceAfterFingerprint=after.fingerprint;}
  const run=makeRun(reference,capture);
  await writeFile(path.join(out,'run.json'),JSON.stringify(run,null,2),{mode:0o600});
- await writeFile(path.join(out,'comparisons.csv'),csv(run.rows),{mode:0o600});
+ await writeFile(path.join(out,'comparisons.csv'),csv(rowsForExport(run)),{mode:0o600});
  await writeFile(path.join(out,'summary.json'),JSON.stringify(summarize(run.rows),null,2),{mode:0o600});
 }
 await writeFile(path.join(out,'indicator-catalog.json'),JSON.stringify({cutoff:CUTOFF,indicators:CATALOG},null,2),{mode:0o600});

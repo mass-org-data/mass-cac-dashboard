@@ -35,7 +35,8 @@
     "audit:reference": "node scripts/audit/run.mjs",
     "audit:capture": "node scripts/audit/capture.mjs",
     "test:audit": "node --test tests/audit/*.test.mjs",
-    "test:audit:browser": "node scripts/audit/check-ui.mjs"
+    "test:audit:browser": "node scripts/audit/check-ui.mjs",
+    "audit:matrix": "node scripts/audit/matrix.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",

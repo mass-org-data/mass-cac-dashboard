@@ -16,6 +16,12 @@ try {
  await db.exec(read('supabase/proposals/202611030024_reviewed_chart_metrics.sql'));
  // The efficiency migration upgrades the installed function only, so a fresh database applies it again after the reviewed proposal.
  await db.exec(read('supabase/migrations/20261114130000_reviewed_chart_metrics_efficiency.sql'));
+ // The efficiency migration rebuilds the function without the centre-event patch of 20261111120000; the corrective migration restores it and is idempotent.
+ await db.exec(read('supabase/migrations/20261117120000_reviewed_chart_metrics_centre_events.sql'));
+ await db.exec(read('supabase/migrations/20261117120000_reviewed_chart_metrics_centre_events.sql'));
+ {const def=(await db.query("SELECT pg_get_functiondef('mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)'::regprocedure) d")).rows[0].d;
+  if(def.split("e.event_kind='Activity'").length!==2||def.split("e.shift_code='Both shifts'").length!==3||!def.includes("(p.shift_code=e.shift_code OR e.shift_code='Both shifts') AND e.activity_date")||!def.includes("code IN ('WO','MM','H')"))throw new Error('reviewed_chart_metrics must hold the centre-event patch exactly once and keep the Holiday exclusion');
+  console.log('PASS reviewed_chart_metrics keeps the centre-event patch after the efficiency migration, applied twice');}
  let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=30 AND bool_and(relrowsecurity AND relforcerowsecurity)')
   .replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')")
   .replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");

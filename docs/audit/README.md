@@ -62,7 +62,7 @@ Field-level identities, names, free-text feedback and audit actors are not quant
 
 ## Continuation check — 17 November 2026
 
-The first authorized production browser run is now captured for Leadership, all permitted centres, October. Before/after independent source fingerprints agree. The private run contains the actual rendered Overview cards, categories and all centre-table pages, October Visits availability, the Attendance page's installed-API error and the checked historical-control limitations. This is one scenario; other roles/months/filter combinations have not been run. The native verification sheet still contains the earlier expected-only snapshot; refreshing that external destination requires owner authorization.
+The first authorized production browser run is now captured for Leadership, all permitted centres, October. Before/after independent source fingerprints agree. The private run contains the actual rendered Overview cards, categories and all centre-table pages, October Visits availability, the Attendance page's installed-API error and the checked historical-control limitations. This is one scenario; other roles/months/filter combinations have not been run. The October baseline in the native verification sheet was subsequently updated through the owner-approved Kirti connection. See the 18 November section for the revised selected-centre seven-month run.
 
 174 numeric comparisons match; none differ. Coverage is only 4.6%: 810 cases have no eligible source observation, 1,917 have no comparable dashboard display, 847 cannot certify the cutoff, seven lack a settled calculation and six do not apply to Leadership. These categories must not be described as successful checks. The current production Attendance page explicitly reports an older register API; this audit records the failure and does not install or activate functions.
 
@@ -71,3 +71,31 @@ The capture adapter supports current deployed markup without requiring the new a
 `release.json` identifies Production commit `441f8ecfec9d2a98fccc73372cfdfd42dad291dc` and reports a tracked `vercel.json` change; that deployment note is retained in the private capture. No private case values or browser session material are in Git. The private JSON can be loaded into `/audit/` to view this execution; a new visitor sees the indicator inventory until importing a run.
 
 Continuation validation: 13 audit tests (including seeded SQL and duplicate-label regression), 13 built-ledger/browser adapter checks, lint and syntax checks, plus the existing web suite. The earlier full GitHub run passed frontend, portable SQL and browser acceptance; check the latest PR run after this follow-up commit.
+
+## Selected-centre seven-month run — 18 November 2026
+
+The owner selected **Aralimatti and Avaradi** for April–October. `scripts/audit/plan.mjs` defines 14 separate Leadership scenarios (one centre × one month), never a pooled two-centre or seven-month total. Each chart category, centre row and dated/shifted register row is its own comparison. Grades 1–10 include genuine zero-count categories. Recorded facts and source quarters must fall within each scenario's own month-end; a later F2 result cannot be silently read into April's independent historical value.
+
+The deterministic role sample uses seed `20261118`: Cluster Officer, Aralimatti, July, Evening; Teacher, Avaradi, August, Morning. The Officer's Overview and every register page were captured under the verified role/centre/shift. The current Teacher session is scoped to Hosayaragudri and cannot select either target centre; the Teacher sample is explicitly pending an existing authorized Avaradi Teacher sign-in. No account, scope grant, permission, activation or programme fact was changed to make a test pass. Officer-specific visit identity/definition gaps remain flagged.
+
+The captured run has 2,857 individual cases: 1,349 matches, 11 differences, 514 without eligible source data, 122 without a settled calculation/identity, 228 without a comparable dashboard display, 511 without a verifiable historical cutoff and 122 not applicable to that role. Coverage is 49.7%, not full certification. All 16 independent before/after fingerprints agree. The 11 differences are the same `OV08` reporting-window issue: current F2 score counts appear in earlier selected months, while the historical reference only includes observed scores or completed source quarters by that month end. This is recorded for quarterly/monthly contract review, not treated as authorization to change the dashboard calculation.
+
+Production now supports the Attendance register after the 17 November database release. Every selected-centre monthly register page was read, including true zero and incomplete records; pagination waits for changed rows rather than copying the preceding page while the server loads. April–June have no classroom attendance observations in these selected centres. Activities/category observations remain unavailable. Assessments, Profiles, Morarji and Annual Donor pages still lack the controls needed to certify separate historical monthly snapshots; those limitations are listed rather than turning current values into historical matches.
+
+Every case carries its month, role, centre, student filters, source key and SQL-query ID. Full exact read-only SQL is stored once per scenario in `sqlQueries`; the ledger has a separate **SQL query** column and resolves the full statement on each row. CSV exports include it. No browser credential, session, individual student name or private live result is committed. The Google register retains the October baseline and adds **Apr-Oct verification**, **SQL queries**, and **Scenario coverage**. Its row SQL cells reference the corresponding exact executed query. The external register was updated through the owner-approved `kirti.sharma@goalkeep.org` connection.
+
+The ledger defaults to **All loaded scenarios** for a collection and preserves separate centre/month/category rows. Select a scenario to inspect one role/scope. Missing Teacher access is shown as a visible note. It remains a private-file viewer; this change does not implement automatic hosted result storage/loading.
+
+Reproduce the plan:
+
+```bash
+npm run audit:matrix -- --out /private/mass-april-october --event-kind
+```
+
+Use `--event-kind` only after confirming the column exists. Each numbered directory contains `scenario.json` and `reference.sql`. Execute that read-only SQL and save `reference.json`; run the existing browser capture with the correct authorized account, save `dashboard.json`, and re-extract `reference-after.json`. Then:
+
+```bash
+npm run audit:matrix -- --phase collect --out /private/mass-april-october
+```
+
+`--csv` optionally writes the larger full-SQL CSV. Missing captures stay untested, and mismatched source scopes or fingerprints cannot certify results. Query logs are display/export text only and are never executed by the ledger. Validation includes the seven-month plan, no future-quarter leakage, zero-count grade categories, query lineage, multi-scenario table/SQL rendering, and loading the actual private collection in the built ledger on desktop and phone.
