@@ -22,10 +22,11 @@ try {
  {const def=(await db.query("SELECT pg_get_functiondef('mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)'::regprocedure) d")).rows[0].d;
   if(def.split("e.event_kind='Activity'").length!==2||def.split("e.shift_code='Both shifts'").length!==3||!def.includes("(p.shift_code=e.shift_code OR e.shift_code='Both shifts') AND e.activity_date")||!def.includes("code IN ('WO','MM','H')"))throw new Error('reviewed_chart_metrics must hold the centre-event patch exactly once and keep the Holiday exclusion');
   console.log('PASS reviewed_chart_metrics keeps the centre-event patch after the efficiency migration, applied twice');}
- let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=31 AND bool_and(relrowsecurity AND relforcerowsecurity)')
+ let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=33 AND bool_and(relrowsecurity AND relforcerowsecurity)')
   .replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')")
   .replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
  await runSqlScript(db,core);console.log('PASS existing core SQL assertions');
+ await runSqlScript(db,read('tests/security/permission-foundation.sql'));console.log('PASS single-role governance foundation, centre limits and immediate inactive-user denial');
  await runSqlScript(db,read('tests/release/visits.sql'));console.log('PASS existing visit/delivery/scoped reporting SQL assertions');
  await runSqlScript(db,read('tests/release/batched-reads.sql'));console.log('PASS batched visit, Morarji and profile reads equal the single-centre functions and keep their scope');
  await runSqlScript(db,read('tests/reviewed-calculations/synthetic.sql'));
