@@ -9,6 +9,7 @@ import {todayIst} from '../lib/dates';
 import {sharedOverview, sharedProfiles} from '../data/shared';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {useI18n} from '../i18n/I18n';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -33,6 +34,7 @@ function useDebounced(value: string, ms = 350) {
 }
 
 export function Profiles({backend, context, role, service: injected}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: ProfilesService}) {
+  const {t} = useI18n();
   const service = useMemo(() => injected ?? sharedProfiles(backend), [backend, injected]);
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{caps: ProfileCapabilities; writes: Record<string, boolean>}>>({status: 'loading'});
@@ -89,23 +91,23 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
 
   const canEdit = writable.length > 0;
   const columns = useMemo<Column<StudentRow>[]>(() => [
-    {id: 'id', header: 'Student ID', value: r => r.studentId},
-    {id: 'name', header: 'Name', value: r => r.name ?? 'Name not recorded'},
-    {id: 'centre', header: 'Centre', value: r => nameOf.get(r.centre) ?? r.centre},
-    {id: 'grade', header: 'Grade', value: r => Number(r.grade), numeric: true},
-    {id: 'shift', header: 'Shift', value: r => r.shift},
-    {id: 'gender', header: 'Gender', value: r => r.gender ?? 'Unknown'},
-    {id: 'newest', header: 'Enrolled from', value: r => r.enrolled},
-    {id: 'action', header: 'Action', sortable: false, value: () => (canEdit ? 'Edit' : 'View only'),
-      cell: r => canEdit ? <Button variant="ghost" size="sm" aria-label={`Edit profile: ${r.name ?? r.studentId}`} onClick={() => { setNotice(''); setEditing(r); }}>Edit</Button> : <span className="text-xs text-muted">View only</span>},
-  ], [nameOf, canEdit]);
+    {id: 'id', header: t('profile.studentId'), value: r => r.studentId},
+    {id: 'name', header: t('common.name'), value: r => r.name ?? t('common.nameMissing')},
+    {id: 'centre', header: t('common.centre'), value: r => nameOf.get(r.centre) ?? r.centre},
+    {id: 'grade', header: t('common.grade'), value: r => Number(r.grade), numeric: true},
+    {id: 'shift', header: t('common.shift'), value: r => r.shift},
+    {id: 'gender', header: t('common.gender'), value: r => r.gender ?? t('common.unknown')},
+    {id: 'newest', header: t('profile.enrolledFrom'), value: r => r.enrolled},
+    {id: 'action', header: t('common.action'), sortable: false, value: () => (canEdit ? t('attendance.edit') : t('attendance.viewOnly')),
+      cell: r => canEdit ? <Button variant="ghost" size="sm" aria-label={t('profile.editLabel', {student: r.name ?? r.studentId})} onClick={() => { setNotice(''); setEditing(r); }}>{t('attendance.edit')}</Button> : <span className="text-xs text-muted">{t('attendance.viewOnly')}</span>},
+  ], [nameOf, canEdit, t]);
 
-  if (leadership) return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">Leadership sees aggregate reporting only. Individual student profiles stay restricted; switch to Teacher or Cluster Officer to view the students of your centres.</p>;
-  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing Student profiles" rows={5} />;
-  if (!supported) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">The profile API installed here is older than the new interface supports. Use the standard application for student profiles.</p>;
+  if (leadership) return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">{t('profile.leadership')}</p>;
+  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('profile.preparing')} rows={5} />;
+  if (!supported) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t('profile.oldApi')}</p>;
 
   const server = result.status === 'ready' ? {
-    note: 'Searched, sorted and paged by the server, ten students per page.', total: result.value.total, pageIndex: page.offset / PROFILE_PAGE_SIZE,
+    note: t('profile.serverNote'), total: result.value.total, pageIndex: page.offset / PROFILE_PAGE_SIZE,
     onPageChange: (index: number) => setPage(p => ({...p, offset: index * PROFILE_PAGE_SIZE})), sort: {id: page.sort, desc: page.reverse},
     onSortChange: (id: string) => setPage(p => p.sort === id ? {...p, offset: 0, reverse: !p.reverse} : {offset: 0, sort: id as ProfileSort, reverse: false}),
     exportRows: async () => {
@@ -123,31 +125,31 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">Search the students of your centres, review their profiles and add or correct a student.</p>
-        {canEdit ? <Button onClick={() => { setNotice(''); setAdding(true); }}>Add student</Button> : <p className="text-xs text-muted">Student entry is not available for your centres.</p>}
+        <p className="text-sm text-muted">{t('profile.intro')}</p>
+        {canEdit ? <Button onClick={() => { setNotice(''); setAdding(true); }}>{t('profile.add')}</Button> : <p className="text-xs text-muted">{t('profile.noEntry')}</p>}
       </div>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
-      <div role="search" aria-label="Student search" className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <label className="flex min-w-56 flex-1 flex-col gap-1 text-xs font-semibold text-muted">Search name, ID or centre
+      <div role="search" aria-label={t('profile.searchRegion')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
+        <label className="flex min-w-56 flex-1 flex-col gap-1 text-xs font-semibold text-muted">{t('profile.search')}
           <Input type="search" value={search} onChange={event => setSearch(event.target.value)} maxLength={160} />
         </label>
-        <label className="flex min-w-40 flex-col gap-1 text-xs font-semibold text-muted">Student ID
+        <label className="flex min-w-40 flex-col gap-1 text-xs font-semibold text-muted">{t('profile.studentId')}
           <Input type="search" value={idSearch} onChange={event => setIdSearch(event.target.value)} maxLength={160} />
         </label>
-        {writable.length > 1 ? <Select label="Centre" value={filters.centre} options={writable.map(c => [c.id, c.label])} allLabel="All centres" onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
-        <Select label="Grade" value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel="All grades" onChange={value => setFilters(f => ({...f, grade: value}))} />
-        <Select label="Shift" value={filters.shift} options={[['Morning', 'Morning'], ['Evening', 'Evening']]} allLabel="Both shifts" onChange={value => setFilters(f => ({...f, shift: value}))} />
-        <Select label="Gender" value={filters.gender} options={[['Girl', 'Girls'], ['Boy', 'Boys'], ['Unknown', 'Unknown']]} allLabel="All genders" onChange={value => setFilters(f => ({...f, gender: value}))} />
+        {writable.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={writable.map(c => [c.id, c.label])} allLabel={t('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={t('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
+        <Select label={t('common.shift')} value={filters.shift} options={[['Morning', t('common.morning')], ['Evening', t('common.evening')]]} allLabel={t('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
+        <Select label={t('common.gender')} value={filters.gender} options={[['Girl', t('common.girls')], ['Boy', t('common.boys')], ['Unknown', t('common.unknown')]]} allLabel={t('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
       </div>
 
       {result.status === 'error' ? <AsyncState state="error" errorMessage={result.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
         <div aria-busy={busy} className={busy ? 'opacity-60 transition-opacity' : undefined}>
-          <DataTable<StudentRow> reference="3.1" caption="Student profiles" columns={columns} data={result.status === 'ready' ? result.value.rows : []} getRowId={r => r.enrolment}
-            exportName="MASS-student-profiles" state={result.status === 'ready' ? 'ready' : 'loading'} emptyMessage="No students match this search." server={server} />
+          <DataTable<StudentRow> reference="3.1" caption={t('profile.caption')} columns={columns} data={result.status === 'ready' ? result.value.rows : []} getRowId={r => r.enrolment}
+            exportName="MASS-student-profiles" state={result.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('profile.noMatches')} server={server} />
         </div>
       )}
-      <p className="text-xs text-muted">Students shown are those enrolled today in your centres. Names and genders appear only for centres your role may read. Transfers between centres, grades or shifts stay in the standard application.</p>
+      <p className="text-xs text-muted">{t('profile.footnote')}</p>
 
       {adding ? <AddStudentDialog service={service} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={filters.centre || writable[0]!.id} today={today} enabled={addEnabled} onSaved={afterSave} onClose={() => setAdding(false)} /> : null}
       {editing ? <EditStudentDialog service={service} student={editing} centreLabel={nameOf.get(editing.centre) ?? editing.centre} enabled={editEnabled} onSaved={afterSave} onClose={() => setEditing(null)} /> : null}

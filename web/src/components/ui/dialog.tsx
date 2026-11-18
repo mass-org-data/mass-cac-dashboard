@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {X} from 'lucide-react';
 import {cn} from '../../lib/utils';
+import {useI18n} from '../../i18n/I18n';
 
 // shadcn/ui dialog: focus is trapped and restored, Escape closes, content is announced as a dialog.
 export const Dialog = DialogPrimitive.Root;
@@ -12,7 +13,9 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
 export const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({className, overlayClassName, children, ...props}, ref) => (
+>(({className, overlayClassName, children, ...props}, ref) => {
+  const {t} = useI18n();
+  return (
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay className={cn('fixed inset-0 z-40 bg-ink/50', overlayClassName)} />
     <DialogPrimitive.Content
@@ -21,10 +24,11 @@ export const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close aria-label="Close" className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md hover:bg-brand-soft"><X aria-hidden="true" className="size-5" /></DialogPrimitive.Close>
+      <DialogPrimitive.Close aria-label={t('common.close')} className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md hover:bg-brand-soft"><X aria-hidden="true" className="size-5" /></DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
-));
+  );
+});
 DialogContent.displayName = 'DialogContent';
 
 export const DialogTitle = React.forwardRef<React.ComponentRef<typeof DialogPrimitive.Title>, React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>>(({className, ...props}, ref) => (

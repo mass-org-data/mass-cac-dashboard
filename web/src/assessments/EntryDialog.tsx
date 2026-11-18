@@ -6,12 +6,14 @@ import {AsyncState} from '../components/AsyncState';
 import {buildScores, mapRound, MAX_SCORE, validateStart, type Entered, type Mapped} from './editor';
 import type {AssessmentsService, RosterStudent, SavedResult} from './service';
 import type {References} from '../session/backend';
+import {useI18n} from '../i18n/I18n';
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'The request could not be completed.');
 type Year = References['academic_years'][number];
 interface Props {service: AssessmentsService; refs: References; year: Year; centres: Array<{id: string; label: string}>; initialCentre: string; today: string; enabled: boolean; onSaved: (message: string) => Promise<void> | void; onClose: () => void}
 
 export function EntryDialog({service, refs, year, centres, initialCentre, today, enabled, onSaved, onClose}: Props) {
+  const {t} = useI18n();
   const [step, setStep] = useState<'start' | 'roster'>('start');
   const [centre, setCentre] = useState(initialCentre);
   const [date, setDate] = useState(year.starts_on <= today && today < year.ends_before ? today : year.starts_on);
@@ -61,38 +63,38 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
     <Dialog open onOpenChange={open => { if (!open && status !== 'saving') onClose(); }}>
       <DialogContent aria-describedby="entry-help" onInteractOutside={event => event.preventDefault()}>
         <div>
-          <DialogTitle>{step === 'start' ? 'Start assessment entry' : `Enter ${mapped?.label} marks`}</DialogTitle>
-          <DialogDescription id="entry-help">{step === 'start' ? 'Choose one centre and the observed assessment date. The date decides the round F1–F4 in the April–March year.' : `${centreLabel} · ${date} · one combined 25-mark assessment`}</DialogDescription>
+          <DialogTitle>{step === 'start' ? t('assessment.start') : t('assessment.enterMarks', {round: mapped?.label ?? ''})}</DialogTitle>
+          <DialogDescription id="entry-help">{step === 'start' ? t('assessment.startHelp') : t('assessment.rosterHelp', {centre: centreLabel, date})}</DialogDescription>
         </div>
-        {enabled ? null : <p role="status" className="rounded-md bg-warn-soft p-3 text-sm text-warn">This form is available for review. Saving is switched off until the workspace is activated. Operational activation pending. No record was changed.</p>}
+        {enabled ? null : <p role="status" className="rounded-md bg-warn-soft p-3 text-sm text-warn">{t('common.activationPending')}</p>}
         {step === 'start' ? (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Centre / village
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.centreVillage')}
                 <select value={centre} disabled={centres.length === 1} onChange={event => setCentre(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">{centres.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
               </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold text-muted">Assessment date<Input type="date" value={date} min={year.starts_on} max={today} required onChange={event => setDate(event.target.value)} /></label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.date')}<Input type="date" value={date} min={year.starts_on} max={today} required onChange={event => setDate(event.target.value)} /></label>
             </div>
-            <p role="status" aria-live="polite" className="text-sm">{preview.round ? `This date is in round ${preview.round}.` : preview.problem}</p>
-            <p className="text-xs text-muted">One saved result is supported per child and round; retests need an approved data-model change.</p>
+            <p role="status" aria-live="polite" className="text-sm">{preview.round ? t('assessment.roundStatus', {round: preview.round}) : preview.problem}</p>
+            <p className="text-xs text-muted">{t('assessment.retestHelp')}</p>
           </>
         ) : (
-          <AsyncState state={load} loadingLabel="Loading students…" errorMessage={error} onRetry={() => void start()} rows={4}>
-            {roster.length === 0 ? <p role="note" className="rounded-md bg-brand-soft p-3 text-sm">No students were enrolled in this centre on that date.</p> : (
+          <AsyncState state={load} loadingLabel={t('register.loadingStudents')} errorMessage={error} onRetry={() => void start()} rows={4}>
+            {roster.length === 0 ? <p role="note" className="rounded-md bg-brand-soft p-3 text-sm">{t('assessment.noStudents')}</p> : (
               <div>
-                <label className="mb-2 flex max-w-sm flex-col gap-1 text-xs font-semibold text-muted">Find a student by name or ID<Input type="search" value={filter} onChange={event => setFilter(event.target.value)} /></label>
+                <label className="mb-2 flex max-w-sm flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.findStudent')}<Input type="search" value={filter} onChange={event => setFilter(event.target.value)} /></label>
                 <div className="max-h-[40vh] overflow-auto rounded-md border border-line">
-                  <table aria-label="Students to score" className="w-full border-collapse text-sm">
-                    <thead><tr><th scope="col" className="sticky top-0 bg-brand-soft px-3 py-2 text-left">Student</th><th scope="col" className="sticky top-0 bg-brand-soft px-3 py-2 text-left">Marks /{MAX_SCORE} (blank = not recorded)</th></tr></thead>
+                  <table aria-label={t('assessment.studentsToScore')} className="w-full border-collapse text-sm">
+                    <thead><tr><th scope="col" className="sticky top-0 bg-brand-soft px-3 py-2 text-left">{t('common.student')}</th><th scope="col" className="sticky top-0 bg-brand-soft px-3 py-2 text-left">{t('assessment.marksHeader', {max: MAX_SCORE})}</th></tr></thead>
                     <tbody>
                       {shown.map(s => {
                         const old = saved.get(s.enrolment);
                         return (
                           <tr key={s.enrolment} className="odd:bg-white even:bg-paper">
-                            <td className="border-b border-line px-3 py-1">{s.name || 'Name not recorded'}<span className="block text-xs text-muted">{s.studentId} · Grade {s.grade} · {s.shift}{old ? ` · saved date: ${old.date ?? 'Unknown'}` : ''}</span></td>
+                            <td className="border-b border-line px-3 py-1">{s.name || t('common.nameMissing')}<span className="block text-xs text-muted">{t('assessment.studentMeta', {id: s.studentId, grade: s.grade, shift: s.shift})}{old ? ` · ${t('assessment.savedDate', {date: old.date ?? t('common.unknown')})}` : ''}</span></td>
                             <td className="border-b border-line px-3 py-1">
-                              {old ? <span>{old.score} <span className="text-xs text-muted">(saved; corrections use their own approved workflow)</span></span>
-                                : <Input type="number" inputMode="decimal" min={0} max={MAX_SCORE} step="any" aria-label={`Marks for ${s.name || s.studentId}`} value={entered[s.enrolment] ?? ''} disabled={busy} onChange={event => setEntered(v => ({...v, [s.enrolment]: event.target.value}))} />}
+                              {old ? <span>{old.score} <span className="text-xs text-muted">({t('assessment.savedCorrection')})</span></span>
+                                : <Input type="number" inputMode="decimal" min={0} max={MAX_SCORE} step="any" aria-label={t('assessment.marksFor', {student: s.name || s.studentId})} value={entered[s.enrolment] ?? ''} disabled={busy} onChange={event => setEntered(v => ({...v, [s.enrolment]: event.target.value}))} />}
                             </td>
                           </tr>
                         );
@@ -100,17 +102,17 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
                     </tbody>
                   </table>
                 </div>
-                <p className="mt-2 text-xs text-muted">Existing results keep their original date. Blank fields never become zero. New results use {date}.</p>
+                <p className="mt-2 text-xs text-muted">{t('assessment.blankHelp', {date})}</p>
               </div>
             )}
           </AsyncState>
         )}
         <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{load === 'error' && step === 'roster' ? '' : error}</p>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={status === 'saving'}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={status === 'saving'}>{t('common.cancel')}</Button>
           {step === 'start'
-            ? <Button onClick={() => void start()} disabled={!preview.round}>Continue</Button>
-            : <Button onClick={() => void submit()} disabled={!enabled || busy || load !== 'ready' || roster.length === 0}>{status === 'saving' ? 'Saving…' : 'Save assessment'}</Button>}
+            ? <Button onClick={() => void start()} disabled={!preview.round}>{t('common.continue')}</Button>
+            : <Button onClick={() => void submit()} disabled={!enabled || busy || load !== 'ready' || roster.length === 0}>{t(status === 'saving' ? 'common.saving' : 'assessment.save')}</Button>}
         </div>
       </DialogContent>
     </Dialog>

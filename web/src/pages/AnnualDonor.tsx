@@ -13,6 +13,7 @@ import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
+import {useI18n} from '../i18n/I18n';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -38,6 +39,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 }
 
 export function AnnualDonor({backend, context, role, overview: injected, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; overview?: OverviewService; tables?: TableService}) {
+  const {t} = useI18n();
   const overview = useMemo(() => injected ?? sharedOverview(backend), [backend, injected]);
   const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const today = useMemo(() => todayIst(), []);
@@ -54,11 +56,11 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
     setBoot({status: 'loading'});
     Promise.all([backend.readReferences(), backend.readCapabilities(), backend.readDirectory().catch(() => null)]).then(([refs, capabilities, directory]) => {
       if (!live) return;
-      if (!capabilities.reviewedCharts) { setBoot({status: 'error', message: 'This backend has not enabled the reviewed reports the annual summary needs.'}); return; }
+      if (!capabilities.reviewedCharts) { setBoot({status: 'error', message: t('donor.backendDisabled')}); return; }
       setBoot({status: 'ready', value: {refs, donors: directory ? Object.fromEntries(directory.map(row => [row.centre_id, row.donor_label ?? null])) : {}}});
     }).catch(error => { if (live) setBoot({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
-  }, [backend, bootAttempt, leadership]);
+  }, [backend, bootAttempt, leadership, t]);
 
   const refs = boot.status === 'ready' ? boot.value.refs : null;
   const donors = boot.status === 'ready' ? boot.value.donors : EMPTY_DONORS;
@@ -77,7 +79,7 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
     const all = academicMonths(year.starts_on);
     const months = all.filter(month => month <= today.slice(0, 7));
     const ids = selected.map(c => c.id);
-    if (!ids.length) { setData({status: 'error', message: 'No centres are in this selection.'}); return; }
+    if (!ids.length) { setData({status: 'error', message: t('assessment.noCentres')}); return; }
     const env = {yearId: year.id, today, fromQuarter: 1, toQuarter: 2, months: all, hasSeries: false};
     // A heavy report can hit the database statement timeout while it is cold; one automatic retry (the failed call is not cached).
     const load = (month: string) => overview.report({month, centres: ids, shift: null, grade: null, gender: null}, env);
@@ -101,54 +103,54 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
   const reportingReport = loaded ? [...loaded.reports].reverse().find(r => r !== null) ?? null : null;
   const points = loaded ? loaded.months.map((month, i) => ({label: monthShort(month), value: loaded.reports[i]?.attendance.percentage == null ? null : Number(loaded.reports[i]!.attendance.percentage)})) : [];
   const columns = useMemo<Column<Line>[]>(() => [
-    {id: 'name', header: 'Centre', value: r => r.name},
-    {id: 'donor', header: 'Current donor association', value: r => r.donor},
-    {id: 'students', header: 'Students at reporting date', value: r => r.students, numeric: true},
-    {id: 'p', header: 'Annual present', value: r => r.p, numeric: true},
-    {id: 'a', header: 'Annual absent', value: r => r.a, numeric: true},
-    {id: 'l', header: 'Annual leave', value: r => r.l, numeric: true},
-    {id: 'percentage', header: 'Annual attendance %', value: r => (r.percentage === null ? null : Number(r.percentage.toFixed(1))), numeric: true, cell: r => (r.percentage === null ? 'Unknown' : `${r.percentage.toFixed(1)}%`)},
-    {id: 'loaded', header: 'Loaded months', value: r => r.loaded, numeric: true},
-  ], []);
+    {id: 'name', header: t('common.centre'), value: r => r.name},
+    {id: 'donor', header: t('donor.currentAssociation'), value: r => r.donor},
+    {id: 'students', header: t('donor.studentsDate'), value: r => r.students, numeric: true},
+    {id: 'p', header: t('donor.annualPresent'), value: r => r.p, numeric: true},
+    {id: 'a', header: t('donor.annualAbsent'), value: r => r.a, numeric: true},
+    {id: 'l', header: t('donor.annualLeave'), value: r => r.l, numeric: true},
+    {id: 'percentage', header: t('donor.annualAttendance'), value: r => (r.percentage === null ? null : Number(r.percentage.toFixed(1))), numeric: true, cell: r => (r.percentage === null ? t('common.unknown') : formatPercent(r.percentage))},
+    {id: 'loaded', header: t('donor.loadedMonths'), value: r => r.loaded, numeric: true},
+  ], [t]);
   const tableContext = useMemo(() => ({year: year?.id ?? '', today}), [year?.id, today]);
   const loadCentres = useCallback((request: TableRequest) => year?.id ? tables.page<Line>('annual_centres', centreIds, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, centreIds, tableContext, year?.id]);
   const centreTable = useServerTable({key: JSON.stringify([year?.id, centreIds]), load: loadCentres, initialSort: 'name', refreshKey});
 
-  if (!leadership) return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">The annual donor summary is part of Leadership reporting. Switch to the Leadership role to view it.</p>;
-  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing the annual summary" rows={5} />;
+  if (!leadership) return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">{t('donor.leadershipOnly')}</p>;
+  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('donor.preparing')} rows={5} />;
   const msg = data.status === 'error' ? data.message : undefined;
-  const donorLabel = filters.donor || 'All currently associated donors';
+  const donorLabel = filters.donor || t('donor.allCurrent');
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">Recorded observations across the selected April–March academic year.</p>
-      <div role="group" aria-label="Annual summary filters" className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <Select label="Academic year" value={year?.id ?? ''} options={years.map(y => [y.id, `${y.starts_on.slice(0, 4)}–${y.ends_before.slice(0, 4)}`])} onChange={value => setFilters(f => ({...f, year: value}))} />
-        <Select label="Donor" value={filters.donor} options={donorNames.map(d => [d, d])} allLabel="All donors" onChange={value => setFilters(f => ({...f, donor: value}))} />
+      <p className="text-sm text-muted">{t('donor.intro')}</p>
+      <div role="group" aria-label={t('donor.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
+        <Select label={t('donor.academicYear')} value={year?.id ?? ''} options={years.map(y => [y.id, `${y.starts_on.slice(0, 4)}–${y.ends_before.slice(0, 4)}`])} onChange={value => setFilters(f => ({...f, year: value}))} />
+        <Select label={t('overview.donor')} value={filters.donor} options={donorNames.map(d => [d, d])} allLabel={t('donor.allDonors')} onChange={value => setFilters(f => ({...f, donor: value}))} />
       </div>
 
-      <section aria-label="Report cover" className="rounded-lg border border-line bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">MASS · Children’s Activity Centres</p>
+      <section aria-label={t('donor.reportCover')} className="rounded-lg border border-line bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">MASS · {t('app.centres')}</p>
         <h2 className="text-xl font-bold">{donorLabel}</h2>
-        <p className="text-sm text-muted">{year ? `${year.starts_on} to ${year.ends_before} (exclusive)` : 'Selected academic year'} · {selected.length} authorized centres · authorized aggregate review</p>
+        <p className="text-sm text-muted">{t('donor.coverMeta', {year: year ? t('donor.yearRange', {from: year.starts_on, until: year.ends_before}) : t('donor.selectedYear'), count: selected.length})}</p>
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="7.1" label="Centres in this selection" value={formatCount(selected.length)} />
-        <Scorecard reference="7.2" label="Students enrolled" value={reportingReport ? formatCount(reportingReport.children) : null} state={data.status === 'ready' && !reportingReport ? 'unavailable' : cardState(data)} message={msg} />
-        <Scorecard reference="7.3" label="Annual recorded attendance" value={annual ? formatPercent(annual.percentage) : null} state={data.status === 'ready' && annual?.percentage === null ? 'unavailable' : cardState(data)} message={msg ?? 'No recorded attendance'} />
-        <Scorecard reference="7.4" label="Recorded months" value={annual ? formatCount(annual.loaded) : null} state={cardState(data)} message={msg} />
+        <Scorecard reference="7.1" label={t('donor.selectionCentres')} value={formatCount(selected.length)} />
+        <Scorecard reference="7.2" label={t('donor.studentsEnrolled')} value={reportingReport ? formatCount(reportingReport.children) : null} state={data.status === 'ready' && !reportingReport ? 'unavailable' : cardState(data)} message={msg} />
+        <Scorecard reference="7.3" label={t('donor.recordedAttendance')} value={annual ? formatPercent(annual.percentage) : null} state={data.status === 'ready' && annual?.percentage === null ? 'unavailable' : cardState(data)} message={msg ?? t('donor.noAttendance')} />
+        <Scorecard reference="7.4" label={t('donor.recordedMonths')} value={annual ? formatCount(annual.loaded) : null} state={cardState(data)} message={msg} />
       </div>
-      {loaded && loaded.failed > 0 ? <p role="alert" className="rounded-md bg-warn-soft p-3 text-sm text-warn">{loaded.failed} of {loaded.months.length} monthly reports could not be loaded. Those months are gaps, not zero, and are left out of the annual figure. <button type="button" className="font-semibold underline" onClick={() => setRefreshKey(k => k + 1)}>Retry</button></p> : null}
+      {loaded && loaded.failed > 0 ? <p role="alert" className="rounded-md bg-warn-soft p-3 text-sm text-warn">{t('donor.partial', {failed: loaded.failed, total: loaded.months.length})} <button type="button" className="font-semibold underline" onClick={() => setRefreshKey(k => k + 1)}>{t('common.retry')}</button></p> : null}
 
-      <ChartCard reference="7.5" title="Attendance over time" subtitle="Monthly present ÷ recorded classroom attendance × 100 · missing months remain gaps" state={asState(data)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)}>
-        <LineChart points={points} description="Attendance by month for the selected academic year" />
+      <ChartCard reference="7.5" title={t('donor.attendanceTime')} subtitle={t('donor.attendanceHelp')} state={asState(data)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)}>
+        <LineChart points={points} description={t('donor.attendanceDescription')} />
       </ChartCard>
 
-      <DataTable<Line> reference="7.6" caption="Centre comparison" columns={columns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}`}
-        state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage="No centres in this selection." onRetry={centreTable.retry} server={centreTable.server} />
-      <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>About the export.</strong> The CSV holds one row per centre in the table above (all centres of the selection, sorted and filtered as shown): the current donor association, students at the reporting date, annual present, absent and leave days, annual attendance % and the number of loaded months. Annual attendance adds P, A and L over the loaded months before dividing; it does not average monthly percentages. Unknown values are left as Unknown, never zero.</p>
-      <p className="text-xs text-muted">Donor labels are current directory associations. Historical funding validity is not inferred.</p>
+      <DataTable<Line> reference="7.6" caption={t('donor.centreComparison')} columns={columns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}`}
+        state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} server={centreTable.server} />
+      <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('donor.exportLead')}</strong> {t('donor.exportBody')}</p>
+      <p className="text-xs text-muted">{t('donor.footnote')}</p>
     </div>
   );
 }

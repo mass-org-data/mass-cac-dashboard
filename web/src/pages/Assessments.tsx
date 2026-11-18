@@ -15,6 +15,7 @@ import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
+import {useI18n} from '../i18n/I18n';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -40,6 +41,7 @@ interface Boot {refs: References; capabilities: Capabilities}
 interface CentreRow {centre_id: string; centre_label: string; score_n: number | string | null; score_mean: number | string | null}
 
 export function Assessments({backend, context, role, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService; tables?: TableService}) {
+  const {t} = useI18n();
   const service = useMemo(() => injected ?? createAssessmentsService(backend.rpc), [backend, injected]);
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
   const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
@@ -57,11 +59,11 @@ export function Assessments({backend, context, role, service: injected, overview
     setBoot({status: 'loading'});
     Promise.all([backend.readReferences(), backend.readCapabilities()]).then(([refs, capabilities]) => {
       if (!live) return;
-      if (!capabilities.reviewedCharts) { setBoot({status: 'error', message: 'This backend has not enabled the reviewed reports Assessments needs.'}); return; }
+      if (!capabilities.reviewedCharts) { setBoot({status: 'error', message: t('assessment.backendDisabled')}); return; }
       setBoot({status: 'ready', value: {refs, capabilities}});
     }).catch(error => { if (live) setBoot({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
-  }, [backend, bootAttempt]);
+  }, [backend, bootAttempt, t]);
 
   const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
   const writable = useMemo(() => scope.filter(c => c.can_write && role !== 'Leadership' && (context.operational_roles_enabled === true || !context.centres.some(x => x.roles.includes('Leadership')))), [scope, context, role]);
@@ -79,7 +81,7 @@ export function Assessments({backend, context, role, service: injected, overview
     let live = true;
     setReport({status: 'loading'});
     const env = {yearId: year.id, today, fromQuarter, toQuarter, months, hasSeries: false};
-    if (selection.centres.length === 0) { setReport({status: 'error', message: 'No centres are in this selection.'}); return; }
+    if (selection.centres.length === 0) { setReport({status: 'error', message: t('assessment.noCentres')}); return; }
     overview.report(selection, env).then(value => { if (live) setReport({status: 'ready', value}); }).catch(error => { if (live) setReport({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,23 +102,23 @@ export function Assessments({backend, context, role, service: injected, overview
   const loadRegister = useCallback((request: TableRequest) => year ? tables.page<RegisterRow>('assessment_register', selection.centres, {year: year.id, shift: selection.shift, grade: selection.grade, gender: selection.gender}, request) : Promise.resolve({rows: [], total: 0}), [tables, key, year]);
   const registerTable = useServerTable<RegisterRow>({key, load: loadRegister, initialSort: 'date', initialReverse: true, refreshKey});
   const centreColumns = useMemo<Column<CentreRow>[]>(() => [
-    {id: 'centre', header: 'Centre', value: r => r.centre_label},
-    {id: 'students', header: 'Students with scores', value: r => Number(r.score_n ?? 0), numeric: true},
-    {id: 'score', header: 'Average score (out of 25)', value: r => r.score_mean === null ? null : one(Number(r.score_mean)), numeric: true, cell: r => r.score_mean === null ? 'Unknown' : Number(r.score_mean).toFixed(1)},
-  ], []);
+    {id: 'centre', header: t('common.centre'), value: r => r.centre_label},
+    {id: 'students', header: t('assessment.studentsScores'), value: r => Number(r.score_n ?? 0), numeric: true},
+    {id: 'score', header: t('assessment.averageOutOf25'), value: r => r.score_mean === null ? null : one(Number(r.score_mean)), numeric: true, cell: r => r.score_mean === null ? t('common.unknown') : Number(r.score_mean).toFixed(1)},
+  ], [t]);
   const registerColumns = useMemo<Column<RegisterRow>[]>(() => [
-    {id: 'centre', header: 'Centre', value: r => nameOf.get(r.centre_id) ?? r.centre_id},
-    {id: 'shift', header: 'Shift', value: r => r.shift_code},
-    {id: 'date', header: 'Assessment date', value: r => r.assessment_date ?? 'Unknown', cell: r => r.assessment_date ?? <span title="Historical records keep an unknown date">Unknown</span>},
-    {id: 'round', header: 'Round', value: r => `F${r.quarter}`},
-    {id: 'students', header: 'Students with scores', value: r => Number(r.students), numeric: true},
-    {id: 'average', header: 'Average score', value: r => (r.average_score === null ? null : Number(Number(r.average_score).toFixed(1))), numeric: true, cell: r => (r.average_score === null ? 'Unknown' : Number(r.average_score).toFixed(1))},
-    {id: 'created', header: 'Created by', value: r => r.created_by ?? 'Not recorded'},
-    {id: 'edited', header: 'Last edited by', value: r => r.last_edited_by ?? 'Not recorded'},
-    {id: 'at', header: 'Last edited at', value: r => r.last_edited_at ?? 'Not recorded'},
-  ], [nameOf]);
+    {id: 'centre', header: t('common.centre'), value: r => nameOf.get(r.centre_id) ?? r.centre_id},
+    {id: 'shift', header: t('common.shift'), value: r => r.shift_code},
+    {id: 'date', header: t('assessment.date'), value: r => r.assessment_date ?? t('common.unknown'), cell: r => r.assessment_date ?? <span title={t('assessment.historicalDate')}>{t('common.unknown')}</span>},
+    {id: 'round', header: t('assessment.round'), value: r => `F${r.quarter}`},
+    {id: 'students', header: t('assessment.studentsScores'), value: r => Number(r.students), numeric: true},
+    {id: 'average', header: t('assessment.averageScore'), value: r => (r.average_score === null ? null : Number(Number(r.average_score).toFixed(1))), numeric: true, cell: r => (r.average_score === null ? t('common.unknown') : Number(r.average_score).toFixed(1))},
+    {id: 'created', header: t('assessment.createdBy'), value: r => r.created_by ?? t('common.notRecorded')},
+    {id: 'edited', header: t('assessment.lastEditedBy'), value: r => r.last_edited_by ?? t('common.notRecorded')},
+    {id: 'at', header: t('assessment.lastEditedAt'), value: r => r.last_edited_at ?? t('common.notRecorded')},
+  ], [nameOf, t]);
 
-  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing Assessments" rows={5} />;
+  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('assessment.preparing')} rows={5} />;
   const canEnter = writable.length > 0 && Boolean(year);
   const entryEnabled = boot.value.capabilities.writes?.assessment_entry === true;
   const reportMessage = report.status === 'error' ? report.message : undefined;
@@ -125,58 +127,58 @@ export function Assessments({backend, context, role, service: injected, overview
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{role === 'Leadership' ? 'Review combined-test performance and matched-student changes.' : 'Review one combined CAC test per exam round and enter marks.'}</p>
-        {canEnter ? <Button onClick={() => { setNotice(''); setEntering(true); }}>Enter marks</Button> : <p className="text-xs text-muted">{role === 'Leadership' ? 'Leadership views assessments only.' : 'Assessment entry is not available for your centres.'}</p>}
+        <p className="text-sm text-muted">{t(role === 'Leadership' ? 'assessment.leadershipIntro' : 'assessment.operationalIntro')}</p>
+        {canEnter ? <Button onClick={() => { setNotice(''); setEntering(true); }}>{t('assessment.enter')}</Button> : <p className="text-xs text-muted">{t(role === 'Leadership' ? 'assessment.leadershipOnly' : 'assessment.noEntry')}</p>}
       </div>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
-      <div role="group" aria-label="Assessment filters" className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <Select label="Exam round" value={filters.round} options={ROUNDS} onChange={value => setFilters(f => ({...f, round: value}))} />
-        <Select label="Compare rounds" value={filters.pair} options={PAIRS} onChange={value => setFilters(f => ({...f, pair: value}))} />
-        {scope.length > 1 ? <Select label="Centre" value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel="All centres" onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
-        <Select label="Shift" value={filters.shift} options={[['Morning', 'Morning'], ['Evening', 'Evening']]} allLabel="Both shifts" onChange={value => setFilters(f => ({...f, shift: value}))} />
-        <Select label="Grade" value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel="All grades" onChange={value => setFilters(f => ({...f, grade: value}))} />
-        <Select label="Gender" value={filters.gender} options={[['Girl', 'Girls'], ['Boy', 'Boys'], ['Unknown', 'Unknown']]} allLabel="All genders" onChange={value => setFilters(f => ({...f, gender: value}))} />
+      <div role="group" aria-label={t('assessment.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
+        <Select label={t('assessment.examRound')} value={filters.round} options={ROUNDS} onChange={value => setFilters(f => ({...f, round: value}))} />
+        <Select label={t('assessment.compareRounds')} value={filters.pair} options={PAIRS} onChange={value => setFilters(f => ({...f, pair: value}))} />
+        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={t('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        <Select label={t('common.shift')} value={filters.shift} options={[['Morning', t('common.morning')], ['Evening', t('common.evening')]]} allLabel={t('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
+        <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={t('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
+        <Select label={t('common.gender')} value={filters.gender} options={[['Girl', t('common.girls')], ['Boy', t('common.boys')], ['Unknown', t('common.unknown')]]} allLabel={t('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="4.1" label="Students with exam scores recorded" value={stats ? `${formatCount(q?.n ?? 0)} / ${formatCount(stats.children)}` : null} state={cardState(report)} message={reportMessage} />
-        <Scorecard reference="4.2" label="Average student exam score" value={q?.mean != null ? q.mean.toFixed(1) : null} state={stats && q?.mean == null ? 'unavailable' : cardState(report)} message={stats && q?.mean == null ? 'No scores are recorded for this round' : reportMessage} />
-        <Scorecard reference="4.3" label="Students without an exam score" value={stats ? formatCount(stats.children - (q?.n ?? 0)) : null} state={cardState(report)} message={reportMessage} />
-        <Scorecard reference="4.4" label="Average score improvement" value={growth === null ? null : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`} state={stats && growth === null ? 'unavailable' : cardState(report)} message={stats && growth === null ? 'Needs matched students and a non-zero earlier average' : reportMessage} />
+        <Scorecard reference="4.1" label={t('assessment.recorded')} value={stats ? `${formatCount(q?.n ?? 0)} / ${formatCount(stats.children)}` : null} state={cardState(report)} message={reportMessage} />
+        <Scorecard reference="4.2" label={t('assessment.averageStudent')} value={q?.mean != null ? q.mean.toFixed(1) : null} state={stats && q?.mean == null ? 'unavailable' : cardState(report)} message={stats && q?.mean == null ? t('assessment.noScoresRound') : reportMessage} />
+        <Scorecard reference="4.3" label={t('assessment.withoutScore')} value={stats ? formatCount(stats.children - (q?.n ?? 0)) : null} state={cardState(report)} message={reportMessage} />
+        <Scorecard reference="4.4" label={t('assessment.improvement')} value={growth === null ? null : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`} state={stats && growth === null ? 'unavailable' : cardState(report)} message={stats && growth === null ? t('assessment.improvementNeeds') : reportMessage} />
       </div>
-      <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>Combined test only.</strong> F1–F4 are separate exam rounds with a maximum of 25 marks. Missing scores stay unknown. Percentage improvement = (later average − earlier average) ÷ earlier average × 100 for the same matched students; it is not the percentage of students who improved. Equal maxima alone do not prove paper comparability.</p>
+      <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('assessment.ruleLead')}</strong> {t('assessment.ruleBody')}</p>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard reference="4.5" title="Current exam performance" subtitle={`${round_label} · 25-mark records only`} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage="No scores are recorded for this round.">
-          {bands.length ? <><ColumnChart axis="Students" description={`Students by score band, ${round_label}`} items={bands} /><p className="mt-2 text-xs text-muted">Recorded n={q?.n}; fractional marks unbanded={q?.precision_review ?? 0}.</p></> : <p className="text-sm text-muted">No scores are recorded for this round; nothing is counted as zero.</p>}
+        <ChartCard reference="4.5" title={t('assessment.currentPerformance')} subtitle={t('assessment.records25', {round: round_label})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
+          {bands.length ? <><ColumnChart axis={t('common.students')} description={t('assessment.bandDescription', {round: round_label})} items={bands} /><p className="mt-2 text-xs text-muted">{t('assessment.recordedN', {count: q?.n ?? 0, unbanded: q?.precision_review ?? 0})}</p></> : <p className="text-sm text-muted">{t('assessment.noScoresZero')}</p>}
         </ChartCard>
-        <ChartCard reference="4.6" title="Progress across exam rounds" subtitle="Average score by round · selected students" state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
-          <ColumnChart axis="Average score (out of 25)" description="Average score by exam round" items={progress} />
-          <p className="mt-2 text-xs text-muted">Round averages may include different children; the matched comparison below uses the same students.</p>
+        <ChartCard reference="4.6" title={t('assessment.progress')} subtitle={t('assessment.progressHelp')} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
+          <ColumnChart axis={t('assessment.averageOutOf25')} description={t('assessment.progressDescription')} items={progress} />
+          <p className="mt-2 text-xs text-muted">{t('assessment.progressCaution')}</p>
         </ChartCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DataTable<CentreRow> reference="4.7" caption="Average score by centre" columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={`MASS-assessment-by-centre-${round_label}`}
-          state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage="No centres in this selection." onRetry={centreTable.retry} />
-        <ChartCard reference="4.8" title="Matched comparison" subtitle={`F${fromQuarter} → F${toQuarter} · students with both scores`} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
+        <DataTable<CentreRow> reference="4.7" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={`MASS-assessment-by-centre-${round_label}`}
+          state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
+        <ChartCard reference="4.8" title={t('assessment.matched')} subtitle={t('assessment.matchedHelp', {from: fromQuarter, to: toQuarter})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
           {change && change.n > 0 ? (
             <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-muted">Matched students</dt><dd className="font-semibold">{formatCount(change.n)}</dd>
-              <dt className="text-muted">Improved</dt><dd className="font-semibold">{formatCount(change.improved)}</dd>
-              <dt className="text-muted">Unchanged</dt><dd className="font-semibold">{formatCount(change.unchanged)}</dd>
-              <dt className="text-muted">Declined</dt><dd className="font-semibold">{formatCount(change.declined)}</dd>
-              <dt className="text-muted">Average change (marks)</dt><dd className="font-semibold">{change.meanChange === null ? 'Unknown' : `${change.meanChange > 0 ? '+' : ''}${change.meanChange.toFixed(1)}`}</dd>
-              <dt className="text-muted">Average, earlier → later</dt><dd className="font-semibold">{change.earlierMean === null || change.laterMean === null ? 'Unknown' : `${change.earlierMean.toFixed(1)} → ${change.laterMean.toFixed(1)}`}</dd>
+              <dt className="text-muted">{t('assessment.matchedStudents')}</dt><dd className="font-semibold">{formatCount(change.n)}</dd>
+              <dt className="text-muted">{t('assessment.improved')}</dt><dd className="font-semibold">{formatCount(change.improved)}</dd>
+              <dt className="text-muted">{t('assessment.unchanged')}</dt><dd className="font-semibold">{formatCount(change.unchanged)}</dd>
+              <dt className="text-muted">{t('assessment.declined')}</dt><dd className="font-semibold">{formatCount(change.declined)}</dd>
+              <dt className="text-muted">{t('assessment.averageChange')}</dt><dd className="font-semibold">{change.meanChange === null ? t('common.unknown') : `${change.meanChange > 0 ? '+' : ''}${change.meanChange.toFixed(1)}`}</dd>
+              <dt className="text-muted">{t('assessment.averageEarlierLater')}</dt><dd className="font-semibold">{change.earlierMean === null || change.laterMean === null ? t('common.unknown') : `${change.earlierMean.toFixed(1)} → ${change.laterMean.toFixed(1)}`}</dd>
             </dl>
-          ) : <p className="text-sm text-muted">No students have a recorded score in both rounds. Nothing is inferred.</p>}
+          ) : <p className="text-sm text-muted">{t('assessment.noMatched')}</p>}
         </ChartCard>
       </div>
 
-      <DataTable<RegisterRow> reference="4.9" caption="Assessment register" columns={registerColumns} data={registerTable.rows}
-        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName="MASS-assessment-register" state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage="No saved assessments for this selection." />
-      <p className="text-xs text-muted">One record per centre, shift, observed date and round. Historical dates remain unknown; no date is invented. Correcting a saved score uses its own approved workflow in the standard application.</p>
+      <DataTable<RegisterRow> reference="4.9" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
+        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName="MASS-assessment-register" state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
+      <p className="text-xs text-muted">{t('assessment.registerFootnote')}</p>
 
       {entering && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setEntering(false)} /> : null}
     </div>

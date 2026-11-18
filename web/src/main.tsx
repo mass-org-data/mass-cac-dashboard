@@ -5,6 +5,7 @@ import {validateConfig} from '../../src/live/config.js';
 import {App} from './app/App';
 import type {RuntimeConfig} from './session/backend';
 import './index.css';
+import {en} from './i18n/en';
 
 const root = createRoot(document.getElementById('root')!);
 try {
@@ -13,5 +14,5 @@ try {
   if (config.mode === 'demo') throw new Error('The new interface has no demo mode.');
   root.render(<StrictMode><App config={config} /></StrictMode>);
 } catch (error) {
-  root.render(<main className="mx-auto max-w-xl p-6"><h1 className="text-xl font-bold">Workspace configuration required</h1><p role="alert" className="mt-2 text-bad">{(error as Error).message}</p></main>);
+  root.render(<main className="mx-auto max-w-xl p-6"><h1 className="text-xl font-bold">{en['app.configurationRequired']}</h1><p role="alert" className="mt-2 text-bad">{(error as Error).message}</p></main>);
 }

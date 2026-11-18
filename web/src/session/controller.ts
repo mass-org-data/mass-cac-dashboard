@@ -4,22 +4,26 @@
 // stays the authority: roles come from get_context, and the scope is re-verified every
 // 30 seconds and whenever the tab becomes visible, exactly as in the current interface.
 import {authorizedRoles, defaultAuthorizedRole} from '../../../src/live/role-data.js';
+import type {Language} from '../i18n/I18n';
+import type {MessageKey} from '../i18n/en';
 
 export interface CentreScope {id: string; label: string; roles: string[]; can_write?: boolean}
 export interface ProgrammeContext {user_id: string; centres: CentreScope[]; operational_roles_enabled?: boolean}
 
 export type SessionState =
   | {status: 'loading'}
-  | {status: 'signed-out'; message?: string}
-  | {status: 'error'; message: string}
-  | {status: 'ready'; userId: string; context: ProgrammeContext; roles: string[]; activeRole: string};
+  | {status: 'signed-out'; message?: string; messageKey?: MessageKey}
+  | {status: 'error'; messageKey: MessageKey}
+  | {status: 'ready'; userId: string; email: string; defaultLanguage: Language; context: ProgrammeContext; roles: string[]; activeRole: string};
 
 export interface Backend {
-  getSession(): Promise<{data: {session: {user?: {id: string}} | null}; error: unknown}>;
-  getUser(): Promise<{data: {user: {id: string} | null}; error: {status?: number} | null}>;
+  getSession(): Promise<{data: {session: {user?: {id: string; email?: string}} | null}; error: unknown}>;
+  getUser(): Promise<{data: {user: {id: string; email?: string} | null}; error: {status?: number} | null}>;
   signIn(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
   readContext(signal?: AbortSignal): Promise<ProgrammeContext>;
+  readLanguage?(): Promise<Language>;
+  setLanguage?(language: Language): Promise<Language>;
 }
 
 export interface Timers {
@@ -40,9 +44,9 @@ export function createSessionController(backend: Backend, timers: Timers = defau
 
   const stopVerifying = () => { if (timer !== null) timers.clearInterval(timer); timer = null; };
 
-  const endSession = async (message?: string) => {
+  const endSession = async (messageKey?: MessageKey) => {
     stopVerifying();
-    try { await backend.signOut(); } finally { set({status: 'signed-out', message}); }
+    try { await backend.signOut(); } finally { set({status: 'signed-out', messageKey}); }
   };
 
   async function verify() {
@@ -50,13 +54,13 @@ export function createSessionController(backend: Backend, timers: Timers = defau
     verifying = true;
     try {
       const [auth, current] = await Promise.all([backend.getUser(), backend.readContext()]);
-      if (auth.error) { if (isAuthorizationFailure(auth.error)) { await endSession('Your session has ended. Sign in again.'); return; } throw auth.error; }
+      if (auth.error) { if (isAuthorizationFailure(auth.error)) { await endSession('session.ended'); return; } throw auth.error; }
       if (auth.data.user?.id !== state.userId || current.user_id !== state.userId || JSON.stringify(current.centres) !== fingerprint) {
-        await endSession('Your authorized scope changed. Sign in again.');
+        await endSession('session.scopeChanged');
       }
     } catch (error) {
       // A transport failure is not a permission change: keep the session but never show stale data silently.
-      if (isAuthorizationFailure(error as {status?: number})) await endSession('Your session has ended. Sign in again.');
+      if (isAuthorizationFailure(error as {status?: number})) await endSession('session.ended');
     } finally { verifying = false; }
   }
 
@@ -64,13 +68,13 @@ export function createSessionController(backend: Backend, timers: Timers = defau
     const session = await backend.getSession();
     if (session.error || !session.data.session) { set({status: 'signed-out'}); return; }
     const identity = await backend.getUser();
-    if (identity.error || !identity.data.user || identity.data.user.id !== session.data.session.user?.id) { await endSession('Your session has ended. Sign in again.'); return; }
-    const context = await backend.readContext();
-    if (context.user_id !== identity.data.user.id || !context.centres?.length) { await endSession('No verified centre scope is available. Contact the administrator.'); return; }
+    if (identity.error || !identity.data.user || identity.data.user.id !== session.data.session.user?.id) { await endSession('session.ended'); return; }
+    const [context, defaultLanguage] = await Promise.all([backend.readContext(), backend.readLanguage?.() ?? Promise.resolve<Language>('en')]);
+    if (context.user_id !== identity.data.user.id || !context.centres?.length) { await endSession('session.noScope'); return; }
     const activeRole = defaultAuthorizedRole(context) as string | null;
-    if (!activeRole) { await endSession('No verified role is available. Contact the administrator.'); return; }
+    if (!activeRole) { await endSession('session.noRole'); return; }
     fingerprint = JSON.stringify(context.centres);
-    set({status: 'ready', userId: identity.data.user.id, context, roles: authorizedRoles(context) as string[], activeRole});
+    set({status: 'ready', userId: identity.data.user.id, email: identity.data.user.email ?? '', defaultLanguage, context, roles: authorizedRoles(context) as string[], activeRole});
     stopVerifying();
     timer = timers.setInterval(() => { void verify(); }, 30_000);
   }
@@ -79,10 +83,10 @@ export function createSessionController(backend: Backend, timers: Timers = defau
     getState: () => state,
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     async start() {
-      try { await load(); } catch { set({status: 'error', message: 'The workspace could not be loaded. Check your connection and try again.'}); }
+      try { await load(); } catch { set({status: 'error', messageKey: 'session.loadFailed'}); }
     },
     async signIn(email: string, password: string) {
-      try { await backend.signIn(email, password); } catch (error) { set({status: 'signed-out', message: error instanceof Error ? error.message : 'Unable to sign in.'}); return; }
+      try { await backend.signIn(email, password); } catch (error) { set({status: 'signed-out', message: error instanceof Error ? error.message : undefined, messageKey: error instanceof Error ? undefined : 'session.signInFailed'}); return; }
       set({status: 'loading'});
       await this.start();
     },
@@ -91,6 +95,12 @@ export function createSessionController(backend: Backend, timers: Timers = defau
     selectRole(role: string) {
       if (state.status !== 'ready' || !state.roles.includes(role)) return false;
       set({...state, activeRole: role});
+      return true;
+    },
+    async setDefaultLanguage(language: Language) {
+      if (state.status !== 'ready' || !backend.setLanguage) return false;
+      const saved = await backend.setLanguage(language);
+      if (state.status === 'ready') set({...state, defaultLanguage: saved});
       return true;
     },
     verify,
