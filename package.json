@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MASS Children’s Activity Centres integrated frontend prototype",
+  "description": "MASS Children\u2019s Activity Centres integrated frontend prototype",
   "engines": {
     "node": "24.x"
   },
@@ -31,7 +31,12 @@
     "web:dev": "vite --config web/vite.config.ts",
     "web:build": "node scripts/build.mjs",
     "web:typecheck": "tsc -p web/tsconfig.json",
-    "test:web": "vitest run --config web/vite.config.ts"
+    "test:web": "vitest run --config web/vite.config.ts",
+    "audit:reference": "node scripts/audit/run.mjs",
+    "audit:capture": "node scripts/audit/capture.mjs",
+    "test:audit": "node --test tests/audit/*.test.mjs",
+    "test:audit:browser": "node scripts/audit/check-ui.mjs",
+    "audit:matrix": "node scripts/audit/matrix.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",

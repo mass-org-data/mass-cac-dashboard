@@ -26,6 +26,7 @@ jobs:
       - run: npm run lint
       - run: npm run check
       - run: npm test
+      - run: npm run test:audit
       - run: npm run build
       - run: npm run web:typecheck
       - run: npm run test:web
@@ -47,7 +48,8 @@ jobs:
       - run: npm run test:centre-events
 
   browser-acceptance:
-    runs-on: ubuntu-latest
+    # Playwright 1.55 supports Ubuntu 24.04; ubuntu-latest has moved to 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -61,9 +63,13 @@ jobs:
         env:
           MASS_TEST_MULTI_ROLE: '1'
           MASS_ATTENDANCE_SCREENSHOTS: test-results/frontend-acceptance
+      - run: npm run build
+      - run: npm run test:audit:browser
+        env:
+          MASS_AUDIT_SCREENSHOTS: test-results/audit-ledger
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: synthetic-frontend-acceptance
-          path: test-results/frontend-acceptance
+          path: test-results
           if-no-files-found: ignore

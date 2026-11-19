@@ -28,6 +28,7 @@ export default defineConfig({
     // The build script has already written the original app to dist/vanilla and must not be cleared.
     emptyOutDir: false,
     sourcemap: false,
+    rollupOptions: {input: {dashboard: fileURLToPath(new URL('./index.html', import.meta.url)), audit: fileURLToPath(new URL('./audit/index.html', import.meta.url))}},
     // No inline script: the CSP allows script-src 'self' only.
     modulePreload: {polyfill: false},
   },
