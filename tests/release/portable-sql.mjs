@@ -22,7 +22,7 @@ try {
  {const def=(await db.query("SELECT pg_get_functiondef('mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)'::regprocedure) d")).rows[0].d;
   if(def.split("e.event_kind='Activity'").length!==2||def.split("e.shift_code='Both shifts'").length!==3||!def.includes("(p.shift_code=e.shift_code OR e.shift_code='Both shifts') AND e.activity_date")||!def.includes("code IN ('WO','MM','H')"))throw new Error('reviewed_chart_metrics must hold the centre-event patch exactly once and keep the Holiday exclusion');
   console.log('PASS reviewed_chart_metrics keeps the centre-event patch after the efficiency migration, applied twice');}
- let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=30 AND bool_and(relrowsecurity AND relforcerowsecurity)')
+ let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=31 AND bool_and(relrowsecurity AND relforcerowsecurity)')
   .replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')")
   .replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
  await runSqlScript(db,core);console.log('PASS existing core SQL assertions');
@@ -52,6 +52,20 @@ try {
  await db.exec("SET ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
  const caps2=(await db.query("SELECT mass_api.get_original_capabilities()->>'reviewed_attendance_by_centre_month' AS a,mass_api.get_original_capabilities()->>'batched_reads' AS b,mass_api.get_original_capabilities()->>'reviewed_shift_counts' AS c")).rows;await db.exec('RESET ROLE');
  if(caps2[0]?.a!=='1'||caps2[0]?.b!=='1'||caps2[0]?.c!=='1')throw new Error('get_original_capabilities must advertise the batched reads');
+ await db.exec("SET ROLE authenticated; SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
+ const pageContext="jsonb_build_object('on',y.starts_on,'from',y.starts_on,'until',y.starts_on+30,'year',y.id,'earlier',1,'later',2,'quarter',2)";
+ await db.query(`WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('reviewed_centres',c.ids,${pageContext},'','centre',false,0,10) FROM y,c`);
+ await db.query("WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('assessment_register',c.ids,jsonb_build_object('year',y.id),'','date',true,0,10),mass_api.dashboard_table_page('annual_centres',c.ids,jsonb_build_object('year',y.id,'today',least(y.ends_before-1,y.starts_on+180)),'','name',false,0,10),mass_api.attendance_register_page_v2(c.ids,y.starts_on,y.starts_on+30,NULL,NULL,NULL,0,10,'date',true,'') FROM y,c");
+ await db.query("WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('visit_centres',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','centre',false,0,10),mass_api.dashboard_table_page('visit_officers',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','label',false,0,10),mass_api.dashboard_table_page('morarji_cohorts',c.ids,'{}','','cohort',false,0,10) FROM c");
+ const initialLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;
+ const savedLanguage=(await db.query("SELECT mass_api.set_default_language('kn')->>'default_language' language")).rows[0]?.language;
+ const currentLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;
+ await db.exec('RESET ROLE');
+ const preferenceGrants=(await db.query("SELECT has_table_privilege('authenticated','mass_core.user_preferences','SELECT,INSERT,UPDATE,DELETE') direct_table,has_function_privilege('authenticated','mass_api.get_user_preferences()','EXECUTE') auth_read,has_function_privilege('authenticated','mass_api.set_default_language(text)','EXECUTE') auth_write,has_function_privilege('anon','mass_api.get_user_preferences()','EXECUTE') anon_read")).rows[0];
+ if(initialLanguage!=='en'||savedLanguage!=='kn'||currentLanguage!=='kn')throw new Error('language preference must default to English and round-trip the authenticated user choice');
+ if(preferenceGrants?.direct_table!==false||preferenceGrants?.auth_read!==true||preferenceGrants?.auth_write!==true||preferenceGrants?.anon_read!==false)throw new Error('language preference grants must expose only authenticated API functions');
+ console.log('PASS bounded table pages execute under authenticated scoped reads');
+ console.log('PASS self-service language preference defaults, saves and keeps the table private');
  console.log('PASS series is sealed behind reviewed_reads');
  console.log('PASS sealed reviewed calculation API. Native concurrency and managed Auth/browser tests remain separate.');
 } finally {await db.close();fs.rmSync(out,{recursive:true,force:true});}

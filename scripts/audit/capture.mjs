@@ -37,7 +37,7 @@ else {
   await settle();const roles=page.locator('header select');if(await roles.count())await roles.selectOption(scenario.role);await settle();
   const pages={Overview:'overview',Attendance:'attendance',Profiles:'profiles',Assessments:'assessments',Visits:'visits',Morarji:'morarji','Donor summary':'donors'};
   for(const [group,route] of Object.entries(pages)){
-   const metrics=CATALOG.filter(m=>m.page===group&&m.roles.includes(scenario.role));if(!metrics.length)continue;
+   const metrics=CATALOG.filter(m=>m.page===group&&m.roles.includes(scenario.role)&&(!scenario.periodType||scenario.periodType==='mixed'||m.periodType===scenario.periodType));if(!metrics.length)continue;
    try {
     // A hard reload gives each page a new in-memory report/read cache.
     const contextResponse=page.waitForResponse(r=>new URL(r.url()).pathname.endsWith('/rpc/get_context')&&r.ok(),{timeout:60000});
@@ -47,7 +47,7 @@ else {
     const authorized=authorization.centres?.filter(c=>c.roles?.includes(scenario.role))||[];if(scenario.centres.some(c=>!authorized.some(a=>a.id===c.id)))throw Error('Reference centre scope is outside the verified role assignments.');
     const month=page.getByLabel('Reporting month');
     if(await month.count()){await month.selectOption(scenario.month);await settle();}
-    else {const alerts=await page.locator('main [role=alert]').allTextContents();if(alerts.length){const note=alerts.join(' ');result.issues.push(group+': '+note);for(const metric of metrics){const facts=reference.facts.filter(f=>f.key===metric.source);for(const f of (facts.length?facts:[{dimension:'All'}]))result.cells.push({metric:metric.id,dimension:f.dimension||'All',state:'unavailable',display:null,note});}continue;}const note=group+': no historical reporting-date control; current page cannot certify the October roster/cutoff.';result.issues.push(note);for(const metric of metrics){const facts=reference.facts.filter(f=>f.key===metric.source);for(const f of (facts.length?facts:[{dimension:'All'}]))result.cells.push({metric:metric.id,dimension:f.dimension||'All',state:'cutoff',display:null,note});}continue;}
+    else if(group!=='Assessments'){const alerts=await page.locator('main [role=alert]').allTextContents();if(alerts.length){const note=alerts.join(' ');result.issues.push(group+': '+note);for(const metric of metrics){const facts=reference.facts.filter(f=>f.key===metric.source);for(const f of (facts.length?facts:[{dimension:'All'}]))result.cells.push({metric:metric.id,dimension:f.dimension||'All',state:'unavailable',display:null,note});}continue;}const note=group+': no historical reporting-date control; current page cannot certify the October roster/cutoff.';result.issues.push(note);for(const metric of metrics){const facts=reference.facts.filter(f=>f.key===metric.source);for(const f of (facts.length?facts:[{dimension:'All'}]))result.cells.push({metric:metric.id,dimension:f.dimension||'All',state:'cutoff',display:null,note});}continue;}
     const centre=page.getByLabel('Centre');
     // Verify the role's full readable centre set before selecting any subset.
     if(await centre.count()){
@@ -57,7 +57,7 @@ else {
      else {if(allowed.length!==scenario.centres.length)throw Error('Dashboard cannot select this multi-centre subset exactly.');await centre.selectOption('');}
     } else {const p=metrics.find(m=>m.id==='OV02');if(p&&scenario.centres.length!==1)throw Error('Single-centre view does not prove the reference scope.');}
     for(const [key,label] of [['shift','Shift'],['grade','Grade'],['gender','Gender'],['donor','Donor']]){const field=page.getByLabel(label);if(await field.count())await field.selectOption(scenario[key]||'');else if(scenario[key])throw Error('This page does not implement the selected '+key+' filter.');}
-    if(group==='Assessments'){const round=page.getByLabel('Exam round');if(await round.count())await round.selectOption(String(scenario.round));const pair=page.getByLabel('Compare rounds');if(await pair.count())await pair.selectOption(`${scenario.earlier}-${scenario.later}`);}
+    if(group==='Assessments'){const round=page.getByLabel('Exam round');if(await round.count())await round.selectOption(String(scenario.round));const pair=page.getByLabel('Compare rounds');if(await pair.count())await pair.selectOption(`${scenario.earlier}|${scenario.later}`);}
     await settle();
     const tables=new Map();
     for(const metric of metrics){

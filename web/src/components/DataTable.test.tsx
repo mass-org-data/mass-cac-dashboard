@@ -1,4 +1,4 @@
-import {render, screen, within} from '@testing-library/react';
+import {fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {describe, expect, it, vi, beforeEach} from 'vitest';
 import {DataTable, PAGE_SIZE, type Column} from './DataTable';
@@ -104,6 +104,19 @@ describe('DataTable', () => {
     const spy = vi.spyOn(csv, 'downloadCsv').mockImplementation(() => undefined);
     renderTable(make(23));
     await user.click(screen.getByRole('button', {name: /Export CSV/}));
+    expect(spy.mock.calls[0][1].split('\r\n')).toHaveLength(24);
+  });
+
+  it('delegates search and exports every filtered server row, not only the visible page', async () => {
+    const user = userEvent.setup();
+    const spy = vi.spyOn(csv, 'downloadCsv').mockImplementation(() => undefined);
+    const onQueryChange = vi.fn();
+    const exportRows = vi.fn(async () => make(23));
+    renderTable(make(10), {server: {total: 23, pageIndex: 0, onPageChange: vi.fn(), sort: {id: 'centre', desc: false}, onSortChange: vi.fn(), query: '', onQueryChange, exportRows}});
+    fireEvent.change(screen.getByRole('searchbox', {name: 'Search this table'}), {target: {value: 'donor b'}});
+    expect(onQueryChange).toHaveBeenLastCalledWith('donor b');
+    await user.click(screen.getByRole('button', {name: /Export CSV/}));
+    await waitFor(() => expect(exportRows).toHaveBeenCalledOnce());
     expect(spy.mock.calls[0][1].split('\r\n')).toHaveLength(24);
   });
 

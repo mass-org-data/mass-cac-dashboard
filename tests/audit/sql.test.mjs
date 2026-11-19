@@ -39,12 +39,16 @@ test('independent SQL respects October, holiday exclusions, true zero, undated q
  assert.equal(get('grade','1'),0);assert.equal(get('grade','5'),3);assert.equal(get('students'),3);assert.equal(get('attendance'),50);assert.equal(get('present'),1);assert.equal(get('annual_attendance'),200/3);
  assert.equal(get('days_present','Below 15'),2);assert.equal(get('exam_coverage'),'2/3');assert.equal(get('exam_mean'),10);assert.equal(get('quarter_mean','F3'),null);assert.equal(get('matched'),2);assert.equal(get('mark_change'),5);assert.equal(get('growth'),100);assert.equal(get('visits'),null);
  assert.equal(get('centre_students','Fixture B'),0);assert.equal(get('centre_attendance','Fixture B'),null);
- const april=await db.exec(referenceSql({...scenario,month:'2026-04'}));const aprilRef=april.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;assert.equal(aprilRef.facts.find(f=>f.key==='above20').value,0);assert.equal(aprilRef.facts.find(f=>f.key==='exam_mean').value,null);
+ await db.exec(`UPDATE mass_core.enrolments SET starts_on='2026-08-01' WHERE child_id='${id(23)}';`);
+ const april=await db.exec(referenceSql({...scenario,month:'2026-04'}));const aprilRef=april.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;assert.equal(aprilRef.facts.find(f=>f.key==='above20').value,0);assert.equal(aprilRef.facts.find(f=>f.key==='exam_mean').value,10);
+ assert.equal(aprilRef.facts.find(f=>f.key==='students').value,2);assert.equal(aprilRef.facts.find(f=>f.key==='exam_coverage').value,'2/3');
  // Changing a filter changes the underlying cohort instead of reusing an all-student denominator.
  const next=await db.exec(referenceSql({...scenario,gender:'Girl'}));const ref2=next.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;assert.equal(ref2.facts.find(f=>f.key==='students').value,1);
  // Distinct centres with the same label keep distinct identities in every reference key.
  await db.exec(`UPDATE mass_core.centres SET label='Repeated';`);
  const duplicated=await db.exec(referenceSql(scenario));const dupRef=duplicated.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference;
  const centreFacts=dupRef.facts.filter(f=>f.key==='centre_students');assert.equal(centreFacts.length,2);assert.equal(new Set(centreFacts.map(f=>f.dimension)).size,2);assert.ok(centreFacts.every(f=>f.dimension.startsWith('Repeated [')));
+ await db.exec(`UPDATE mass_core.assessment_results SET score=24 WHERE id='${id(202)}';INSERT INTO mass_core.assessment_results VALUES('${id(250)}','${id(23)}','${id(13)}','${id(1)}','Morning','${id(72)}','2026-11-01',25);`);
+ const roundApril=await db.exec(referenceSql({...scenario,month:'2026-04'}));const roundFacts=roundApril.find(r=>r.rows?.[0]?.audit_reference)?.rows[0].audit_reference.facts;assert.equal(roundFacts.find(f=>f.key==='above20').value,1);assert.equal(roundFacts.find(f=>f.key==='exam_mean').value,12);
  } finally {await db.close();}
 });

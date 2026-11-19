@@ -62,13 +62,13 @@ Field-level identities, names, free-text feedback and audit actors are not quant
 
 ## Selected-centre seven-month workflow
 
-The owner-selected plan covers Aralimatti and Avaradi separately for April–October: 14 Leadership centre/month scenarios plus reproducible Cluster Officer and Teacher spot checks, seed `20261118` (`scripts/audit/plan.mjs`). Each chart category and dated/shifted register row is compared separately, never as a pooled two-centre or seven-month total. Grade categories 1–10 retain genuine zero counts. Each historical source query uses its own month-end, including the observation date/completed-quarter assessment boundary.
+The owner-selected plan covers Aralimatti and Avaradi separately for April–October: 14 Leadership centre/month scenarios plus reproducible Cluster Officer and Teacher spot checks, seed `20261118` (`scripts/audit/plan.mjs`). Each chart category and dated/shifted register row is compared separately, never as a pooled two-centre or seven-month total. Grade categories 1–10 retain genuine zero counts. Monthly source queries use their own month-end. Assessment observations use the October audit cutoff and academic-year/round contract independently of the selected attendance month.
 
 Each row records month, role, centre, student filters, source fact key and SQL query ID. Exact read-only SQL is stored once per scenario in `sqlQueries`, shown in a separate ledger column, and included in CSV exports. SQL logs are text only: the ledger never executes them. Private query outputs, programme metrics, access assignments and audit findings must stay outside Git and public deployment bundles.
 
 Collections default to **All loaded scenarios**, preserving individual breakdown rows. Users can select one scenario. Capture issues remain visible; source-only or access-blocked scenarios cannot certify a match. The scenario control and table support phone layouts. Imported private files remain in memory; automatic hosted result storage/loading is not implemented here.
 
-Sampling must use existing authorized accounts for the selected centre. If a role session cannot access its planned centre, record the blocker and request an appropriate existing sign-in. Never broaden permissions to finish a test. Missing historical page controls, data or definitions are explicit limitations. Quarterly versus monthly reporting-window differences require a programme-contract review, not an unapproved dashboard calculation change.
+Sampling must use existing authorized accounts for the selected centre. If a role session cannot access its planned centre, record the blocker and request an appropriate existing sign-in. Never broaden permissions to finish a test. Missing historical page controls, data or definitions are explicit limitations. Assessment periods follow the confirmed quarterly contract; corrections to verification do not change dashboard assessment calculations.
 
 Prepare the scoped plan without contacting the database:
 
@@ -85,3 +85,9 @@ npm run audit:matrix -- --phase collect --out /private/mass-april-october
 Add `--csv` to write the larger full-SQL export. The collector rejects a reference outside its planned scope and only certifies comparisons when the before/after fingerprints agree. Missing captures remain untested. Keep execution findings in private outputs and the owner-approved register.
 
 Tests cover the complete centre/month plan, reproducible samples, no future-quarter leakage, zero-count grades, exact SQL lineage, multiple scenarios without collapsed rows, explicit capture issues and desktop/phone rendering. Use a private collection for an additional built-ledger acceptance run without committing it.
+
+### Assessment periods
+
+Attendance and activity checks retain their April–October reporting months. Assessment checks use academic year 2026–27 and F1–F4, bounded by the October 31 source cutoff, independently of the attendance month. Overview assessment cards use F2; the assessment page uses its selected round and comparison pair. The source cohort is the audit-cutoff enrolment population with the same centre, shift, grade and gender filters. The assessment register retains its individual centre / shift / observed-date / round breakdowns.
+
+The ledger and matrix collector count each assessment indicator / breakdown once per actual role and student-filter scope. Repeated monthly observations cannot inflate the quarterly denominator; contradictory repeated values remain unavailable pending review. Older runs using monthly assessment references require fresh extraction before those assessment rows can be certified. Monthly evidence retains its original extraction and capture timestamps.

@@ -1,7 +1,7 @@
 // No database writes or browser sign-in. Prepares scoped SQL or joins explicitly supplied private captures.
 import {readFile,writeFile,mkdir} from 'node:fs/promises';import path from 'node:path';
 import {auditPlan,SAMPLE_SEED} from './plan.mjs';import {referenceSql} from './sql.mjs';
-import {makeRun,scenarioKey,summarize,rowsForExport,csv} from './core.mjs';
+import {makeRun,scenarioKey,summarize,rowsForExport,csv,deduplicateAssessmentRuns} from './core.mjs';
 const args=process.argv.slice(2),opt=(name,fallback=null)=>{const i=args.indexOf('--'+name);return i<0?fallback:args[i+1];};
 const out=path.resolve(opt('out','audit-runs/april-october-selected-centres')),phase=opt('phase','prepare');
 const plan=auditPlan({environment:opt('environment','production'),project:opt('project','pbkwpfdpdtelmvbkzgvx')});
@@ -16,5 +16,5 @@ if(phase==='prepare'){
   if(capture){const after=await read(path.join(dir,'reference-after.json'));if(after.project!==ref.project||scenarioKey(after.scenario)!==scenarioKey(ref.scenario))throw Error('After reference scope differs: '+i);capture.referenceAfterFingerprint=after.fingerprint;}
   runs.push(makeRun(ref,capture));
  }
- const rows=runs.flatMap(r=>r.rows);await writeFile(path.join(out,'collection.json'),JSON.stringify({schemaVersion:1,sampleSeed:SAMPLE_SEED,runs},null,2),{mode:0o600});await writeFile(path.join(out,'summary.json'),JSON.stringify(summarize(rows),null,2),{mode:0o600});if(args.includes('--csv'))await writeFile(path.join(out,'comparisons.csv'),csv(runs.flatMap(rowsForExport)),{mode:0o600});console.log('Collected private comparisons. Missing captures remain untested; only stable before/after references certify comparisons.');
+ const collected=deduplicateAssessmentRuns(runs);const rows=collected.flatMap(r=>r.rows);await writeFile(path.join(out,'collection.json'),JSON.stringify({schemaVersion:1,sampleSeed:SAMPLE_SEED,runs:collected},null,2),{mode:0o600});await writeFile(path.join(out,'summary.json'),JSON.stringify(summarize(rows),null,2),{mode:0o600});if(args.includes('--csv'))await writeFile(path.join(out,'comparisons.csv'),csv(collected.flatMap(rowsForExport)),{mode:0o600});console.log('Collected private comparisons. Missing captures remain untested; only stable before/after references certify comparisons.');
 }else throw Error('Use --phase prepare or --phase collect.');

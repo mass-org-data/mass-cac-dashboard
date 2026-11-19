@@ -8,10 +8,12 @@ function setup(overrides: Partial<Backend> = {}) {
   const timers: Timers = {setInterval: cb => { callbacks.push(cb); return callbacks.length; }, clearInterval: () => undefined};
   const backend: Backend = {
     getSession: vi.fn(async () => ({data: {session: {user: {id: 'u1'}}}, error: null})),
-    getUser: vi.fn(async () => ({data: {user: {id: 'u1'}}, error: null})),
+    getUser: vi.fn(async () => ({data: {user: {id: 'u1', email: 'teacher@example.test'}}, error: null})),
     signIn: vi.fn(async () => undefined),
     signOut: vi.fn(async () => undefined),
     readContext: vi.fn(async () => context()),
+    readLanguage: vi.fn(async () => 'en' as const),
+    setLanguage: vi.fn(async language => language),
     ...overrides,
   };
   return {backend, controller: createSessionController(backend, timers), tick: () => callbacks.forEach(cb => cb())};
@@ -31,6 +33,15 @@ describe('session controller', () => {
     const state = controller.getState();
     expect(state.status).toBe('ready');
     if (state.status === 'ready') { expect(state.roles).toEqual(['Leadership', 'Cluster Officer', 'Teacher']); expect(state.activeRole).toBe('Leadership'); }
+  });
+
+  it('loads the verified email and saved language, then persists a new default', async () => {
+    const {backend, controller} = setup({readLanguage: vi.fn(async () => 'kn' as const)});
+    await controller.start();
+    expect(controller.getState()).toMatchObject({status: 'ready', email: 'teacher@example.test', defaultLanguage: 'kn'});
+    await expect(controller.setDefaultLanguage('en')).resolves.toBe(true);
+    expect(backend.setLanguage).toHaveBeenCalledWith('en');
+    expect(controller.getState()).toMatchObject({status: 'ready', defaultLanguage: 'en'});
   });
 
   it('only allows selecting a role the server returned', async () => {

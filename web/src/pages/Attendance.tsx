@@ -9,19 +9,23 @@ import {Button} from '../components/ui/button';
 import {RegisterDialog, type Selection} from '../attendance/RegisterDialog';
 import {createAttendanceService, isSupported, PAGE_SIZE, type AttendanceService, type Distribution, type Filters, type PageRequest, type RegisterCapabilities, type RegisterPage, type RegisterRow, type SortKey} from '../attendance/service';
 import {type OverviewService, type Report, type Series} from '../data/overview';
-import {academicMonths, monthLabel, monthShort, todayIst} from '../lib/dates';
-import {formatCount, formatPercent} from '../lib/format';
+import {academicMonths, monthLabel, monthShort, reportingDay, todayIst} from '../lib/dates';
+import {formatCount, formatDateTime, formatPercent, formatRelativeTime} from '../lib/format';
 import {attendanceSummaryDisplay} from '../../../src/live/attendance-register.js';
 import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
+import {createTableService, type TableRequest, type TableService} from '../tables/service';
+import {useServerTable} from '../tables/useServerTable';
+import {useI18n} from '../i18n/I18n';
+import type {MessageKey} from '../i18n/en';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
 const asState = <T,>(slice: Slice<T>): LoadState => slice.status === 'ready' ? 'ready' : slice.status;
 
 // Attendance bands from the server's days-present distribution. Same bands as the current page; the last band is open-ended.
-const BANDS: Array<[string, (days: number) => boolean]> = [['Below 15', d => d < 15], ['15 days', d => d === 15], ['16–20', d => d >= 16 && d <= 20], ['21 or more', d => d > 20]];
+const BANDS: Array<[MessageKey, (days: number) => boolean]> = [['attendance.below15', d => d < 15], ['attendance.15days', d => d === 15], ['attendance.16to20', d => d >= 16 && d <= 20], ['attendance.21plus', d => d > 20]];
 
 function Select({label, value, options, onChange, allLabel}: {label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void; allLabel?: string}) {
   return (
@@ -35,15 +39,17 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
   );
 }
 
-export function Attendance({backend, context, role, service: injected, overview: injectedOverview}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AttendanceService; overview?: OverviewService}) {
+export function Attendance({backend, context, role, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AttendanceService; overview?: OverviewService; tables?: TableService}) {
+  const {t} = useI18n();
   const service = useMemo(() => injected ?? createAttendanceService(backend.rpc), [backend, injected]);
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
+  const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const today = useMemo(() => todayIst(), []);
 
   const [boot, setBoot] = useState<Slice<{caps: RegisterCapabilities; refs: References; hasSeries: boolean}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
   const [filters, setFilters] = useState({month: '', centre: '', shift: '', grade: '', gender: ''});
-  const [page, setPage] = useState<PageRequest>({offset: 0, sort: 'date', reverse: false});
+  const [page, setPage] = useState<PageRequest>({offset: 0, sort: 'date', reverse: true});
   const [refreshKey, setRefreshKey] = useState(0);
   const [register, setRegister] = useState<Slice<RegisterPage>>({status: 'loading'});
   const [registerBusy, setRegisterBusy] = useState(false);
@@ -78,7 +84,7 @@ export function Attendance({backend, context, role, service: injected, overview:
   const canWrite = supported && caps.enabled === true && writable.length > 0;
 
   // Filters change the data and return to the first page, newest first.
-  useEffect(() => { setPage({offset: 0, sort: 'date', reverse: false}); }, [queryKey]);
+  useEffect(() => { setPage({offset: 0, sort: 'date', reverse: true}); }, [queryKey]);
 
   useEffect(() => {
     if (!query || !supported || boot.status !== 'ready' || !year) return;
@@ -120,84 +126,92 @@ export function Attendance({backend, context, role, service: injected, overview:
     setEditor({centre, shift: selection?.shift ?? (filters.shift || 'Morning'), date});
   };
 
-  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', present: 'present', percentage: 'percentage'} as Record<SortKey, string>)[page.sort];
+  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', present: 'present', percentage: 'percentage', last_edited_at: 'last_edited_at'} as Record<SortKey, string>)[page.sort];
   const columns = useMemo<Column<RegisterRow>[]>(() => [
-    {id: 'centre', header: 'Centre', value: r => nameOf.get(r.centre_id) ?? r.centre_id},
-    {id: 'shift', header: 'Shift', value: r => r.shift_code},
-    {id: 'date', header: 'Date', value: r => r.attendance_date},
-    {id: 'present', header: 'No. of students present', value: r => attendanceSummaryDisplay(r).ratio, numeric: true},
-    {id: 'percentage', header: '% students present', value: r => attendanceSummaryDisplay(r).percentage, numeric: true, cell: r => { const d = attendanceSummaryDisplay(r); return <>{d.percentage}{d.incomplete ? <span className="block text-xs text-muted">Incomplete attendance</span> : null}</>; }},
-    {id: 'created_by', header: 'Created by', value: r => r.created_by ?? 'Not recorded', sortable: false},
-    {id: 'last_edited_by', header: 'Last edited by', value: r => r.last_edited_by ?? 'Not recorded', sortable: false},
-    {id: 'last_edited_at', header: 'Last edited at', value: r => r.last_edited_at ?? 'Not recorded', sortable: false},
-    {id: 'action', header: 'Action', sortable: false, value: r => r.session_type === 'Holiday' ? 'Recorded holiday' : writable.some(c => c.id === r.centre_id) && canWrite ? 'Edit attendance' : 'View only',
-      cell: r => r.session_type === 'Holiday' ? 'Recorded holiday'
+    {id: 'centre', header: t('common.centre'), value: r => nameOf.get(r.centre_id) ?? r.centre_id},
+    {id: 'shift', header: t('common.shift'), value: r => r.shift_code},
+    {id: 'date', header: t('common.date'), value: r => r.attendance_date},
+    {id: 'present', header: t('attendance.presentCount'), value: r => attendanceSummaryDisplay(r).ratio, numeric: true},
+    {id: 'percentage', header: t('attendance.presentPercent'), value: r => attendanceSummaryDisplay(r).percentage, numeric: true, cell: r => { const d = attendanceSummaryDisplay(r); return <>{d.percentage}{d.incomplete ? <span className="block text-xs text-muted">{t('attendance.incomplete')}</span> : null}</>; }},
+    {id: 'last_edited_at', header: t('attendance.lastEdited'), value: r => r.last_edited_at ?? null, cell: r => <time dateTime={r.last_edited_at ?? undefined} title={formatDateTime(r.last_edited_at)}>{formatRelativeTime(r.last_edited_at)}</time>},
+    {id: 'action', header: t('attendance.edit'), sortable: false, value: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday') : writable.some(c => c.id === r.centre_id) && canWrite ? t('attendance.edit') : t('attendance.viewOnly'),
+      cell: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday')
         : writable.some(c => c.id === r.centre_id) && canWrite
-          ? <Button variant="ghost" size="sm" aria-label={`Edit attendance: ${nameOf.get(r.centre_id) ?? r.centre_id}, ${r.shift_code}, ${r.attendance_date}`} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>Edit attendance</Button>
-          : <span className="text-xs text-muted">View only</span>},
+          ? <Button variant="ghost" size="sm" aria-label={t('attendance.editLabel', {centre: nameOf.get(r.centre_id) ?? r.centre_id, shift: r.shift_code, date: r.attendance_date})} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>{t('attendance.edit')}</Button>
+          : <span className="text-xs text-muted">{t('attendance.viewOnly')}</span>},
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [nameOf, writable, canWrite]);
+  ], [nameOf, writable, canWrite, t]);
 
-  const bandItems = distribution.status === 'ready' ? BANDS.map(([label, test]) => ({label, value: distribution.value.days.filter(d => test(d.days)).reduce((n, d) => n + d.students, 0)})) : [];
+  const bandItems = distribution.status === 'ready' ? BANDS.map(([label, test]) => ({label: t(label), value: distribution.value.days.filter(d => test(d.days)).reduce((n, d) => n + d.students, 0)})) : [];
   const trend = series.status === 'ready' ? months.map(m => ({label: monthShort(m), value: series.value[m] ?? null})) : [];
   const stats = report.status === 'ready' ? report.value : null;
-  const centreRows = useMemo(() => (stats?.centres ?? []).map(c => ({id: c.id, name: nameOf.get(c.id) ?? c.id, rate: c.attendance.percentage === null ? null : Number(c.attendance.percentage), present: c.attendance.p})), [stats, nameOf]);
-  const centreColumns = useMemo<Column<{id: string; name: string; rate: number | null; present: number}>[]>(() => [
-    {id: 'name', header: 'Centre', value: r => r.name},
-    {id: 'present', header: 'Present student-days', value: r => r.present, numeric: true},
-    {id: 'rate', header: 'Attendance rate', value: r => r.rate === null ? null : Number(r.rate.toFixed(1)), numeric: true, cell: r => r.rate === null ? 'Unknown' : `${r.rate.toFixed(1)}%`},
-  ], []);
+  interface CentreRow {centre_id: string; centre_label: string; present: number | string; percentage: number | string | null}
+  const centreContext = useMemo(() => query && year ? {on: reportingDay(month, today), from: `${month}-01`, until: (() => { const d = new Date(`${month}-01T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), year: year.id, grade: query.grade, shift: query.shift, gender: query.gender, earlier: 1, later: 2, quarter: 2} : null, [queryKey, year, month, today]);
+  const loadCentres = useCallback((request: TableRequest) => query && centreContext ? tables.page<CentreRow>('reviewed_centres', query.centres, centreContext, request) : Promise.resolve({rows: [], total: 0}), [tables, queryKey, centreContext]);
+  const centreTable = useServerTable<CentreRow>({key: JSON.stringify([queryKey, centreContext]), load: loadCentres, initialSort: 'centre', refreshKey});
+  const centreColumns = useMemo<Column<CentreRow>[]>(() => [
+    {id: 'centre', header: t('common.centre'), value: r => r.centre_label},
+    {id: 'present', header: t('attendance.presentDays'), value: r => Number(r.present), numeric: true},
+    {id: 'attendance', header: t('attendance.rate'), value: r => r.percentage === null ? null : Number(Number(r.percentage).toFixed(1)), numeric: true, cell: r => r.percentage === null ? t('common.unknown') : formatPercent(Number(r.percentage))},
+  ], [t]);
 
-  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel="Preparing Attendance" rows={5} />;
-  if (!supported) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">The attendance register API installed here is older than the new interface supports. Use the standard application for attendance.</p>;
+  if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('attendance.prepare')} rows={5} />;
+  if (!supported) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t('attendance.oldApi')}</p>;
 
   const future = month > today.slice(0, 7);
-  const server = register.status === 'ready' ? {total: register.value.total, pageIndex: page.offset / PAGE_SIZE, onPageChange: (index: number) => setPage(p => ({...p, offset: index * PAGE_SIZE})), sort: {id: sortId, desc: (page.sort === 'date') !== page.reverse}, onSortChange: (id: string) => setPage(p => p.sort === id ? {...p, offset: 0, reverse: !p.reverse} : {offset: 0, sort: id as SortKey, reverse: false})} : undefined;
+  const server = register.status === 'ready' && query ? {total: register.value.total, pageIndex: page.offset / PAGE_SIZE, onPageChange: (index: number) => setPage(p => ({...p, offset: index * PAGE_SIZE})), sort: {id: sortId, desc: page.reverse}, onSortChange: (id: string) => setPage(p => p.sort === id ? {...p, offset: 0, reverse: !p.reverse} : {offset: 0, sort: id as SortKey, reverse: false}), exportRows: async () => {
+    const rows: RegisterRow[] = [];
+    for (let offset = 0; offset <= 1000000; offset += 500) {
+      const found = await service.page(query, {...page, offset, limit: 500}); rows.push(...found.rows);
+      if (rows.length >= found.total || found.rows.length < 500) return rows;
+    }
+    throw new Error('The export is too large. Narrow the filters and try again.');
+  }} : undefined;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">Find low attendance, review saved registers and add or correct attendance.</p>
-        {canWrite ? <Button onClick={() => openEditor()}>Add Attendance</Button> : <p className="text-xs text-muted">{role === 'Leadership' ? 'Leadership views attendance only.' : caps.enabled ? 'Attendance entry is not available for your centres.' : 'Attendance entry is not enabled for this workspace.'}</p>}
+        <p className="text-sm text-muted">{t('attendance.intro')}</p>
+        {canWrite ? <Button onClick={() => openEditor()}>{t('attendance.add')}</Button> : <p className="text-xs text-muted">{t(role === 'Leadership' ? 'attendance.leadershipOnly' : caps.enabled ? 'attendance.noCentreWrite' : 'attendance.disabled')}</p>}
       </div>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
-      <div role="group" aria-label="Attendance filters" className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <Select label="Reporting month" value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
-        {scope.length > 1 ? <Select label="Centre" value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel="All centres" onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
-        <Select label="Shift" value={filters.shift} options={[['Morning', 'Morning'], ['Evening', 'Evening']]} allLabel="Both shifts" onChange={value => setFilters(f => ({...f, shift: value}))} />
-        <Select label="Grade" value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel="All grades" onChange={value => setFilters(f => ({...f, grade: value}))} />
-        <Select label="Gender" value={filters.gender} options={[['Girl', 'Girls'], ['Boy', 'Boys'], ['Unknown', 'Unknown']]} allLabel="All genders" onChange={value => setFilters(f => ({...f, gender: value}))} />
+      <div role="group" aria-label={t('attendance.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
+        <Select label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
+        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={t('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        <Select label={t('common.shift')} value={filters.shift} options={[['Morning', t('common.morning')], ['Evening', t('common.evening')]]} allLabel={t('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
+        <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={t('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
+        <Select label={t('common.gender')} value={filters.gender} options={[['Girl', t('common.girls')], ['Boy', t('common.boys')], ['Unknown', t('common.unknown')]]} allLabel={t('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Scorecard reference="2.1" label="Student attendance rate" value={stats ? formatPercent(stats.attendance.percentage) : null} hint="Present ÷ recorded classroom attendance" state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? 'Future reporting periods have no verified observations.' : report.status === 'error' ? report.message : undefined} />
-        <Scorecard reference="2.2" label="Present student-days" value={stats ? formatCount(stats.attendance.p) : null} hint="Selected month" state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? 'Future reporting periods have no verified observations.' : report.status === 'error' ? report.message : undefined} />
-        <Scorecard reference="2.3" label="Students with low attendance" state="unavailable" message="Below 15 days; complete scheduled-day coverage required" tone="alert" />
+        <Scorecard reference="2.1" label={t('attendance.studentRate')} value={stats ? formatPercent(stats.attendance.percentage) : null} state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : report.status === 'error' ? report.message : undefined} />
+        <Scorecard reference="2.2" label={t('attendance.presentDays')} value={stats ? formatCount(stats.attendance.p) : null} state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : report.status === 'error' ? report.message : undefined} />
+        <Scorecard reference="2.3" label={t('attendance.low')} state="unavailable" message={t('attendance.lowHelp')} tone="alert" />
       </div>
 
       {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
         <div aria-busy={registerBusy} className={registerBusy ? 'opacity-60 transition-opacity' : undefined}>
         <DataTable<RegisterRow>
-          reference="2.4" caption="Attendance register" columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}`}
-          exportName={`MASS-attendance-register-${month}`} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage="No saved attendance for this selection." server={server}
+          reference="2.4" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}`}
+          exportName={`MASS-attendance-register-${month}`} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
         />
         </div>
       )}
-      <p className="text-xs text-muted">Count = present/enrolled on that date. Percentage = present ÷ recorded classroom attendance × 100. Holidays and monthly meetings are excluded; unmarked students remain unknown. Historical leave keeps its original treatment. Edit opens the full register, including students outside the chart filters.</p>
+      <p className="text-xs text-muted">{t('attendance.registerFootnote')}</p>
 
-      <ChartCard reference="2.5" title="Attendance over time" subtitle="Monthly present ÷ recorded classroom attendance × 100 · unknown months remain gaps" state={asState(series)} errorMessage={series.status === 'error' ? series.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
-        <LineChart points={trend} description="Attendance by month" />
+      <ChartCard reference="2.5" title={t('attendance.overTime')} subtitle={t('attendance.overTimeHelp')} state={asState(series)} errorMessage={series.status === 'error' ? series.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
+        <LineChart points={trend} description={t('attendance.byMonth')} />
       </ChartCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard reference="2.6" title="Attendance bands" subtitle="Students by days present · selected month" state={future ? 'empty' : asState(distribution)} emptyMessage="Future reporting periods have no verified observations." errorMessage={distribution.status === 'error' ? distribution.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
-          <ColumnChart axis="Students" description="Students by days present" items={bandItems} />
-          <p className="mt-2 text-xs text-muted">{formatCount(distribution.status === 'ready' ? distribution.value.recorded_students ?? null : null)} students have recorded attendance in this month; students without records are not counted.</p>
+        <ChartCard reference="2.6" title={t('attendance.bands')} subtitle={t('attendance.bandsHelp')} state={future ? 'empty' : asState(distribution)} emptyMessage={t('common.future')} errorMessage={distribution.status === 'error' ? distribution.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
+          <ColumnChart axis={t('common.students')} description={t('attendance.byDays')} items={bandItems} />
+          <p className="mt-2 text-xs text-muted">{t('attendance.recordedStudentHelp', {count: formatCount(distribution.status === 'ready' ? distribution.value.recorded_students ?? null : null)})}</p>
         </ChartCard>
-        <DataTable<{id: string; name: string; rate: number | null; present: number}>
-          reference="2.7" caption="Attendance by centre" columns={centreColumns} data={centreRows} getRowId={r => r.id} exportName={`MASS-attendance-by-centre-${month}`}
-          state={future ? 'empty' : asState(report)} emptyMessage="Future reporting periods have no verified observations." errorMessage={report.status === 'error' ? report.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}
+        <DataTable<CentreRow>
+          reference="2.7" caption={t('attendance.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={`MASS-attendance-by-centre-${month}`}
+          state={future ? 'empty' : centreTable.result.status} server={centreTable.server} emptyMessage={future ? t('common.future') : t('overview.noCentres')} errorMessage={centreTable.error} onRetry={centreTable.retry}
         />
       </div>
 

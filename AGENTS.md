@@ -278,6 +278,46 @@ Vite, React 19, TypeScript, Tailwind 4, shadcn/ui-style primitives, TanStack Tab
 ### Working rules for this effort
 Plan then build in owner-approved phases; one phase per approval. Commit small logical commits on the new branch; push only that branch. Verify claims with measurements and parity runs; say what was not measured. Heavy tools: Playwright Chromium is installed in `~/Library/Caches/ms-playwright`; run `npm run perf:overview -- --runs N --label X --build` for load numbers (uses the preview project and the Leadership test account).
 
+## UI cleanup, server paging and localization (18 November 2026)
+
+Branch `feature/ui-cleanup-pagination-i18n` was created from `main` at `3be1a4e`; existing branches were not changed. The branch is pushed through `e005a3f` and has no PR yet. Its protected Vercel deployment is `https://mass-cac-dashboard-7kg88qix6-mass-data-dashboard.vercel.app/`, built from `e005a3f` against Preview Supabase `nilzfsahxoxibvrwsqkd`. GitHub and Vercel reported the deployment Ready. Ask the owner before opening a PR; when asked, target `staging` and include “Prepared with Codex” in the description.
+
+### Completed scope
+
+| Area | Status | Result |
+| --- | --- | --- |
+| Dashboard cleanup | Done | Improved reporting layout and scorecard/table presentation while preserving the approved calculations and unknown-value rules. |
+| Attendance cleanup | Done | Improved register editing and audit/timestamp presentation without weakening version checks, draft behavior or audit requirements. |
+| Server-side pagination | Done | All React `DataTable` screens request bounded, sorted and filtered server pages; the initial page is ten rows. Next/Previous fetch the required page rather than the entire table. Explicit CSV export still downloads all filtered rows in the selected sort order. |
+| Language switcher | Done | English/Kannada toggle on sign-in and in the signed-in top bar. English remains the default and both languages use Latin numerals. |
+| Saved default language | Done | Each authenticated staff user can save `en` or `kn` through scoped `mass_api` functions. The verified Auth email is shown in the new account menu; authorization still comes only from server context and assignments. |
+| Kannada font | Done | Noto Sans Kannada is self-hosted under `web/public/fonts/` with its OFL license; no external font host was added. |
+| Kannada copy | Needs human review | All machine-drafted Kannada strings are isolated in `web/src/i18n/kn.ts`. A fluent Kannada reviewer must approve or correct them before Production release. |
+| Permissions | Deferred | No broad permission redesign, Leadership editing or student-profile deletion was added. Preserve the existing server-enforced permission model until the owner provides the next permission audit/direction. |
+| Audit-history decision | Open | Confirm with Aashini whether the requested audit-history presentation remains a programme requirement. Existing protected audit behavior must not be weakened meanwhile. |
+
+### Database state
+
+- Preview only: `20261117180000_server_table_pages.sql` and `20261117190000_user_language_preferences.sql` were dry-run, applied one transaction at a time with `supabase/activation/seal.sql`, entered in the migration ledger and postflight-checked.
+- `20261117180000` adds bounded table-page APIs for the React tables. Normal pages allow ten rows; explicit export can page through bounded batches up to 500.
+- `20261117190000` adds forced-RLS `mass_core.user_preferences`, defaulting to English, plus authenticated self-service `mass_api.get_user_preferences()` and `mass_api.set_default_language(text)`. Authenticated users have no direct table access and anonymous callers have no function access.
+- Production is unchanged and remains read-only. Do not apply either migration to Production without a separate gated release approval.
+
+### Validation snapshot
+
+- `npm run web:typecheck`: passed.
+- `npm run test:web`: 27 files and 207 tests passed.
+- `npm run lint -- --no-cache`, `npm run check`, `npm test` and `npm run build`: passed; the existing frontend suite reported 137 tests and 27 workflow/removal checks.
+- `npm run test:sql:portable`: passed, including 1,440 calculation parity cases, bounded page execution under authenticated scope, language-preference round-trip/grant checks and 31 forced-RLS `mass_core` tables in a fresh replay.
+- Deployment inspection confirmed Preview mode, the Preview Supabase project, React at `/`, the original interface at `/vanilla/`, and the deployed Kannada font. Interactive automation reached Vercel Authentication, so signed-in manual acceptance of the deployed language and pagination flows remains required.
+
+### Follow-up acceptance
+
+- Manually test the protected Preview with Leadership, Cluster Officer and Teacher accounts: table pagination/search/sort, all-filtered-row CSV export, sign-in language toggle, signed-in toggle, saving a default language and retaining it after the next sign-in.
+- Have a fluent Kannada reviewer check `web/src/i18n/kn.ts` in context, including field terminology, error messages, dates and relative timestamps.
+- Student deletion remains out of this phase. The current direction is that Teachers must not delete student profiles and any future deletion workflow should be limited to Cluster Officers or higher roles after a separate permission/security design.
+- The deprecated vanilla interface is intentionally unchanged and should be removed in a later dedicated phase.
+
 ### Pending tasks for later (owner-requested, not started)
 - **Caching strategy.** Work out how to optimize caching for the application: whether to use Vercel's own caching (CDN caching headers for the static assets, anything at the edge), and whether to add a client-side store/cache inside the React app (for example TanStack Query or a small store) so screens reuse data instead of refetching (today only the Overview reports and student rosters have small in-memory caches). Measure first; keep the 30-second scope re-verification and never cache across users or roles.
 - **DONE (14 Nov): every role sees all eight numbered menu items; unavailable ones are greyed out, not links, with an accessible reason** (`unavailableReason` in `web/src/app/SideMenu.tsx`: Leadership has no 3 Student profiles, Teacher has no 5 Visits, only Leadership has 7 Annual donor summary).

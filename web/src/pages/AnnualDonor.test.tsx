@@ -6,6 +6,7 @@ import type {OverviewService, Report, Selection} from '../data/overview';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-09-14'}));
 
@@ -25,7 +26,8 @@ function setup(options: {role?: string; failMonth?: string; failAll?: boolean; f
   const overview = {report, shifts: vi.fn(), series: vi.fn(), clear: vi.fn()} as unknown as OverviewService;
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: {}})), readDirectory: vi.fn(async () => [{centre_id: 'c1', donor_label: 'Donor A'}, {centre_id: 'c2', donor_label: 'Donor B'}])} as unknown as LiveBackend;
   const role = options.role ?? 'Leadership';
-  const view = render(<AnnualDonor backend={backend} context={ctx([role])} role={role} overview={overview} />);
+  const annual = [{id: 'c1', name: 'Centre 01', donor: 'Donor A', students: 18, p: 1260, a: 105, l: 0, percentage: 1260 / 13.65, loaded: 6}, {id: 'c2', name: 'Centre 02', donor: 'Donor B', students: 12, p: 840, a: 105, l: 0, percentage: 840 / 9.45, loaded: 6}];
+  const view = render(<AnnualDonor backend={backend} context={ctx([role])} role={role} overview={overview} tables={testTableService({annual_centres: annual})} />);
   return {report, ...view};
 }
 const comparison = async () => screen.findByRole('table', {name: 'Centre comparison'});
@@ -52,19 +54,20 @@ describe('Annual donor summary', () => {
     setup();
     await comparison();
     expect(await screen.findByText('2026-04-01 to 2027-04-01 (exclusive)', {exact: false})).toBeInTheDocument();
-    expect(screen.getByText(/across 6 loaded months/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
+    expect(screen.queryByText(/across 6 loaded months/)).not.toBeInTheDocument();
     expect(screen.getAllByText('90.9%').length).toBeGreaterThan(0);  // 2100 / (2100 + 210)
   });
   it('treats a failed month as a gap, says so, and still reports the others', async () => {
     setup({failMonth: '2026-07'});
     await comparison();
     expect(await screen.findByText(/1 of 6 monthly reports could not be loaded/)).toBeInTheDocument();
-    expect(screen.getByText(/across 5 loaded months/)).toBeInTheDocument();
+    expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('5');
   });
   it('retries a month once on a transient failure, so no month is lost', async () => {
     const {report} = setup({failOnce: '2026-07'});
     await comparison();
-    await screen.findByText(/across 6 loaded months/);
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
     expect(screen.queryByText(/monthly reports could not be loaded/)).not.toBeInTheDocument();
     expect(report.mock.calls.filter(c => c[0].month === '2026-07')).toHaveLength(2);
   });
@@ -96,7 +99,7 @@ describe('Annual donor summary', () => {
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();
     await comparison();
-    await screen.findByText(/across 6 loaded months/);
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
     expect(await violations(container)).toEqual([]);
   });
 });

@@ -6,6 +6,7 @@ import type {Assignment, OfficerRow, SummaryRow, VisitRow, VisitsService} from '
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
@@ -24,22 +25,24 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; summar
   } as unknown as VisitsService;
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: options.writes ?? {}}))} as unknown as LiveBackend;
   const role = options.role ?? 'Cluster Officer';
-  const view = render(<Visits backend={backend} context={ctx([role])} role={role} service={service} />);
+  const summary = options.summary ?? [sum('c1', 2, 2), sum('c2', 1, 0)];
+  const officerLines = [{id: 'o1', label: 'Meera', completed: 5, target: 8, records: 5}];
+  const view = render(<Visits backend={backend} context={ctx([role])} role={role} service={service} tables={testTableService({visit_centres: summary, visit_officers: officerLines, visit_log: [visit]})} />);
   return {service, ...view};
 }
 
 describe('Visits page', () => {
   it('shows completed counts, target and coverage from the server summary', async () => {
     setup();
-    expect(await screen.findByText('Standard target 8 (2 Morning + 2 Evening per centre)')).toBeInTheDocument();
-    expect(screen.getByText('Visits completed')).toBeInTheDocument();
-    const coverage = screen.getByRole('table', {name: 'Centre coverage'});
+    const coverage = await screen.findByRole('table', {name: 'Centre coverage'});
+    expect(screen.getByRole('group', {name: 'Visits completed'})).toHaveTextContent('5');
+    expect(screen.queryByText(/Standard target 8/)).not.toBeInTheDocument();
     expect(within(coverage).getByText('Recorded target achieved')).toBeInTheDocument();
     expect(within(coverage).getByText('Recorded target not achieved')).toBeInTheDocument();
   });
   it('asks only for the officer own coverage as a Cluster Officer', async () => {
     const {service} = setup();
-    await screen.findByText(/Standard target/);
+    await screen.findByRole('table', {name: 'Centre coverage'});
     expect(vi.mocked(service.summary).mock.calls[0]).toEqual([['c1', 'c2'], '2026-11', 'o1']);
   });
   it('leaves coverage unknown, never zero, when nothing is recorded', async () => {
@@ -61,11 +64,10 @@ describe('Visits page', () => {
   });
   it('is read-only for Leadership and offers an officer filter from the summary', async () => {
     const {service} = setup({role: 'Leadership'});
-    await screen.findByText(/Standard target/);
+    expect(await screen.findByLabelText('Officer')).toBeInTheDocument();
     expect(screen.queryByRole('button', {name: 'Record a visit'})).not.toBeInTheDocument();
     expect(screen.queryByRole('table', {name: 'Visit log'})).not.toBeInTheDocument();
     expect(vi.mocked(service.summary).mock.calls[0]![2]).toBeNull();
-    expect(screen.getByLabelText('Officer')).toBeInTheDocument();
   });
   it('lists the visit log for a Cluster Officer', async () => {
     setup();
@@ -96,7 +98,7 @@ describe('Visits page', () => {
   });
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();
-    await screen.findByText(/Standard target/);
+    await screen.findByRole('table', {name: 'Centre coverage'});
     expect(await violations(container)).toEqual([]);
   });
 });
