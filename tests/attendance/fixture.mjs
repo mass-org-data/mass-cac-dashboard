@@ -25,7 +25,7 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
  await db.exec(read('supabase/proposals/202611030024_reviewed_chart_metrics.sql'));
  if(metadata&&pendingMetadata)await db.exec(pendingMetadata);
  if(metadata&&pendingFeedback)await db.exec(pendingFeedback);
- const core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=28 AND bool_and(relrowsecurity AND relforcerowsecurity)').replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')").replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
+ const core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=29 AND bool_and(relrowsecurity AND relforcerowsecurity)').replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')").replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
  await runSqlScript(db,core);
  await runSqlScript(db,read('tests/release/visits.sql'));
  await db.exec('RESET ROLE; BEGIN;'+read('supabase/activation/control.sql')+read('supabase/activation/seal.sql')+'COMMIT;');
