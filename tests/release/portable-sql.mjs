@@ -22,7 +22,7 @@ try {
  {const def=(await db.query("SELECT pg_get_functiondef('mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)'::regprocedure) d")).rows[0].d;
   if(def.split("e.event_kind='Activity'").length!==2||def.split("e.shift_code='Both shifts'").length!==3||!def.includes("(p.shift_code=e.shift_code OR e.shift_code='Both shifts') AND e.activity_date")||!def.includes("code IN ('WO','MM','H')"))throw new Error('reviewed_chart_metrics must hold the centre-event patch exactly once and keep the Holiday exclusion');
   console.log('PASS reviewed_chart_metrics keeps the centre-event patch after the efficiency migration, applied twice');}
- let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=33 AND bool_and(relrowsecurity AND relforcerowsecurity)')
+ let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=34 AND bool_and(relrowsecurity AND relforcerowsecurity)')
   .replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')")
   .replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
  await runSqlScript(db,core);console.log('PASS existing core SQL assertions');
@@ -36,6 +36,7 @@ try {
  await runSqlScript(db,read('tests/reviewed-calculations/attendance-series.sql'));console.log('PASS batched monthly attendance series equals reviewed_chart_metrics for 63 month and filter cases');
  await runSqlScript(db,read('tests/security/definer-matrix.sql'));console.log('PASS existing definer security matrix');
  await db.exec('RESET ROLE; BEGIN;'+read('supabase/activation/control.sql')+read('supabase/activation/seal.sql')+'COMMIT;');
+ await runSqlScript(db,read('tests/security/permission-destructive-workflows.sql'));console.log('PASS reviewed destructive workflows, atomic cascades, private receipts and cross-role denial');
  await db.exec("SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated calculation check' WHERE feature='reviewed_reads'; RESET ROLE;");
  const exported=(await db.query(read('tests/reviewed-calculations/export.sql'))).rows[0];
  fs.writeFileSync(path.join(out,'input.json'),JSON.stringify(Object.values(exported)[0]));
