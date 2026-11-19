@@ -56,8 +56,12 @@ try{
  await fails('PT409',()=>rpc('save_attendance_register_v3',{...edit,p_request:randomUUID(),p_notes:'stale overwrite'}));
  const corrected=await rpc('read_attendance_register_v3',context);
  check(corrected.notes===edit.p_notes&&corrected.token!==saved.token);
- for(const actor of [2,4,5,7,8]){
+ for(const actor of [2,5,7]){
   await fails('42501',()=>rpc('read_attendance_register_v3',context,user(actor)));
+  await fails('42501',()=>rpc('save_attendance_register_v3',{...edit,p_request:randomUUID()},user(actor)));
+ }
+ for(const actor of [4,8]){
+  check((await rpc('read_attendance_register_v3',context,user(actor))).roster.every(row=>row.name));
   await fails('42501',()=>rpc('save_attendance_register_v3',{...edit,p_request:randomUUID()},user(actor)));
  }
  for(const role of ['anon','service_role'])await fails('42501',()=>rpc('save_attendance_register_v3',args,user(1),role));
@@ -81,8 +85,8 @@ try{
   });
   const invalid=(attended===true&&applied===false)||(passed===true&&(applied===false||attended===false));
   if(invalid)await fails('23514',write);
-  else{await write();const result=(await db.query('SELECT applied,attended,passed FROM mass_core.morarji_outcomes WHERE membership_id=$1',[member])).rows[0];check(result.applied===applied&&result.attended===attended&&result.passed===passed);}
+  else{await write();const result=(await db.query('SELECT applied,attended,passed FROM mass_core.morarji_outcomes WHERE membership_id=$1',[member])).rows[0];assert.deepEqual(result,{applied,attended,passed});checks++;}
  }
  await fails('42501',()=>rpc('record_morarji',{p_member:member,p_applied:true,p_attended:true,p_passed:true,p_school:null,p_expected:1}));
  console.log(`PASS ${checks} register metadata assertions: durable notes, exact replay, attribution, scoped access, feature gate, retained history and all 27 nullable Morarji stage combinations.`);
-}catch(error){console.error(error.message,error.code);process.exitCode=1;}finally{await db.close();}
+}catch(error){console.error(error.stack||error.message,error.code);process.exitCode=1;}finally{await db.close();}

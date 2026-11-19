@@ -12,6 +12,29 @@ INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,en
  ('00000000-0000-4000-8000-000000000007','10000000-0000-4000-8000-000000000001','Teacher','1999-01-01','2000-01-01','00000000-0000-4000-8000-000000000006','2000-01-01',true),
  ('00000000-0000-4000-8000-000000000008','10000000-0000-4000-8000-000000000001','Leadership','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',false),
  ('00000000-0000-4000-8000-000000000008','10000000-0000-4000-8000-000000000002','Teacher','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',false);
+-- Newer permission phases use one explicit role and role-neutral assignments.
+-- Keep the baseline fixture replayable before those additive tables exist.
+DO $governance_fixture$
+BEGIN
+ IF to_regclass('mass_core.application_users') IS NOT NULL THEN
+  EXECUTE $sql$
+   INSERT INTO mass_core.application_users(user_id,role_code,status,starts_at,ends_at,approval_reference,approved_by,approved_at) VALUES
+    ('00000000-0000-4000-8000-000000000001','Teacher','Active','1999-01-01','2001-01-01','Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01'),
+    ('00000000-0000-4000-8000-000000000002','Teacher','Active','1999-01-01',NULL,'Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01'),
+    ('00000000-0000-4000-8000-000000000003','Cluster Officer','Active','1999-01-01',NULL,'Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01'),
+    ('00000000-0000-4000-8000-000000000004','Leadership','Active','1999-01-01',NULL,'Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01'),
+    ('00000000-0000-4000-8000-000000000007','Teacher','Inactive','1999-01-01','2000-01-01','Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01'),
+    ('00000000-0000-4000-8000-000000000008','Leadership','Active','1999-01-01',NULL,'Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01')
+  $sql$;
+  EXECUTE $sql$
+   INSERT INTO mass_core.user_centre_assignments(user_id,centre_id,status,starts_at,ends_at,approval_reference,approved_by,approved_at) VALUES
+    ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','Active','1999-01-01','2001-01-01','Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01'),
+    ('00000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','Active','1999-01-01',NULL,'Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01'),
+    ('00000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000001','Active','1999-01-01',NULL,'Synthetic governance fixture','00000000-0000-4000-8000-000000000006','2000-01-01')
+  $sql$;
+ END IF;
+END;
+$governance_fixture$;
 INSERT INTO mass_core.academic_years(id,starts_on) VALUES('20000000-0000-4000-8000-000000000001','2026-04-01');
 INSERT INTO mass_core.assessment_periods(id,academic_year_id,quarter) SELECT
  ('21000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'20000000-0000-4000-8000-000000000001',n FROM generate_series(1,4)n;
@@ -83,16 +106,16 @@ SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-00000000
 INSERT INTO core_test.ids SELECT 'B',child_id,enrolment_id FROM mass_api.register_student('10000000-0000-4000-8000-000000000002','1','Morning','2026-04-01','Synthetic isolated record','Boy');
 SELECT core_test.assert_true((SELECT count(*)=1 FROM mass_core.children),'teacher B sees only centre B identities');
 SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.attendance_records),'teacher B cannot read centre A attendance');
-SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.private_child_profiles),'centre grant alone does not grant personal-profile access');
+SELECT core_test.assert_true((SELECT count(*)=1 FROM mass_core.private_child_profiles),'current centre scope includes current student identity');
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-02','A',1)$q$,'42501','cross-centre fact correction denied');
 SELECT core_test.expect_error($q$SELECT mass_api.record_participation(core_test.id('B'),'30000000-0000-4000-8000-000000000001',true,0)$q$,'42501','cross-centre event reference denied');
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated"}',false);
 SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-02','P',1);
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('B'),'2026-04-01','P',0)$q$,'42501','Cluster Officer outside approved scope denied');
-SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.private_child_profiles),'Cluster Officer has no implicit profile permission');
+SELECT core_test.assert_true((SELECT count(*)=2 FROM mass_core.private_child_profiles),'Cluster Officer inherits current-centre student identity access');
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004","role":"authenticated"}',false);
 SELECT core_test.assert_true((SELECT count(*)=3 FROM mass_core.children),'Leadership reads granted programme scope');
-SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.private_child_profiles),'Leadership programme read does not expose personal profiles');
+SELECT core_test.assert_true((SELECT count(*)=3 FROM mass_core.private_child_profiles),'Leadership reads student identity across all centres');
 SELECT core_test.expect_error($q$SELECT mass_api.register_student('10000000-0000-4000-8000-000000000001','1','Morning','2026-04-01','Synthetic record','Girl')$q$,'42501','Leadership registration denied');
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-03','A',1)$q$,'42501','Leadership attendance denied');
 SELECT core_test.expect_error($q$SELECT mass_api.record_assessment(core_test.id('A'),'22000000-0000-4000-8000-000000000001','2026-04-10',20,2)$q$,'42501','Leadership assessment denied');
@@ -127,7 +150,15 @@ SELECT core_test.expect_error($q$INSERT INTO mass_core.assessment_definitions(pe
 -- Revocation test rolls back so API fixtures keep the original verified synthetic grant.
 BEGIN;
 SET ROLE mass_core_admin;
-UPDATE mass_core.user_scope_grants SET ends_at='2001-01-01' WHERE user_id='00000000-0000-4000-8000-000000000001';
+DO $revoke_fixture$
+BEGIN
+ IF to_regclass('mass_core.user_centre_assignments') IS NULL THEN
+  UPDATE mass_core.user_scope_grants SET ends_at='2001-01-01' WHERE user_id='00000000-0000-4000-8000-000000000001';
+ ELSE
+  EXECUTE $$UPDATE mass_core.user_centre_assignments SET status='Inactive',row_version=row_version+1 WHERE user_id='00000000-0000-4000-8000-000000000001' AND status='Active'$$;
+ END IF;
+END;
+$revoke_fixture$;
 RESET ROLE;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001"}',true);

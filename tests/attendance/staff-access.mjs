@@ -5,12 +5,12 @@ import {fixture,centre,user} from './fixture.mjs';
 const {db,rpc}=await fixture();const other='10000000-0000-4000-8000-000000000002';let checks=0;
 const ok=x=>{assert.ok(x);checks++;};
 try{
- const initial=await rpc('get_context',{},user(8));ok(initial.centres.every(c=>!c.can_write));
+ const initial=await rpc('get_context',{},user(8));ok(initial.role==='Leadership'&&initial.roles.length===1&&initial.centres.every(c=>!c.can_write));
  await db.query("INSERT INTO mass_core.staff_operational_access(user_id,approval_reference,approved_by) VALUES($1,'Synthetic explicit multi-role approval',$2)",[user(8),user(6)]);
  await db.exec('SET ROLE mass_core_admin;');
  await db.query("INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,verified_by,verified_at) VALUES($1,$2,'Cluster Officer','2026-01-01',$3,now())",[user(8),centre,user(6)]);
  await db.exec('RESET ROLE;');
- const context=await rpc('get_context',{},user(8));ok(context.operational_roles_enabled===true);ok(context.centres.every(c=>c.can_write));
+ const context=await rpc('get_context',{},user(8));ok(context.role==='Leadership'&&context.roles.length===1&&context.operational_roles_enabled===true);ok(context.centres.every(c=>c.can_write));
  ok((await rpc('get_context',{},user(4))).centres.every(c=>!c.can_write));
  const register=await rpc('read_attendance_register',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-15'},user(8));
  ok(register.roster.length>0);
@@ -33,14 +33,18 @@ try{
  const links=await rpc('get_visit_assignments',{},user(8));ok(links.length===1&&links[0].officer_id===staff);
  assert.equal(await rpc('record_visit',{p_id:randomUUID(),p_assignment:assignment,p_shift:'Morning',p_date:'2026-11-09',p_status:'Completed',p_feedback:'Synthetic mixed-role visit',p_next_action:'',p_expected:0},user(8)),1);checks++;
  await assert.rejects(()=>rpc('record_visit',{p_id:randomUUID(),p_assignment:assignment,p_shift:'Morning',p_date:'2026-11-09',p_status:'Completed',p_feedback:'Synthetic foreign identity',p_next_action:'',p_expected:0},user(3)),e=>e.code==='42501');checks++;
- await assert.rejects(()=>rpc('read_attendance_register',{p_centre:other,p_shift:'Morning',p_date:'2026-05-15'},user(4)),e=>e.code==='42501');checks++;
+ const leadershipRead=await rpc('read_attendance_register',{p_centre:other,p_shift:'Morning',p_date:'2026-05-15'},user(4));ok(leadershipRead.roster.every(row=>row.name));
+ await assert.rejects(()=>rpc('save_attendance_register',{p_request:randomUUID(),p_centre:other,p_shift:'Morning',p_date:'2026-05-15',p_token:leadershipRead.token,p_rows:[],p_reason:'Synthetic prohibited Leadership write'},user(4)),e=>e.code==='42501');checks++;
  await db.exec('ALTER TABLE auth.users ADD COLUMN email text;');
  for(const [n,email] of [[8,'source@synthetic.invalid'],[5,'first@synthetic.invalid'],[2,'second@synthetic.invalid'],[6,'approver@synthetic.invalid']])await db.query('UPDATE auth.users SET email=$1 WHERE id=$2',[email,user(n)]);
  let onboarding=fs.readFileSync(new URL('../../scripts/staff/clone-operational-access.sql',import.meta.url),'utf8');
  for(const [key,value] of Object.entries({source_email:'source@synthetic.invalid',target_emails:'first@synthetic.invalid,second@synthetic.invalid,source@synthetic.invalid',approver_email:'approver@synthetic.invalid',approval_reference:'Synthetic source-matched onboarding'}))onboarding=onboarding.replaceAll(`:'${key}'`,"'"+value+"'");
  await db.exec(onboarding);
- for(const n of [2,5,8]){const c=await rpc('get_context',{},user(n));ok(c.operational_roles_enabled&&new Set(c.centres.flatMap(x=>x.roles)).size===3);ok((await rpc('get_visit_assignments',{},user(n))).length===1);}
+ const clonedTeacher=await rpc('get_context',{},user(2));ok(clonedTeacher.role==='Teacher'&&clonedTeacher.roles.length===1&&clonedTeacher.centres.length===1&&clonedTeacher.operational_roles_enabled);
+ ok((await rpc('get_visit_assignments',{},user(2))).length===0);
+ await assert.rejects(()=>rpc('get_context',{},user(5)),e=>e.code==='42501');checks++;
+ const stillLeadership=await rpc('get_context',{},user(8));ok(stillLeadership.role==='Leadership'&&stillLeadership.roles.length===1);
  await db.query('UPDATE mass_core.staff_operational_access SET enabled=false WHERE user_id=$1',[user(8)]);
  ok((await rpc('get_context',{},user(8))).centres.every(c=>!c.can_write));
- console.log(`PASS ${checks} scoped multi-role assertions: ordinary Leadership denial, explicit operational union, attendance, visit capability, Auth-backed assignment, real visit save, foreign denial and revocation.`);
-}catch(e){console.error(e.message,e.code,e.where);process.exitCode=1;}finally{await db.close();}
+ console.log(`PASS ${checks} governed single-role assertions: transitional approved writes, Leadership reads, Auth-backed visit assignment, legacy clone isolation and immediate revocation.`);
+}catch(e){console.error(e.stack||e.message,e.code,e.where);process.exitCode=1;}finally{await db.close();}

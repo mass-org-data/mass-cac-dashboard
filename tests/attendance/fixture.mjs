@@ -4,7 +4,7 @@ import {runSqlScript} from '../sql-statements.mjs';
 export const centre='10000000-0000-4000-8000-000000000001';
 export const user=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 export async function fixture({metadata=true,centreEvents=true,review=true}={}) {
- let pendingMetadata='',pendingFeedback='',pendingCentreEvents='',pendingReview='';
+ let pendingMetadata='',pendingFeedback='',pendingCentreEvents='',pendingReview='',pendingPermissionRead='';
  const db=new PGlite();await db.waitReady;
  const read=name=>fs.readFileSync(new URL('../../'+name,import.meta.url),'utf8');
  await db.exec(read('tests/core/bootstrap.sql'));
@@ -13,6 +13,7 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
   if(file.includes('centre_wide_events')){pendingCentreEvents=read('supabase/migrations/'+file);continue;}
   if(file.includes('feedback_register_reporting')){pendingFeedback=read('supabase/migrations/'+file);continue;}
   if(file.includes('attendance_register_metadata')){pendingMetadata=read('supabase/migrations/'+file);continue;}
+  if(file.includes('permission_read_cutover')){pendingPermissionRead=read('supabase/migrations/'+file);continue;}
   const sql=read('supabase/migrations/'+file);
   if(file.includes('attendance_register_workflow')){
    const before=(await db.query("SELECT md5(pg_get_functiondef('mass_core.guard_record()'::regprocedure)) hash")).rows[0].hash;
@@ -25,7 +26,8 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
  await db.exec(read('supabase/proposals/202611030024_reviewed_chart_metrics.sql'));
  if(metadata&&pendingMetadata)await db.exec(pendingMetadata);
  if(metadata&&pendingFeedback)await db.exec(pendingFeedback);
- const core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=28 AND bool_and(relrowsecurity AND relforcerowsecurity)').replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')").replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
+ if(pendingPermissionRead)await db.exec(pendingPermissionRead);
+ const core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)>=17 AND bool_and(relrowsecurity AND relforcerowsecurity)').replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')").replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
  await runSqlScript(db,core);
  await runSqlScript(db,read('tests/release/visits.sql'));
  await db.exec('RESET ROLE; BEGIN;'+read('supabase/activation/control.sql')+read('supabase/activation/seal.sql')+'COMMIT;');

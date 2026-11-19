@@ -28,6 +28,7 @@ try {
  await runSqlScript(db,core);console.log('PASS existing core SQL assertions');
  await runSqlScript(db,read('tests/security/permission-foundation.sql'));console.log('PASS single-role governance foundation, centre limits and immediate inactive-user denial');
  await runSqlScript(db,read('tests/security/permission-reconciliation.sql'));console.log('PASS private dual-read reconciliation and cutover drift gate');
+ await runSqlScript(db,read('tests/security/permission-read-cutover.sql'));console.log('PASS governed read cutover, one-role context, current profiles and immediate assignment denial');
  await runSqlScript(db,read('tests/release/visits.sql'));console.log('PASS existing visit/delivery/scoped reporting SQL assertions');
  await runSqlScript(db,read('tests/release/batched-reads.sql'));console.log('PASS batched visit, Morarji and profile reads equal the single-centre functions and keep their scope');
  await runSqlScript(db,read('tests/reviewed-calculations/synthetic.sql'));
@@ -58,7 +59,9 @@ try {
  const pageContext="jsonb_build_object('on',y.starts_on,'from',y.starts_on,'until',y.starts_on+30,'year',y.id,'earlier',1,'later',2,'quarter',2)";
  await db.query(`WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('reviewed_centres',c.ids,${pageContext},'','centre',false,0,10) FROM y,c`);
  await db.query("WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('assessment_register',c.ids,jsonb_build_object('year',y.id),'','date',true,0,10),mass_api.dashboard_table_page('annual_centres',c.ids,jsonb_build_object('year',y.id,'today',least(y.ends_before-1,y.starts_on+180)),'','name',false,0,10),mass_api.attendance_register_page_v2(c.ids,y.starts_on,y.starts_on+30,NULL,NULL,NULL,0,10,'date',true,'') FROM y,c");
+ await db.exec("SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000003\"}',false);");
  await db.query("WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('visit_centres',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','centre',false,0,10),mass_api.dashboard_table_page('visit_officers',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','label',false,0,10),mass_api.dashboard_table_page('morarji_cohorts',c.ids,'{}','','cohort',false,0,10) FROM c");
+ await db.exec("SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
  const initialLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;
  const savedLanguage=(await db.query("SELECT mass_api.set_default_language('kn')->>'default_language' language")).rows[0]?.language;
  const currentLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;

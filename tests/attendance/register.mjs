@@ -38,14 +38,19 @@ try {
  register=await rpc('read_attendance_register',context);
  ok(register.marks.find(r=>r.enrolment===ids[0]).version===2);
  const deletion={...context,p_request:randomUUID(),p_token:register.token,p_reason:'Synthetic approved removal'};
- for(const actor of [2,4,5,7,8]){
+ for(const actor of [2,5,7]){
   await error('42501',()=>rpc('read_attendance_register',context,user(actor)));
+  await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:register.token},user(actor)));
+  await error('42501',()=>rpc('delete_attendance_register',deletion,user(actor)));
+ }
+ for(const actor of [4,8]){
+  const leadershipRead=await rpc('read_attendance_register',context,user(actor));ok(leadershipRead.roster.every(s=>s.name&&s.student_id));
   await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:register.token},user(actor)));
   await error('42501',()=>rpc('delete_attendance_register',deletion,user(actor)));
  }
  for(const role of ['anon','service_role'])await error('42501',()=>rpc('delete_attendance_register',deletion,user(1),role));
  const officer=await rpc('read_attendance_register',context,user(3));ok(officer.roster.every(s=>s.name&&s.student_id));
- const ordinaryRead=await rpc('read_students',{p_centre:centre},user(3));ok(ordinaryRead.every(s=>s.full_name===null));
+ const ordinaryRead=await rpc('read_students',{p_centre:centre},user(3));ok(ordinaryRead.every(s=>s.full_name));
  await error('PT409',()=>rpc('delete_attendance_register',{...deletion,p_token:'stale'}));
  await error('22023',()=>rpc('delete_attendance_register',{...deletion,p_reason:''}));
  await error('42501',()=>db.exec("SET ROLE authenticated; DELETE FROM mass_core.attendance_records;"));await db.exec('RESET ROLE;');
