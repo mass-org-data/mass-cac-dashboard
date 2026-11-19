@@ -43,10 +43,12 @@ try {
   await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:register.token},user(actor)));
   await error('42501',()=>rpc('delete_attendance_register',deletion,user(actor)));
  }
- for(const actor of [4,8]){
-  const leadershipRead=await rpc('read_attendance_register',context,user(actor));ok(leadershipRead.roster.every(s=>s.name&&s.student_id));
-  await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:register.token},user(actor)));
-  await error('42501',()=>rpc('delete_attendance_register',deletion,user(actor)));
+ for(const [actor,date] of [[4,'2026-05-16'],[8,'2026-05-17']]){
+  const leadershipContext={p_centre:centre,p_shift:'Morning',p_date:date};
+  const leadershipRead=await rpc('read_attendance_register',leadershipContext,user(actor));ok(leadershipRead.roster.every(s=>s.name&&s.student_id));
+  assert.equal(await rpc('save_attendance_register',{...leadershipContext,p_request:randomUUID(),p_token:leadershipRead.token,p_rows:[{enrolment:leadershipRead.roster[0].id,code:'P'}],p_reason:'Synthetic Leadership hierarchy write'},user(actor)),1);checks++;
+  const leadershipSaved=await rpc('read_attendance_register',leadershipContext,user(actor));
+  assert.equal(await rpc('delete_attendance_register',{...leadershipContext,p_request:randomUUID(),p_token:leadershipSaved.token,p_reason:'Synthetic Leadership hierarchy removal'},user(actor)),1);checks++;
  }
  for(const role of ['anon','service_role'])await error('42501',()=>rpc('delete_attendance_register',deletion,user(1),role));
  const officer=await rpc('read_attendance_register',context,user(3));ok(officer.roster.every(s=>s.name&&s.student_id));
@@ -60,7 +62,7 @@ try {
  const after=Number((await db.query('SELECT count(*) n FROM mass_core.attendance_records')).rows[0].n);
  ok(countBefore-after===2);
  ok((await rpc('read_attendance_register',context)).recorded===0);
- await db.exec('SET ROLE mass_core_owner;');const history=(await db.query("SELECT * FROM mass_core.attendance_register_actions WHERE operation='DELETE'")).rows;
+ await db.exec('SET ROLE mass_core_owner;');const history=(await db.query("SELECT * FROM mass_core.attendance_register_actions WHERE operation='DELETE' AND actor_user_id=$1",[user(1)])).rows;
  // PGlite query accepts one statement; query history separately below.
  ok(history.length===1&&history[0].before_records.length===2&&history[0].actor_user_id===user(1));
  await db.exec('RESET ROLE;');
@@ -69,13 +71,13 @@ try {
  await rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:empty.token});
  await error('PT409',()=>rpc('delete_attendance_register',{...deletion,p_request:randomUUID()}));
  ok((await rpc('read_attendance_register',context)).recorded===1);
- await error('42501',()=>rpc('record_attendance',{p_enrolment:ids[0],p_date:context.p_date,p_code:'P',p_expected:1}));
+ ok(typeof await rpc('record_attendance',{p_enrolment:ids[0],p_date:context.p_date,p_code:'P',p_expected:1})==='string');
  let current=await rpc('read_attendance_register',context,user(3));
- assert.equal(await rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:current.token,p_rows:[{enrolment:ids[0],code:'P'}]},user(3)),1);checks++;
+ assert.equal(await rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:current.token,p_rows:[{enrolment:ids[0],code:'A'}]},user(3)),1);checks++;
  current=await rpc('read_attendance_register',context,user(3));
  assert.equal(await rpc('delete_attendance_register',{...deletion,p_request:randomUUID(),p_token:current.token},user(3)),1);checks++;
  await db.exec('SET ROLE mass_core_owner; UPDATE mass_core.attendance_register_control SET enabled=false;RESET ROLE;');
  await error('42501',()=>rpc('save_attendance_register',{...args,p_request:randomUUID(),p_token:empty.token}));
  await error('42501',()=>rpc('delete_attendance_register',{...deletion,p_request:randomUUID()}));
  console.log(`PASS ${checks} attendance register SQL checks: atomic save/rollback, correction, idempotency, conflict detection, scope, scoped roster names, exact deletion, retained history.`);
-} catch(e) {console.error(e.message,e.code,e.where);process.exitCode=1;} finally{await db.close();}
+} catch(e) {console.error(e.stack||e.message,e.code,e.where);process.exitCode=1;} finally{await db.close();}

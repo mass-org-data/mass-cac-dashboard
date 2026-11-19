@@ -8,6 +8,8 @@ const fails=async(code,work)=>{await assert.rejects(work,error=>error.code===cod
 const context={p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'};
 try{
  const migration=fs.readFileSync(new URL('../../supabase/migrations/20261110120000_attendance_register_metadata.sql',import.meta.url),'utf8');
+ const writeCutover=fs.readFileSync(new URL('../../supabase/migrations/20261119120000_permission_write_cutover.sql',import.meta.url),'utf8');
+ const activationSeal=fs.readFileSync(new URL('../../supabase/activation/seal.sql',import.meta.url),'utf8');
  const fingerprint=async()=>JSON.stringify((await db.query("SELECT (SELECT md5(string_agg(to_jsonb(a)::text,',' ORDER BY id)) FROM mass_core.attendance_records a) attendance,(SELECT md5(string_agg(to_jsonb(a)::text,',' ORDER BY id)) FROM mass_core.assessment_results a) scores,(SELECT md5(string_agg(to_jsonb(a)::text,',' ORDER BY id)) FROM mass_core.user_scope_grants a) grants,(SELECT md5(string_agg(to_jsonb(a)::text,',' ORDER BY feature)) FROM mass_activation.features a) gates")).rows);
  const before=await fingerprint();
  try{await db.exec(migration.replace('COMMIT;','SELECT 1/0;COMMIT;'));throw Error('Injected failure unexpectedly committed');}catch(error){if(error.code!=='22012')throw error;await db.exec('ROLLBACK;');}
@@ -15,7 +17,7 @@ try{
  check((await db.query("SELECT to_regprocedure('mass_api.student_profile_page(uuid[],date,text,text,text,text,text,integer,integer,text)') rpc")).rows[0].rpc===null);
  check((await db.query("SELECT count(*) n FROM information_schema.columns WHERE table_schema='mass_core' AND table_name='attendance_register_actions' AND column_name='notes'")).rows[0].n===0);
  check((await db.query("SELECT count(*) n FROM mass_core.attendance_codes WHERE code='H'")).rows[0].n===0);
- await db.exec(migration);check(await fingerprint()===before);
+ await db.exec(migration);await db.exec(writeCutover);await db.exec('BEGIN;'+activationSeal+'COMMIT;');check(await fingerprint()===before);
  check((await db.query("SELECT count(*) n FROM mass_core.attendance_codes WHERE code='H'")).rows[0].n===1);
  check((await rpc('get_attendance_register_capabilities')).holiday_code===true);
  const holidayContext={p_centre:centre,p_shift:'Morning',p_date:'2026-07-13'};
@@ -35,7 +37,8 @@ try{
  const secondId=(await db.query('SELECT ch.student_id FROM mass_core.enrolments e JOIN mass_core.children ch ON ch.id=e.child_id WHERE e.id=$1',[nextPage.ids[0]])).rows[0].student_id;
  const searched=await rpc('student_profile_page',{...profileArgs,p_query:secondId});check(searched.total===1&&searched.ids[0]===nextPage.ids[0]);
  check(!JSON.stringify(firstPage).includes('full_name')&&!JSON.stringify(firstPage).includes('gender'));
- for(const actor of [2,4,5,7,8])await fails('42501',()=>rpc('student_profile_page',profileArgs,user(actor)));
+ for(const actor of [2,5,7])await fails('42501',()=>rpc('student_profile_page',profileArgs,user(actor)));
+ for(const actor of [4,8])check((await rpc('student_profile_page',profileArgs,user(actor))).total===firstPage.total);
  for(const role of ['anon','service_role'])await fails('42501',()=>rpc('student_profile_page',profileArgs,user(1),role));
  await fails('22023',()=>rpc('student_profile_page',{...profileArgs,p_limit:101}));
  await fails('22023',()=>rpc('student_profile_page',{...profileArgs,p_sort:'injected column'}));
@@ -60,9 +63,12 @@ try{
   await fails('42501',()=>rpc('read_attendance_register_v3',context,user(actor)));
   await fails('42501',()=>rpc('save_attendance_register_v3',{...edit,p_request:randomUUID()},user(actor)));
  }
- for(const actor of [4,8]){
-  check((await rpc('read_attendance_register_v3',context,user(actor))).roster.every(row=>row.name));
-  await fails('42501',()=>rpc('save_attendance_register_v3',{...edit,p_request:randomUUID()},user(actor)));
+ for(const [actor,date] of [[4,'2026-05-16'],[8,'2026-05-17']]){
+  const leadershipContext={p_centre:centre,p_shift:'Morning',p_date:date};
+  const leadershipRead=await rpc('read_attendance_register_v3',leadershipContext,user(actor));check(leadershipRead.roster.every(row=>row.name));
+  check(await rpc('save_attendance_register_v3',{...leadershipContext,p_request:randomUUID(),p_token:leadershipRead.token,p_rows:[{enrolment:leadershipRead.roster[0].id,code:'P'}],p_reason:'Leadership hierarchy write',p_notes:'Leadership hierarchy test'},user(actor))===1);
+  const leadershipSaved=await rpc('read_attendance_register_v3',leadershipContext,user(actor));
+  check(await rpc('delete_attendance_register_v3',{...leadershipContext,p_request:randomUUID(),p_token:leadershipSaved.token,p_reason:'Leadership hierarchy removal'},user(actor))===1);
  }
  for(const role of ['anon','service_role'])await fails('42501',()=>rpc('save_attendance_register_v3',args,user(1),role));
  await fails('22023',()=>rpc('save_attendance_register_v3',{...edit,p_request:randomUUID(),p_notes:'x'.repeat(2001)}));

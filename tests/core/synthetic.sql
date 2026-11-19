@@ -116,11 +116,8 @@ SELECT core_test.assert_true((SELECT count(*)=2 FROM mass_core.private_child_pro
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004","role":"authenticated"}',false);
 SELECT core_test.assert_true((SELECT count(*)=3 FROM mass_core.children),'Leadership reads granted programme scope');
 SELECT core_test.assert_true((SELECT count(*)=3 FROM mass_core.private_child_profiles),'Leadership reads student identity across all centres');
-SELECT core_test.expect_error($q$SELECT mass_api.register_student('10000000-0000-4000-8000-000000000001','1','Morning','2026-04-01','Synthetic record','Girl')$q$,'42501','Leadership registration denied');
-SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-03','A',1)$q$,'42501','Leadership attendance denied');
-SELECT core_test.expect_error($q$SELECT mass_api.record_assessment(core_test.id('A'),'22000000-0000-4000-8000-000000000001','2026-04-10',20,2)$q$,'42501','Leadership assessment denied');
-SELECT core_test.expect_error($q$SELECT mass_api.create_activity(gen_random_uuid(),'10000000-0000-4000-8000-000000000001','Morning','2026-04-12','Synthetic activity')$q$,'42501','Leadership activity denied');
-SELECT core_test.expect_error($q$SELECT mass_api.add_morarji_member(core_test.id('A2'),'23000000-0000-4000-8000-000000000001')$q$,'42501','Leadership Morarji denied');
+SELECT core_test.assert_true(mass_core.can_write('10000000-0000-4000-8000-000000000001') AND mass_core.can_write('10000000-0000-4000-8000-000000000002'),'Leadership inherits operational write scope across all centres');
+SELECT core_test.assert_true(mass_core.can_write_child((SELECT child_id FROM core_test.ids WHERE label='A')),'Leadership inherits student-related correction scope');
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000005","role":"Leadership","centre":"all"}',false);
 SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.children),'unassigned user and forged business claims reveal no children');
 SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.centres),'unassigned user reveals no centres');
@@ -128,7 +125,7 @@ SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-00000000
 SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.children),'expired scope reads denied');
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-03','A',1)$q$,'42501','expired scope writes denied');
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000008","role":"authenticated"}',false);
-SELECT core_test.assert_true(NOT mass_core.can_write('10000000-0000-4000-8000-000000000002'),'Leadership cannot gain writes through accidental mixed grants');
+SELECT core_test.assert_true(mass_core.can_write('10000000-0000-4000-8000-000000000002') AND NOT mass_core.staff_operational_enabled(),'governed Leadership writes do not depend on mixed legacy grants or override');
 RESET ROLE;
 SELECT set_config('request.jwt.claims','',false);
 SET ROLE anon;
@@ -165,13 +162,13 @@ SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-00000000
 SELECT core_test.assert_true((SELECT count(*)=0 FROM mass_core.children),'revocation removes reads immediately');
 SELECT core_test.expect_error($q$SELECT mass_api.record_attendance(core_test.id('A'),'2026-04-03','A',1)$q$,'42501','revocation removes writes immediately');
 ROLLBACK;
--- Every Leadership business mutation path must remain read-only.
+-- Leadership now inherits operational mutation authority across all centres.
+-- The exhaustive rollback-isolated RPC matrix verifies those paths later; keep
+-- this core suite focused on the resulting governed scope and private audit ACL.
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004"}',false);
-SELECT core_test.expect_error($q$SELECT mass_api.close_enrolment(core_test.id('A-new'),1,'2026-08-01','Active')$q$,'42501','Leadership enrolment close denied');
-SELECT core_test.expect_error($q$SELECT mass_api.add_enrolment((SELECT child_id FROM core_test.ids WHERE label='A'),'10000000-0000-4000-8000-000000000001','3','Morning','2026-08-01','Active')$q$,'42501','Leadership assignment creation denied');
-SELECT core_test.expect_error($q$SELECT mass_api.record_participation(core_test.id('A'),'30000000-0000-4000-8000-000000000001',false,2)$q$,'42501','Leadership participation denied');
-SELECT core_test.expect_error($q$SELECT mass_api.record_morarji((SELECT id FROM mass_core.cohort_memberships LIMIT 1),true,true,true,'Synthetic school reference',1)$q$,'42501','Leadership outcome correction denied');
+SELECT core_test.assert_true(mass_core.can_write('10000000-0000-4000-8000-000000000001'),'Leadership inherits centre A writes');
+SELECT core_test.assert_true(mass_core.can_write('10000000-0000-4000-8000-000000000002'),'Leadership inherits centre B writes');
 SELECT core_test.expect_error('SELECT * FROM mass_foundation.audit_events','42501','authenticated programme role cannot read private audit');
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002"}',false);
 DO $$ DECLARE t text; n bigint; BEGIN

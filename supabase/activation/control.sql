@@ -46,7 +46,14 @@ DO $optional$ BEGIN
 END;$optional$;
 CREATE FUNCTION mass_core.operation_enabled(p_feature text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$
  SELECT current_setting('role')='authenticated' AND mass_core.request_user_id() IS NOT NULL
- AND (coalesce((SELECT enabled FROM mass_activation.features WHERE feature=p_feature),false) OR (p_feature='visit_entry' AND mass_core.staff_operational_enabled()))
+ AND (coalesce((SELECT enabled FROM mass_activation.features WHERE feature=CASE
+  WHEN pg_catalog.to_regprocedure('mass_core.governed_can_write(uuid)') IS NULL THEN p_feature
+  ELSE CASE p_feature
+   WHEN 'attendance_corrections' THEN 'attendance_entry'
+   WHEN 'assessment_corrections' THEN 'assessment_entry'
+   WHEN 'visit_corrections' THEN 'visit_entry'
+   ELSE p_feature END
+  END),false) OR (pg_catalog.to_regprocedure('mass_core.governed_can_write(uuid)') IS NULL AND p_feature='visit_entry' AND mass_core.staff_operational_enabled()))
 $$;
 CREATE FUNCTION mass_core.require_operation_enabled(p_feature text) RETURNS void LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
 BEGIN

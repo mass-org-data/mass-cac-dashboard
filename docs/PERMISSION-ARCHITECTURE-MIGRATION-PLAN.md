@@ -39,7 +39,8 @@ The owner authorized implementation, branch Preview deployment, and changes to t
 - Phase 1 deployed to Preview in `20261118120000_permission_governance_foundation.sql`: private forced-RLS user/assignment records, deterministic backfill and candidate authorization helpers. Existing runtime authorization remains authoritative.
 - Phase 2 deployed to Preview in `20261118130000_permission_scope_reconciliation.sql`: trusted dual-read comparison and a mandatory drift assertion.
 - Phase 3 deployed to Preview in `20261118140000_permission_read_cutover.sql`: governed centre reads, one-role context, current-student identity scope and reviewed SECURITY DEFINER read corrections. Legacy write authority remains until Phase 4, intersected with governed active status/scope. Postflight found three reconciled users, zero role/status/centre mismatches and no anonymous or service-role execution of the governed context API. Production remains unchanged.
-- Phases 4–8 remain pending.
+- Phase 4 is implemented in `20261119120000_permission_write_cutover.sql`: governed hierarchical writes, creation/correction parity, Leadership global operational writes, CO-or-higher visit authority, retired operational overrides and coherent attendance release controls.
+- Phases 5–8 remain pending.
 
 ## 2. Approved business rules
 
