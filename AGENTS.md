@@ -332,6 +332,7 @@ This section supersedes older statements above that describe permissions as defe
 Plan and release evidence:
 
 - `docs/PERMISSION-ARCHITECTURE-MIGRATION-PLAN.md`
+- `docs/PERMISSION-ARCHITECTURE-REMAINING-WORK.md` (colleague handoff, remaining Phases 7–8, acceptance and release boundaries)
 - `docs/releases/2026-11-20/PERMISSION-PHASE-6-FRONTEND-CUTOVER.md`
 
 ### Completed phases
