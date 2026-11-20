@@ -2,6 +2,8 @@
 
 **Date:** 20 November 2026  
 **Branch:** `fix/permission-architecture`  
+**Implementation commit:** `1acfcb1fe0b89af4eded6ec356d2427696659c28`  
+**Protected Preview:** <https://mass-cac-dashboard-rfaenhepd-mass-data-dashboard.vercel.app/> (`READY`)  
 **Environment:** Preview only  
 **Production:** unchanged
 
@@ -51,4 +53,4 @@ Production verification established that the migration is absent and both new ex
 - `npm run build`
 - `npm run test:sql:portable` — includes Phase 6 export-gate and attendance-identity assertions
 
-The hosted Vercel Preview URL and final commit are recorded after the branch deployment completes.
+Vercel confirms that the protected Preview was built from the implementation commit on `fix/permission-architecture` and reached `READY`. The repository's Preview/Production isolation guard ran as part of that build. Automated fetching was not performed because the available protected-deployment tool would create a temporary share link accessible to anyone holding it; no such broader access was authorized. Signed-in role-by-role manual acceptance therefore remains a review step for the owner.
