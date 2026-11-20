@@ -41,7 +41,8 @@ The owner authorized implementation, branch Preview deployment, and changes to t
 - Phase 3 deployed to Preview in `20261118140000_permission_read_cutover.sql`: governed centre reads, one-role context, current-student identity scope and reviewed SECURITY DEFINER read corrections. Legacy write authority remains until Phase 4, intersected with governed active status/scope. Postflight found three reconciled users, zero role/status/centre mismatches and no anonymous or service-role execution of the governed context API. Production remains unchanged.
 - Phase 4 deployed to Preview in `20261119120000_permission_write_cutover.sql`: governed hierarchical writes, creation/correction parity, Leadership global operational writes, CO-or-higher visit authority, retired operational overrides and coherent attendance release controls. Postflight found all three governance users reconciled with zero drift; synthetic contexts report Teacher 1/1 writable centre, Cluster Officer 9/9 and Leadership 92/92. Direct Teacher/CO foreign-centre reads remain denied, anonymous context remains denied, release-gate values were preserved and Production remains unchanged.
 - Phase 5 deployed to Preview in `20261119150000_permission_destructive_workflows.sql`: narrow deletion RPCs for individual attendance, individual and explicit-register assessments, visits and Leadership-only student cascades; immutable non-PII receipts; version/preview tokens; idempotent requests; and fail-closed dependency checks. Student deletion remains disabled behind its new release gate, and visit deletion follows the existing disabled Preview visit gate. Direct table deletion remains unavailable. Local isolated tests cover stale tokens, atomicity, shared-object retention, NULL historical assessment dates, cross-CO visit deletion and receipt privacy. Preview postflight found seven protected APIs, forced RLS, closed anonymous/service ACLs and zero receipts; Production remains unchanged. Frontend confirmations are Phase 6.
-- Phases 5–8 remain pending.
+- Phase 6 deployed to Preview in `20261119180000_permission_frontend_cutover.sql` and the React interface: one server-selected role, no role switcher, capability-driven hierarchical screens, Leadership operational access, Leadership-only bulk export, scoped CO/Leadership visit logs, deletion confirmations, and immediate local sign-out after a server authorization failure. Preview postflight confirmed both server export gates and the attendance record identifier required by narrow deletion. Existing activation switches were preserved and Production remains unchanged. At the owner's direction, the legacy `/vanilla/` interface was not modified because it will be removed in a later phase.
+- Phases 7–8 remain pending.
 
 ## 2. Approved business rules
 
@@ -278,7 +279,7 @@ This requires replacing selected `ON DELETE RESTRICT` constraints and immutable 
 
 ### Phase 6 - Frontend cutover
 
-For the React interface and maintained `/vanilla/` fallback:
+For the React interface only. The owner accepted the new interface and directed that `/vanilla/` remain unchanged pending its removal in a later phase:
 
 - remove the role selector and role-specific review-view controls;
 - consume one server role and capability map;

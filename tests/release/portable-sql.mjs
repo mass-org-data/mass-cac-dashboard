@@ -30,6 +30,7 @@ try {
  await runSqlScript(db,read('tests/security/permission-reconciliation.sql'));console.log('PASS private dual-read reconciliation and cutover drift gate');
  await runSqlScript(db,read('tests/security/permission-read-cutover.sql'));console.log('PASS governed read cutover, one-role context, current profiles and immediate assignment denial');
  await runSqlScript(db,read('tests/security/permission-write-cutover.sql'));console.log('PASS governed write hierarchy, date independence and immediate inactive denial');
+ await runSqlScript(db,read('tests/security/permission-frontend-cutover.sql'));console.log('PASS frontend cutover export gates and versioned attendance identity');
  await runSqlScript(db,read('tests/release/visits.sql'));console.log('PASS existing visit/delivery/scoped reporting SQL assertions');
  await runSqlScript(db,read('tests/release/batched-reads.sql'));console.log('PASS batched visit, Morarji and profile reads equal the single-centre functions and keep their scope');
  await runSqlScript(db,read('tests/reviewed-calculations/synthetic.sql'));

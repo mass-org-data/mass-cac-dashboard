@@ -79,6 +79,7 @@ export function createVisitsService(rpc: Rpc, limit: (job: () => Promise<unknown
       });
     },
     record: (v: NewVisit) => rpc<number>('record_visit', {p_id: v.id, p_assignment: v.assignment, p_shift: v.shift, p_date: v.date, p_status: v.status, p_feedback: v.feedback, p_next_action: v.nextAction, p_expected: 0, p_reason: null}),
+    deleteVisit: (request: string, visit: string, expected: number, reason: string) => rpc<unknown>('delete_visit', {p_request: request, p_visit: visit, p_expected: expected, p_reason: reason.trim()}),
   };
 }
 export type VisitsService = ReturnType<typeof createVisitsService>;

@@ -17,7 +17,7 @@ export type SortKey = 'centre' | 'shift' | 'date' | 'present' | 'percentage' | '
 export interface PageRequest {offset: number; sort: SortKey; reverse: boolean; limit?: number; query?: string}
 export interface Distribution {days: Array<{days: number; students: number}>; recorded_students?: number}
 export interface RosterStudent {id: string; name: string | null; grade: string; student_id?: string}
-export interface RegisterRead {roster: RosterStudent[]; marks: Array<{enrolment: string; code: string; version?: number}>; token: string; marks_token?: string; recorded: number; notes?: string}
+export interface RegisterRead {roster: RosterStudent[]; marks: Array<{id?: string; enrolment: string; code: string; version?: number}>; token: string; marks_token?: string; recorded: number; notes?: string}
 
 export const PAGE_SIZE = 10;
 /** The new interface supports the current register API (version 3 or later with paging and classroom sessions). */
@@ -61,6 +61,7 @@ export function createAttendanceService(rpc: Rpc) {
     saveClassroom: (args: Record<string, unknown>) => rpc<unknown>('save_classroom_register', args),
     saveHoliday: (args: Record<string, unknown>) => rpc<unknown>('save_centre_holiday', args),
     deleteRegister: (args: Record<string, unknown>) => rpc<unknown>('delete_attendance_register_v3', args),
+    deleteRecord: (request: string, record: string, expected: number, reason: string) => rpc<unknown>('delete_attendance_record', {p_request: request, p_record: record, p_expected: expected, p_reason: reason.trim()}),
   };
 }
 export type AttendanceService = ReturnType<typeof createAttendanceService>;

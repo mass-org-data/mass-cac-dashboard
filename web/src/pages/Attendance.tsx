@@ -70,7 +70,7 @@ export function Attendance({backend, context, role, service: injected, overview:
 
   const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
   // Same entry rule as the current register: write access is per centre, only for the active operational role, never Leadership.
-  const writable = useMemo(() => scope.filter(c => c.can_write && role !== 'Leadership' && (context.operational_roles_enabled === true || !context.centres.some(x => x.roles.includes('Leadership')))), [scope, context, role]);
+  const writable = useMemo(() => scope.filter(c => c.can_write), [scope]);
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
 
   const year = boot.status === 'ready' ? (boot.value.refs.academic_years.find(y => y.starts_on <= today && today < y.ends_before) ?? [...boot.value.refs.academic_years].sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0]) : null;
@@ -172,7 +172,7 @@ export function Attendance({backend, context, role, service: injected, overview:
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">{t('attendance.intro')}</p>
-        {canWrite ? <Button onClick={() => openEditor()}>{t('attendance.add')}</Button> : <p className="text-xs text-muted">{t(role === 'Leadership' ? 'attendance.leadershipOnly' : caps.enabled ? 'attendance.noCentreWrite' : 'attendance.disabled')}</p>}
+        {canWrite ? <Button onClick={() => openEditor()}>{t('attendance.add')}</Button> : <p className="text-xs text-muted">{t(caps.enabled ? 'attendance.noCentreWrite' : 'attendance.disabled')}</p>}
       </div>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
@@ -194,7 +194,7 @@ export function Attendance({backend, context, role, service: injected, overview:
         <div aria-busy={registerBusy} className={registerBusy ? 'opacity-60 transition-opacity' : undefined}>
         <DataTable<RegisterRow>
           reference="2.4" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}`}
-          exportName={`MASS-attendance-register-${month}`} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
+          exportName={context.capabilities?.export === true ? `MASS-attendance-register-${month}` : undefined} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
         />
         </div>
       )}
@@ -210,7 +210,7 @@ export function Attendance({backend, context, role, service: injected, overview:
           <p className="mt-2 text-xs text-muted">{t('attendance.recordedStudentHelp', {count: formatCount(distribution.status === 'ready' ? distribution.value.recorded_students ?? null : null)})}</p>
         </ChartCard>
         <DataTable<CentreRow>
-          reference="2.7" caption={t('attendance.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={`MASS-attendance-by-centre-${month}`}
+          reference="2.7" caption={t('attendance.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-attendance-by-centre-${month}` : undefined}
           state={future ? 'empty' : centreTable.result.status} server={centreTable.server} emptyMessage={future ? t('common.future') : t('overview.noCentres')} errorMessage={centreTable.error} onRetry={centreTable.retry}
         />
       </div>

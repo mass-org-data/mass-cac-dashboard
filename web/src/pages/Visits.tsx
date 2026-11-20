@@ -3,6 +3,8 @@ import {AsyncState} from '../components/AsyncState';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {Button} from '../components/ui/button';
+import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
+import {Input} from '../components/ui/input';
 import {VisitDialog} from '../visits/VisitDialog';
 import {createVisitsService, monthWindow, type Assignment, type OfficerRow, type SummaryRow, type VisitRow, type VisitsService} from '../visits/service';
 import {academicMonths, monthLabel, todayIst} from '../lib/dates';
@@ -46,11 +48,15 @@ export function Visits({backend, context, role, service: injected, tables: injec
   const [refreshKey, setRefreshKey] = useState(0);
   const [recording, setRecording] = useState(false);
   const [notice, setNotice] = useState('');
+  const [deleting, setDeleting] = useState<(VisitRow & {request: string}) | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     let live = true;
     setBoot({status: 'loading'});
-    Promise.all([backend.readReferences(), backend.readCapabilities(), role === 'Cluster Officer' ? service.assignments() : Promise.resolve([] as Assignment[])])
+    Promise.all([backend.readReferences(), backend.readCapabilities(), role !== 'Teacher' ? service.assignments() : Promise.resolve([] as Assignment[])])
       .then(([refs, capabilities, assignments]) => { if (live) setBoot({status: 'ready', value: {refs, capabilities, assignments}}); })
       .catch(error => { if (live) setBoot({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
@@ -58,7 +64,7 @@ export function Visits({backend, context, role, service: injected, tables: injec
 
   const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
-  const writable = useMemo(() => scope.filter(c => c.can_write && role === 'Cluster Officer' && (context.operational_roles_enabled === true || !context.centres.some(x => x.roles.includes('Leadership')))), [scope, context, role]);
+  const writable = useMemo(() => scope.filter(c => c.can_write && role !== 'Teacher'), [scope, role]);
   const refs = boot.status === 'ready' ? boot.value.refs : null;
   const year = refs ? (refs.academic_years.find(y => y.starts_on <= today && today < y.ends_before) ?? [...refs.academic_years].sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0]) : undefined;
   const months = useMemo(() => (year ? academicMonths(year.starts_on) : []), [year]);
@@ -100,7 +106,15 @@ export function Visits({backend, context, role, service: injected, tables: injec
   const loadCoverage = useCallback((request: TableRequest) => month ? tables.page<SummaryRow>('visit_centres', selected.map(c => c.id), tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, tableKey, month]);
   const coverageTable = useServerTable<SummaryRow>({key: tableKey, load: loadCoverage, initialSort: 'centre', refreshKey});
   const logCentres = useMemo(() => writable.filter(c => selected.some(s => s.id === c.id)).map(c => c.id), [writable, selected]);
-  const loadLog = useCallback((request: TableRequest) => month ? tables.page<VisitRow>('visit_log', logCentres, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, tableKey, logCentres, month]);
+  const loadLog = useCallback(async (request: TableRequest) => {
+    if (!month) return {rows: [], total: 0};
+    const needle = request.query.trim().toLowerCase();
+    const rows = (await service.log(logCentres, month)).filter(row => !needle || `${nameOf.get(row.centre_id) ?? ''} ${row.shift_code} ${row.status} ${row.feedback} ${row.next_action}`.toLowerCase().includes(needle));
+    const value = (row: VisitRow) => request.sort === 'centre' ? nameOf.get(row.centre_id) ?? row.centre_id : request.sort === 'shift' ? row.shift_code : request.sort === 'status' ? row.status : request.sort === 'feedback' ? row.feedback : request.sort === 'next' ? row.next_action : row.visit_date;
+    rows.sort((a, b) => String(value(a)).localeCompare(String(value(b)), 'en', {numeric: true}) || a.id.localeCompare(b.id));
+    if (request.reverse) rows.reverse();
+    return {rows: rows.slice(request.offset, request.offset + request.limit), total: rows.length};
+  }, [service, tableKey, logCentres, month, nameOf]);
   const logTable = useServerTable<VisitRow>({key: JSON.stringify([tableKey, logCentres]), load: loadLog, initialSort: 'date', initialReverse: true, refreshKey});
 
   const officerColumns = useMemo<Column<OfficerLine>[]>(() => [
@@ -121,11 +135,12 @@ export function Visits({backend, context, role, service: injected, tables: injec
     {id: 'status', header: t('common.status'), value: r => r.status},
     {id: 'feedback', header: t('visit.feedbackShort'), value: r => r.feedback},
     {id: 'next', header: t('visit.nextAction'), value: r => r.next_action},
+    {id: 'action', header: t('common.action'), sortable: false, value: () => t('common.delete'), cell: r => <Button variant="ghost" size="sm" className="text-bad" onClick={() => { setDeleting({...r, request: crypto.randomUUID()}); setDeleteReason(''); setDeleteError(''); }}>{t('common.delete')}</Button>},
   ], [nameOf, t]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('visit.preparing')} rows={5} />;
   if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{boot.value.assignments.length === 0 ? t('visit.noAssignment') : t('visit.multipleIdentities', {count: officerIds.length})}</p>;
-  const canRecord = role === 'Cluster Officer' && boot.value.assignments.length > 0 && writable.length > 0;
+  const canRecord = role !== 'Teacher' && boot.value.assignments.length > 0 && writable.length > 0;
   const entryEnabled = boot.value.capabilities.writes?.visit_entry === true;
   const msg = data.status === 'error' ? data.message : undefined;
   const heading = t(role === 'Leadership' ? 'visit.officerVisits' : 'visit.yourCentres');
@@ -154,17 +169,18 @@ export function Visits({backend, context, role, service: injected, tables: injec
       <p className="rounded-md bg-brand-soft p-3 text-sm">{t('visit.rule')}</p>
 
       <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-        <DataTable<OfficerLine> reference="5.5" caption={t('visit.byOfficer')} columns={officerColumns} data={officerTable.rows} getRowId={r => r.id} exportName={`MASS-visits-by-officer-${month}`} state={officerTable.result.status} server={officerTable.server} errorMessage={officerTable.error} emptyMessage={t('visit.noAssignments')} onRetry={officerTable.retry} />
-        <DataTable<SummaryRow> reference="5.6" caption={t('visit.coverage')} columns={coverageColumns} data={coverageTable.rows} getRowId={r => r.centre_id} exportName={`MASS-visit-coverage-${month}`} state={coverageTable.result.status} server={coverageTable.server} errorMessage={coverageTable.error} emptyMessage={t('assessment.noCentres')} onRetry={coverageTable.retry} />
+        <DataTable<OfficerLine> reference="5.5" caption={t('visit.byOfficer')} columns={officerColumns} data={officerTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-visits-by-officer-${month}` : undefined} state={officerTable.result.status} server={officerTable.server} errorMessage={officerTable.error} emptyMessage={t('visit.noAssignments')} onRetry={officerTable.retry} />
+        <DataTable<SummaryRow> reference="5.6" caption={t('visit.coverage')} columns={coverageColumns} data={coverageTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-visit-coverage-${month}` : undefined} state={coverageTable.result.status} server={coverageTable.server} errorMessage={coverageTable.error} emptyMessage={t('assessment.noCentres')} onRetry={coverageTable.retry} />
       </div>
 
-      {role === 'Cluster Officer' ? (
-        <DataTable<VisitRow> reference="5.7" caption={t('visit.log')} columns={logColumns} data={logTable.rows} getRowId={r => r.id} exportName={`MASS-visit-log-${month}`}
+      {role !== 'Teacher' ? (
+        <DataTable<VisitRow> reference="5.7" caption={t('visit.log')} columns={logColumns} data={logTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-visit-log-${month}` : undefined}
           state={logTable.result.status} server={logTable.server} errorMessage={logTable.error} emptyMessage={t('visit.noMonth')} onRetry={logTable.retry} />
       ) : null}
       <p className="text-xs text-muted">{t('visit.footnote')}</p>
 
       {recording ? <VisitDialog service={service} assignments={boot.value.assignments} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} initialShift={filters.shift} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setRecording(false)} /> : null}
+      {deleting ? <Dialog open onOpenChange={open => { if (!open && !deleteBusy) setDeleting(null); }}><DialogContent role="alertdialog" aria-describedby="delete-visit-help" onInteractOutside={event => event.preventDefault()}><div><DialogTitle>{t('visit.deleteTitle')}</DialogTitle><DialogDescription id="delete-visit-help">{t('visit.deleteHelp', {date: deleting.visit_date, centre: nameOf.get(deleting.centre_id) ?? deleting.centre_id})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('visit.deleteReason')}<Input value={deleteReason} maxLength={300} disabled={deleteBusy} onChange={event => setDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{deleteError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={deleteBusy} onClick={() => setDeleting(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={deleteBusy || !deleteReason.trim() || !entryEnabled} onClick={() => { setDeleteBusy(true); service.deleteVisit(deleting.request, deleting.id, deleting.row_version, deleteReason).then(() => { setDeleting(null); setDeleteBusy(false); void afterSave(t('visit.deleteSuccess')); }).catch(error => { setDeleteError(messageOf(error)); setDeleteBusy(false); }); }}>{t(deleteBusy ? 'common.deleting' : 'common.delete')}</Button></div>{entryEnabled ? null : <p className="text-xs text-muted">{t('common.activationPending')}</p>}</DialogContent></Dialog> : null}
     </div>
   );
 }

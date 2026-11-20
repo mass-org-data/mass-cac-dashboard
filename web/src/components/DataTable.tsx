@@ -43,7 +43,7 @@ export interface DataTableProps<T> {
   caption: string;
   getRowId: (row: T) => string;
   /** Base name of the exported file, without extension. */
-  exportName: string;
+  exportName?: string;
   state?: LoadState;
   errorMessage?: string;
   emptyMessage?: string;
@@ -141,7 +141,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
   const last = Math.min(filteredCount, (pageIndex + 1) * PAGE_SIZE);
 
   const exportCsv = async () => {
-    if (exporting) return;
+    if (exporting || !exportName) return;
     setExporting(true);
     try {
       const records = server?.exportRows ? await server.exportRows() : (server ? table.getRowModel() : table.getSortedRowModel()).rows.map(row => row.original);
@@ -158,7 +158,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
           <Search aria-hidden="true" className="pointer-events-none absolute bottom-3 left-3 size-4 text-muted" />
           <Input id={searchId} type="search" value={server ? server.query ?? '' : search} onChange={event => server?.onQueryChange ? server.onQueryChange(event.target.value) : setSearch(event.target.value)} placeholder={t('table.filterPlaceholder')} className="pl-9" autoComplete="off" />
         </div>}
-        <Button variant="outline" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{t(exporting ? 'table.exporting' : 'table.export')}</Button>
+        {exportName ? <Button variant="outline" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{t(exporting ? 'table.exporting' : 'table.export')}</Button> : null}
       </div>
       <div className="max-h-[62vh] overflow-auto rounded-md border border-line">
         <table aria-labelledby={captionId} className="w-full border-collapse text-sm">

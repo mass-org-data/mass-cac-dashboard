@@ -93,14 +93,12 @@ describe('Attendance page', () => {
     expect(service.readRegister).toHaveBeenLastCalledWith('c1', 'Morning', '2026-11-29');
   });
 
-  it('is read only for Leadership: no add button, no edit buttons', async () => {
-    setup({role: 'Leadership', context: mk(['Leadership'], false)});
+  it('gives Leadership inherited attendance entry across its writable scope', async () => {
+    setup({role: 'Leadership', context: mk(['Leadership'], true)});
     const table = await register();
     await waitFor(() => expect(bodyRows(table)).toHaveLength(10));
-    expect(screen.queryByRole('button', {name: 'Add Attendance'})).not.toBeInTheDocument();
-    expect(screen.getByText('Leadership views attendance only.')).toBeInTheDocument();
-    expect(within(table).queryByRole('button', {name: /Edit attendance/})).not.toBeInTheDocument();
-    expect(within(table).getAllByText('View only').length).toBe(10);
+    expect(screen.getByRole('button', {name: 'Add Attendance'})).toBeInTheDocument();
+    expect(within(table).getAllByRole('button', {name: /^Edit:/})).toHaveLength(10);
   });
 
   it('hides entry and explains why when the register is not enabled for entry', async () => {

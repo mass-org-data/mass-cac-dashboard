@@ -1,15 +1,13 @@
-import {useMemo} from 'react';
 import type {ProgrammeContext} from '../session/controller';
 import {useI18n} from '../i18n/I18n';
 
-const ROLE_ORDER = ['Leadership', 'Cluster Officer', 'Teacher'];
 const section = 'rounded-lg border border-line bg-white p-4 shadow-sm';
 
 // The simple general About page of the live application: access, reporting rules and data coverage.
 // It states the approved rules in plain words and shows only what the server has verified for this account.
 export function About({context, role}: {context: ProgrammeContext; role: string}) {
   const {t} = useI18n();
-  const access = useMemo(() => ROLE_ORDER.map(name => ({name, centres: context.centres.filter(c => c.roles.includes(name)).length})).filter(row => row.centres > 0), [context]);
+  const access = [{name: role, centres: context.centres.length}];
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">{t('about.intro')}</p>
@@ -19,7 +17,7 @@ export function About({context, role}: {context: ProgrammeContext; role: string}
           <p className="text-sm">{t('about.accessBody')}</p>
           <ul aria-label={t('about.verifiedRoles')} className="mt-3 space-y-1 text-sm">
             {access.map(row => (
-              <li key={row.name}><strong>{row.name}</strong>{row.name === role ? ` (${t('about.active')})` : ''}: {row.centres} {t(row.centres === 1 ? 'about.centre' : 'about.centres')}{row.name === 'Leadership' ? `, ${t('about.readOnly')}` : ''}</li>
+              <li key={row.name}><strong>{row.name}</strong> ({t('about.active')}): {row.centres} {t(row.centres === 1 ? 'about.centre' : 'about.centres')}</li>
             ))}
           </ul>
         </section>
@@ -34,7 +32,7 @@ export function About({context, role}: {context: ProgrammeContext; role: string}
       </div>
       <section aria-labelledby="about-export" className={section}>
         <h2 id="about-export" className="mb-2 text-lg font-semibold">{t('about.exportsTitle')}</h2>
-        <p className="text-sm">{t('about.exportsBody')}</p>
+        <p className="text-sm">{t(context.capabilities?.export === true ? 'about.exportsBody' : 'about.exportsLeadershipOnly')}</p>
       </section>
     </div>
   );

@@ -5,6 +5,8 @@ import {ColumnChart} from '../components/charts/ColumnChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {Button} from '../components/ui/button';
+import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
+import {Input} from '../components/ui/input';
 import {EntryDialog} from '../assessments/EntryDialog';
 import {createAssessmentsService, type AssessmentsService, type RegisterRow} from '../assessments/service';
 import {type OverviewService, type Report} from '../data/overview';
@@ -53,6 +55,10 @@ export function Assessments({backend, context, role, service: injected, overview
   const [refreshKey, setRefreshKey] = useState(0);
   const [entering, setEntering] = useState(false);
   const [notice, setNotice] = useState('');
+  const [deletingRegister, setDeletingRegister] = useState<{row: RegisterRow; definition: string; count: number; token: string; request: string} | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -66,7 +72,7 @@ export function Assessments({backend, context, role, service: injected, overview
   }, [backend, bootAttempt, t]);
 
   const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
-  const writable = useMemo(() => scope.filter(c => c.can_write && role !== 'Leadership' && (context.operational_roles_enabled === true || !context.centres.some(x => x.roles.includes('Leadership')))), [scope, context, role]);
+  const writable = useMemo(() => scope.filter(c => c.can_write), [scope]);
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
   const refs = boot.status === 'ready' ? boot.value.refs : null;
   const year = refs ? (refs.academic_years.find(y => y.starts_on <= today && today < y.ends_before) ?? [...refs.academic_years].sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0]) : undefined;
@@ -101,6 +107,15 @@ export function Assessments({backend, context, role, service: injected, overview
   const centreTable = useServerTable<CentreRow>({key: JSON.stringify([key, round]), load: loadCentres, initialSort: 'centre', refreshKey});
   const loadRegister = useCallback((request: TableRequest) => year ? tables.page<RegisterRow>('assessment_register', selection.centres, {year: year.id, shift: selection.shift, grade: selection.grade, gender: selection.gender}, request) : Promise.resolve({rows: [], total: 0}), [tables, key, year]);
   const registerTable = useServerTable<RegisterRow>({key, load: loadRegister, initialSort: 'date', initialReverse: true, refreshKey});
+  const openRegisterDeletion = useCallback(async (row: RegisterRow) => {
+    if (!refs || !year) return;
+    const period = refs.assessment_periods.find(p => p.academic_year_id === year.id && p.quarter === row.quarter);
+    const definition = refs.assessment_definitions.find(d => d.period_id === period?.id)?.id;
+    if (!definition) { setNotice(t('assessment.definitionMissing')); return; }
+    setDeleteError(''); setDeleteReason('');
+    try { const preview = await service.previewRegisterDeletion(row.centre_id, row.shift_code, definition, row.assessment_date); setDeletingRegister({row, definition, count: preview.count, token: preview.token, request: crypto.randomUUID()}); }
+    catch (error) { setNotice(messageOf(error)); }
+  }, [refs, year, service, t]);
   const centreColumns = useMemo<Column<CentreRow>[]>(() => [
     {id: 'centre', header: t('common.centre'), value: r => r.centre_label},
     {id: 'students', header: t('assessment.studentsScores'), value: r => Number(r.score_n ?? 0), numeric: true},
@@ -116,7 +131,8 @@ export function Assessments({backend, context, role, service: injected, overview
     {id: 'created', header: t('assessment.createdBy'), value: r => r.created_by ?? t('common.notRecorded')},
     {id: 'edited', header: t('assessment.lastEditedBy'), value: r => r.last_edited_by ?? t('common.notRecorded')},
     {id: 'at', header: t('assessment.lastEditedAt'), value: r => r.last_edited_at ?? t('common.notRecorded')},
-  ], [nameOf, t]);
+    {id: 'action', header: t('common.action'), sortable: false, value: () => t('common.delete'), cell: r => writable.some(c => c.id === r.centre_id) ? <Button variant="ghost" size="sm" className="text-bad" onClick={() => void openRegisterDeletion(r)}>{t('common.delete')}</Button> : null},
+  ], [nameOf, writable, openRegisterDeletion, t]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('assessment.preparing')} rows={5} />;
   const canEnter = writable.length > 0 && Boolean(year);
@@ -127,8 +143,8 @@ export function Assessments({backend, context, role, service: injected, overview
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{t(role === 'Leadership' ? 'assessment.leadershipIntro' : 'assessment.operationalIntro')}</p>
-        {canEnter ? <Button onClick={() => { setNotice(''); setEntering(true); }}>{t('assessment.enter')}</Button> : <p className="text-xs text-muted">{t(role === 'Leadership' ? 'assessment.leadershipOnly' : 'assessment.noEntry')}</p>}
+        <p className="text-sm text-muted">{t('assessment.operationalIntro')}</p>
+        {canEnter ? <Button onClick={() => { setNotice(''); setEntering(true); }}>{t('assessment.enter')}</Button> : <p className="text-xs text-muted">{t('assessment.noEntry')}</p>}
       </div>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
@@ -160,7 +176,7 @@ export function Assessments({backend, context, role, service: injected, overview
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DataTable<CentreRow> reference="4.7" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={`MASS-assessment-by-centre-${round_label}`}
+        <DataTable<CentreRow> reference="4.7" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
           state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
         <ChartCard reference="4.8" title={t('assessment.matched')} subtitle={t('assessment.matchedHelp', {from: fromQuarter, to: toQuarter})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
           {change && change.n > 0 ? (
@@ -177,10 +193,11 @@ export function Assessments({backend, context, role, service: injected, overview
       </div>
 
       <DataTable<RegisterRow> reference="4.9" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
-        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName="MASS-assessment-register" state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
+        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
       <p className="text-xs text-muted">{t('assessment.registerFootnote')}</p>
 
       {entering && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setEntering(false)} /> : null}
+      {deletingRegister ? <Dialog open onOpenChange={open => { if (!open && !deleteBusy) setDeletingRegister(null); }}><DialogContent role="alertdialog" aria-describedby="delete-assessment-register-help" onInteractOutside={event => event.preventDefault()}><div><DialogTitle>{t('assessment.deleteRegisterTitle')}</DialogTitle><DialogDescription id="delete-assessment-register-help">{t('assessment.deleteRegisterHelp', {count: deletingRegister.count, round: `F${deletingRegister.row.quarter}`, date: deletingRegister.row.assessment_date ?? t('common.unknown')})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.deleteReason')}<Input value={deleteReason} maxLength={300} disabled={deleteBusy} onChange={event => setDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{deleteError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={deleteBusy} onClick={() => setDeletingRegister(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={deleteBusy || !entryEnabled || !deleteReason.trim()} onClick={() => { setDeleteBusy(true); const d = deletingRegister; service.deleteRegister(d.request, d.row.centre_id, d.row.shift_code, d.definition, d.row.assessment_date, d.token, deleteReason).then(() => { setDeletingRegister(null); setDeleteBusy(false); void afterSave(t('assessment.deleteRegisterSuccess')); }).catch(error => { setDeleteError(messageOf(error)); setDeleteBusy(false); }); }}>{t(deleteBusy ? 'common.deleting' : 'common.delete')}</Button></div>{entryEnabled ? null : <p className="text-xs text-muted">{t('common.activationPending')}</p>}</DialogContent></Dialog> : null}
     </div>
   );
 }

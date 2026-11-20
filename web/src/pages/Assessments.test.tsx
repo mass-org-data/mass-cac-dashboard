@@ -76,11 +76,11 @@ describe('Assessments page', () => {
     setup({reviewed: false});
     expect(await screen.findByText(/has not enabled the reviewed reports/)).toBeInTheDocument();
   });
-  it('is view-only for Leadership', async () => {
+  it('gives Leadership inherited assessment entry', async () => {
     setup({role: 'Leadership'});
     await screen.findByText('32 / 40');
-    expect(screen.queryByRole('button', {name: 'Enter marks'})).not.toBeInTheDocument();
-    expect(screen.getByText('Leadership views assessments only.')).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Enter marks'})).toBeInTheDocument();
+    expect(screen.getByText(/Review one combined CAC test/)).toBeInTheDocument();
   });
   it('opens entry for review with saving off until the gate is on', async () => {
     const user = userEvent.setup();

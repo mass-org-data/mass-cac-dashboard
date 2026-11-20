@@ -25,6 +25,8 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
   const [load, setLoad] = useState<'ready' | 'loading' | 'error'>('ready');
   const [status, setStatus] = useState<'ready' | 'saving' | 'committed'>('ready');
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState<(SavedResult & {request: string}) | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
   const sequence = useRef(0);
 
   // The date decides the round; show it as soon as it is valid.
@@ -93,7 +95,7 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
                           <tr key={s.enrolment} className="odd:bg-white even:bg-paper">
                             <td className="border-b border-line px-3 py-1">{s.name || t('common.nameMissing')}<span className="block text-xs text-muted">{t('assessment.studentMeta', {id: s.studentId, grade: s.grade, shift: s.shift})}{old ? ` · ${t('assessment.savedDate', {date: old.date ?? t('common.unknown')})}` : ''}</span></td>
                             <td className="border-b border-line px-3 py-1">
-                              {old ? <span>{old.score} <span className="text-xs text-muted">({t('assessment.savedCorrection')})</span></span>
+                              {old ? <span className="flex flex-wrap items-center gap-2">{old.score} <span className="text-xs text-muted">({t('assessment.savedCorrection')})</span>{old.id ? <Button variant="ghost" size="sm" className="text-bad" onClick={() => { setDeleting({...old, request: crypto.randomUUID()}); setDeleteReason(''); setError(''); }}>{t('common.delete')}</Button> : null}</span>
                                 : <Input type="number" inputMode="decimal" min={0} max={MAX_SCORE} step="any" aria-label={t('assessment.marksFor', {student: s.name || s.studentId})} value={entered[s.enrolment] ?? ''} disabled={busy} onChange={event => setEntered(v => ({...v, [s.enrolment]: event.target.value}))} />}
                             </td>
                           </tr>
@@ -115,6 +117,7 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
             : <Button onClick={() => void submit()} disabled={!enabled || busy || load !== 'ready' || roster.length === 0}>{t(status === 'saving' ? 'common.saving' : 'assessment.save')}</Button>}
         </div>
       </DialogContent>
+      <Dialog open={Boolean(deleting)} onOpenChange={open => { if (!open && status !== 'saving') setDeleting(null); }}><DialogContent role="alertdialog" className="z-[70] max-w-lg" overlayClassName="z-[60]" aria-describedby="delete-assessment-help"><div><DialogTitle>{t('assessment.deleteResultTitle')}</DialogTitle><DialogDescription id="delete-assessment-help">{t('assessment.deleteResultHelp')}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.deleteReason')}<Input value={deleteReason} maxLength={300} onChange={event => setDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{error}</p><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setDeleting(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={!enabled || !deleting?.id || !deleteReason.trim()} onClick={() => { if (!deleting?.id) return; setStatus('saving'); service.deleteRecord(deleting.request, deleting.id, deleting.version, deleteReason).then(async () => { setDeleting(null); await onSaved(t('assessment.deleteResultSuccess')); onClose(); }).catch(e => { setError(messageOf(e)); setStatus('ready'); }); }}>{t(status === 'saving' ? 'common.deleting' : 'common.delete')}</Button></div></DialogContent></Dialog>
     </Dialog>
   );
 }

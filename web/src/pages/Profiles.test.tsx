@@ -61,11 +61,11 @@ describe('Student profiles page', () => {
     await user.selectOptions(screen.getByLabelText('Grade'), '4');
     await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![0]).toEqual(expect.objectContaining({grade: '4'})));
   });
-  it('does not request any students for Leadership', async () => {
+  it('loads currently enrolled students for Leadership', async () => {
     const {service} = setup({role: 'Leadership'});
-    expect(await screen.findByRole('note')).toHaveTextContent(/aggregate reporting only/);
-    expect(service.page).not.toHaveBeenCalled();
-    expect(service.capabilities).not.toHaveBeenCalled();
+    expect(await screen.findByRole('table', {name: 'Student profiles'})).toBeInTheDocument();
+    expect(service.page).toHaveBeenCalled();
+    expect(service.capabilities).toHaveBeenCalled();
   });
   it('explains an older backend instead of failing', async () => {
     setup({caps: {version: 3}});

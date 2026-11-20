@@ -13,6 +13,7 @@ export type SessionType = 'Classroom' | 'Holiday';
 export interface EditorState {
   centre: string; shift: string; date: string; sessionType: SessionType;
   roster: RosterStudent[]; saved: Record<string, string>; draft: Record<string, string>;
+  savedRecords: Record<string, {id: string; version: number}>;
   notes: string; savedNotes: string; token: string; recorded: number; loaded: boolean;
   request: string; deleting: boolean; reason: string; confirmDelete: boolean;
 }
@@ -20,13 +21,14 @@ export interface EditorState {
 export const newRequest = () => globalThis.crypto.randomUUID();
 
 export function initialEditor(selection: {centre: string; shift: string; date: string}): EditorState {
-  return {...selection, sessionType: 'Classroom', roster: [], saved: {}, draft: {}, notes: '', savedNotes: '', token: '', recorded: 0, loaded: false, request: newRequest(), deleting: false, reason: '', confirmDelete: false};
+  return {...selection, sessionType: 'Classroom', roster: [], saved: {}, draft: {}, savedRecords: {}, notes: '', savedNotes: '', token: '', recorded: 0, loaded: false, request: newRequest(), deleting: false, reason: '', confirmDelete: false};
 }
 
 /** Result of reading the server's register for the selected centre, shift and date. */
 export function applyRead(state: EditorState, read: RegisterRead): EditorState {
   const saved = Object.fromEntries(read.marks.map(mark => [mark.enrolment, mark.code]));
-  return {...state, roster: read.roster, saved, draft: {...saved}, notes: read.notes ?? '', savedNotes: read.notes ?? '', token: read.token, recorded: read.recorded, loaded: true, request: newRequest(), deleting: false, reason: '', confirmDelete: false};
+  const savedRecords = Object.fromEntries(read.marks.filter(mark => mark.id && mark.version != null).map(mark => [mark.enrolment, {id: mark.id!, version: mark.version!}]));
+  return {...state, roster: read.roster, saved, draft: {...saved}, savedRecords, notes: read.notes ?? '', savedNotes: read.notes ?? '', token: read.token, recorded: read.recorded, loaded: true, request: newRequest(), deleting: false, reason: '', confirmDelete: false};
 }
 
 export const changes = (state: EditorState) => changedAttendance(state.roster, state.saved, state.draft) as Array<{enrolment: string; code: string | null}>;

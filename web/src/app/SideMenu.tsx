@@ -4,22 +4,24 @@ import {cn} from '../lib/utils';
 import {ROUTES, type Route} from './route';
 import {useI18n} from '../i18n/I18n';
 import {en, type MessageKey} from '../i18n/en';
+import type {ProgrammeCapabilities} from '../session/controller';
 
 const ICONS: Record<Route, LucideIcon> = {overview: Home, attendance: CalendarDays, profiles: Users, assessments: BookOpen, visits: MapPin, morarji: BarChart3, donors: Heart, about: Info};
 
 /** Every role sees all eight numbered screens so a number always means the same screen. A screen the role cannot use is
  *  shown greyed out and cannot be opened; `unavailableReason` says why (null means the role can open it). */
-export const unavailableReasonKey = (role: string, id: Route): MessageKey | null => {
-  if (id === 'profiles' && role === 'Leadership') return 'menu.profilesLeadership';
-  if (id === 'donors' && role !== 'Leadership') return 'menu.donorsLeadership';
-  if (id === 'visits' && role === 'Teacher') return 'menu.visitsTeacher';
+export const unavailableReasonKey = (_role: string, id: Route, capabilities?: ProgrammeCapabilities): MessageKey | null => {
+  if (id === 'profiles' && capabilities?.read_profiles === false) return 'menu.profilesLeadership';
+  if (id === 'donors' && capabilities?.export !== true) return 'menu.donorsLeadership';
+  if (id === 'visits' && capabilities?.read_visits !== true) return 'menu.visitsTeacher';
   return null;
 };
-export const unavailableReason = (role: string, id: Route): string | null => { const key = unavailableReasonKey(role, id); return key ? en[key] : null; };
+export const unavailableReason = (role: string, id: Route, capabilities?: ProgrammeCapabilities): string | null => { const key = unavailableReasonKey(role, id, capabilities); return key ? en[key] : null; };
 export const itemsFor = (_role: string) => ROUTES;
 
 interface Props {
   role: string;
+  capabilities?: ProgrammeCapabilities;
   route: Route;
   onNavigate: (route: Route) => void;
   /** Desktop: icons only. */
@@ -32,7 +34,7 @@ interface Props {
   legacyHref: string;
 }
 
-export function SideMenu({role, route, onNavigate, collapsed, onToggleCollapsed, mobileOpen, onCloseMobile, legacyHref}: Props) {
+export function SideMenu({role, capabilities, route, onNavigate, collapsed, onToggleCollapsed, mobileOpen, onCloseMobile, legacyHref}: Props) {
   const {t} = useI18n();
   const first = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
@@ -56,7 +58,7 @@ export function SideMenu({role, route, onNavigate, collapsed, onToggleCollapsed,
             {itemsFor(role).map(item => {
               const Icon = ICONS[item.id];
               const active = route === item.id;
-              const reasonKey = unavailableReasonKey(role, item.id);
+              const reasonKey = unavailableReasonKey(role, item.id, capabilities);
               const itemLabel = t(item.labelKey);
               const reason = reasonKey ? t(reasonKey) : null;
               if (reason) return (
