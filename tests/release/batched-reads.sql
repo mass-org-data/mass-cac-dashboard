@@ -14,7 +14,7 @@ SELECT core_test.assert_true((SELECT count(*)=7 AND array_agg(id ORDER BY visit_
 SELECT core_test.assert_true((SELECT count(*)=2 FROM mass_api.read_visits_v2(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-01','2026-11-01',2,0)),'read_visits_v2 honours the limit');
 SELECT core_test.assert_true((SELECT count(*)=5 FROM mass_api.read_visits_v2(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-01','2026-11-01',100,2)),'read_visits_v2 honours the offset');
 SELECT core_test.expect_error($q$SELECT mass_api.visit_coverage(ARRAY['10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002']::uuid[],'2026-10-01','2026-11-01')$q$,'42501','coverage rejects a scope containing an unreadable centre');
-SELECT core_test.expect_error($q$SELECT * FROM mass_api.read_visits_v2(ARRAY['10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002']::uuid[],'2026-10-01','2026-11-01')$q$,'42501','visit log rejects a scope containing a centre the officer cannot record in');
+SELECT core_test.expect_error($q$SELECT * FROM mass_api.read_visits_v2(ARRAY['10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002']::uuid[],'2026-10-01','2026-11-01')$q$,'42501','visit log rejects a scope containing an unreadable centre');
 SELECT core_test.expect_error($q$SELECT mass_api.visit_coverage(NULL,'2026-10-01','2026-11-01')$q$,'42501','coverage rejects a null scope');
 SELECT core_test.expect_error($q$SELECT mass_api.visit_coverage(ARRAY[]::uuid[],'2026-10-01','2026-11-01')$q$,'42501','coverage rejects an empty scope');
 SELECT core_test.expect_error($q$SELECT mass_api.visit_coverage(ARRAY(SELECT '10000000-0000-4000-8000-000000000001'::uuid FROM generate_series(1,101)),'2026-10-01','2026-11-01')$q$,'42501','coverage rejects more than 100 centres');
@@ -22,7 +22,7 @@ SELECT core_test.expect_error($q$SELECT mass_api.visit_coverage(ARRAY['10000000-
 SELECT core_test.expect_error($q$SELECT * FROM mass_api.read_visits_v2(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-01','2026-11-01',501,0)$q$,'22023','visit log rejects an oversize page');
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004"}',false);
 SELECT core_test.assert_true((SELECT (s.v->>'morning')::int=4 AND (s.v->>'evening')::int=2 FROM jsonb_array_elements(mass_api.visit_coverage(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-01','2026-11-01')->'summary') s(v)),'Leadership receives scoped aggregates');
-SELECT core_test.expect_error($q$SELECT * FROM mass_api.read_visits_v2(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-01','2026-11-01')$q$,'42501','Leadership cannot read private visit notes through the batched log');
+SELECT core_test.assert_true((SELECT count(*)=7 FROM mass_api.read_visits_v2(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-01','2026-11-01')),'Leadership can read governed visit detail through the batched log');
 RESET ROLE;
 SET ROLE anon;
 SELECT core_test.expect_error($q$SELECT mass_api.visit_coverage(ARRAY['10000000-0000-4000-8000-000000000001']::uuid[],'2026-10-01','2026-11-01')$q$,'42501','anonymous callers cannot execute visit_coverage');

@@ -3,18 +3,18 @@
 // backend client, the sign-in verification, the read API and the role rules. The server
 // stays the authority: roles come from get_context, and the scope is re-verified every
 // 30 seconds and whenever the tab becomes visible, exactly as in the current interface.
-import {authorizedRoles, defaultAuthorizedRole} from '../../../src/live/role-data.js';
 import type {Language} from '../i18n/I18n';
 import type {MessageKey} from '../i18n/en';
 
 export interface CentreScope {id: string; label: string; roles: string[]; can_write?: boolean}
-export interface ProgrammeContext {user_id: string; centres: CentreScope[]; operational_roles_enabled?: boolean}
+export interface ProgrammeCapabilities {read_operational?: boolean; write_operational?: boolean; read_profiles?: boolean; read_visits?: boolean; export?: boolean; manage_users?: boolean}
+export interface ProgrammeContext {user_id: string; role?: string; roles?: string[]; capabilities?: ProgrammeCapabilities; centres: CentreScope[]; operational_roles_enabled?: boolean}
 
 export type SessionState =
   | {status: 'loading'}
   | {status: 'signed-out'; message?: string; messageKey?: MessageKey}
   | {status: 'error'; messageKey: MessageKey}
-  | {status: 'ready'; userId: string; email: string; defaultLanguage: Language; context: ProgrammeContext; roles: string[]; activeRole: string};
+  | {status: 'ready'; userId: string; email: string; defaultLanguage: Language; context: ProgrammeContext; role: string};
 
 export interface Backend {
   getSession(): Promise<{data: {session: {user?: {id: string; email?: string}} | null}; error: unknown}>;
@@ -24,6 +24,7 @@ export interface Backend {
   readContext(signal?: AbortSignal): Promise<ProgrammeContext>;
   readLanguage?(): Promise<Language>;
   setLanguage?(language: Language): Promise<Language>;
+  onAuthorizationFailure?(callback: () => void): () => void;
 }
 
 export interface Timers {
@@ -55,7 +56,7 @@ export function createSessionController(backend: Backend, timers: Timers = defau
     try {
       const [auth, current] = await Promise.all([backend.getUser(), backend.readContext()]);
       if (auth.error) { if (isAuthorizationFailure(auth.error)) { await endSession('session.ended'); return; } throw auth.error; }
-      if (auth.data.user?.id !== state.userId || current.user_id !== state.userId || JSON.stringify(current.centres) !== fingerprint) {
+      if (auth.data.user?.id !== state.userId || current.user_id !== state.userId || JSON.stringify(current) !== fingerprint) {
         await endSession('session.scopeChanged');
       }
     } catch (error) {
@@ -71,10 +72,10 @@ export function createSessionController(backend: Backend, timers: Timers = defau
     if (identity.error || !identity.data.user || identity.data.user.id !== session.data.session.user?.id) { await endSession('session.ended'); return; }
     const [context, defaultLanguage] = await Promise.all([backend.readContext(), backend.readLanguage?.() ?? Promise.resolve<Language>('en')]);
     if (context.user_id !== identity.data.user.id || !context.centres?.length) { await endSession('session.noScope'); return; }
-    const activeRole = defaultAuthorizedRole(context) as string | null;
-    if (!activeRole) { await endSession('session.noRole'); return; }
-    fingerprint = JSON.stringify(context.centres);
-    set({status: 'ready', userId: identity.data.user.id, email: identity.data.user.email ?? '', defaultLanguage, context, roles: authorizedRoles(context) as string[], activeRole});
+    const role = typeof context.role === 'string' ? context.role : (context.roles?.length === 1 ? context.roles[0] : null);
+    if (!role) { await endSession('session.noRole'); return; }
+    fingerprint = JSON.stringify(context);
+    set({status: 'ready', userId: identity.data.user.id, email: identity.data.user.email ?? '', defaultLanguage, context, role});
     stopVerifying();
     timer = timers.setInterval(() => { void verify(); }, 30_000);
   }
@@ -91,12 +92,6 @@ export function createSessionController(backend: Backend, timers: Timers = defau
       await this.start();
     },
     async signOut() { await endSession(); },
-    /** Only roles the server returned can be selected. */
-    selectRole(role: string) {
-      if (state.status !== 'ready' || !state.roles.includes(role)) return false;
-      set({...state, activeRole: role});
-      return true;
-    },
     async setDefaultLanguage(language: Language) {
       if (state.status !== 'ready' || !backend.setLanguage) return false;
       const saved = await backend.setLanguage(language);

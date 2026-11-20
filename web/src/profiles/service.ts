@@ -28,6 +28,7 @@ export const isProfileSupported = (c: ProfileCapabilities | null): c is ProfileC
 
 export interface NewStudent {request: string; centre: string; grade: string; shift: string; start: string; name: string; gender: string | null}
 export interface ProfileEdit {child: string; enrolment: string; revision: number; name: string; gender: string | null; board: boolean | null; year?: {id: string; status: string; version: number}}
+export interface StudentDeletionPreview {child_id: string; counts: Record<string, number>; token: string}
 
 export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unknown>) => Promise<unknown> = createLimiter(6), now: () => number = Date.now) {
   // Rosters are kept for five minutes (and until a save calls clear()), then read again.
@@ -90,6 +91,8 @@ export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unkno
         ? rpc<unknown>('save_student_profile_year', {...base, p_enrolment: edit.enrolment, p_profile_expected: edit.revision, p_year: edit.year.id, p_status: edit.year.status, p_year_expected: edit.year.version})
         : rpc<unknown>('correct_profile', {...base, p_expected: edit.revision});
     },
+    previewDeletion: (child: string) => rpc<StudentDeletionPreview>('preview_student_deletion', {p_child: child}),
+    deleteStudent: (request: string, child: string, token: string, reason: string) => rpc<unknown>('delete_student_cascade', {p_request: request, p_child: child, p_token: token, p_reason: reason.trim()}),
   };
 }
 export type ProfilesService = ReturnType<typeof createProfilesService>;

@@ -65,11 +65,13 @@ SELECT mass_api.record_visit('60000000-0000-4000-8000-000000000007','58000000-00
 SELECT core_test.assert_true((SELECT morning=4 AND evening=2 AND achieved AND recorded_count=7 FROM mass_api.visit_summary('10000000-0000-4000-8000-000000000001','2026-10-01','2026-11-01')),'completed counts uncapped; planned not counted; both shifts qualify');
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004"}',false);
 SELECT core_test.assert_true((SELECT morning=4 AND evening=2 FROM mass_api.visit_summary('10000000-0000-4000-8000-000000000001','2026-10-01','2026-11-01')),'Leadership receives scoped aggregates');
-SELECT core_test.expect_error($q$SELECT * FROM mass_api.read_visits('10000000-0000-4000-8000-000000000001','2026-10-01','2026-11-01')$q$,'42501','Leadership cannot read private visit notes');
-SELECT core_test.expect_error($q$SELECT * FROM mass_api.read_visit_history('60000000-0000-4000-8000-000000000001')$q$,'42501','Leadership cannot read private revision snapshots');
-SELECT core_test.expect_error($q$SELECT mass_api.record_visit('60000000-0000-4000-8000-000000000008','58000000-0000-4000-8000-000000000001','Morning','2026-10-01','Completed','Synthetic feedback','',0)$q$,'42501','Leadership cannot write visits');
+SELECT core_test.assert_true((SELECT count(*)=7 FROM mass_api.read_visits('10000000-0000-4000-8000-000000000001','2026-10-01','2026-11-01')),'Leadership can read governed visit detail across centres');
+SELECT core_test.assert_true((SELECT count(*)=2 AND max(revision)=2 FROM mass_api.read_visit_history('60000000-0000-4000-8000-000000000001')),'Leadership can read governed visit revision history');
+SELECT core_test.expect_error($q$SELECT mass_api.record_visit('60000000-0000-4000-8000-000000000008','58000000-0000-4000-8000-000000000001','Morning','2026-10-01','Completed','Synthetic feedback','',0)$q$,'42501','Leadership cannot create a visit through another user assignment');
+SELECT mass_api.record_visit('60000000-0000-4000-8000-000000000001','58000000-0000-4000-8000-000000000001','Morning','2026-10-01','Completed','Synthetic Leadership correction','Synthetic Leadership follow-up',2,'Synthetic Leadership correction reason');
+SELECT core_test.assert_true((SELECT count(*)=3 AND max(revision)=3 FROM mass_api.read_visit_history('60000000-0000-4000-8000-000000000001')),'Leadership can correct any governed existing visit while retaining its original assignment');
 RESET ROLE;
-SELECT core_test.assert_true((SELECT count(*)=8 FROM mass_foundation.audit_events WHERE entity_type='core.cluster_officer_visits'),'minimized framework audit records every visit revision');
+SELECT core_test.assert_true((SELECT count(*)=9 FROM mass_foundation.audit_events WHERE entity_type='core.cluster_officer_visits'),'minimized framework audit records every visit revision');
 SELECT core_test.assert_true((SELECT bool_and(change_metadata-'revision'='{}'::jsonb) FROM mass_foundation.audit_events WHERE entity_type='core.cluster_officer_visits'),'technical audit never contains feedback');
 SELECT core_test.assert_true((SELECT bool_and(NOT has_function_privilege('anon',oid,'EXECUTE') AND NOT has_function_privilege('service_role',oid,'EXECUTE')) FROM pg_proc WHERE pronamespace='mass_api'::regnamespace),'all RPC anonymous/service grants remain closed');
 SET ROLE anon;

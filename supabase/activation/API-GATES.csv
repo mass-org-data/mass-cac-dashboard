@@ -23,3 +23,8 @@ reviewed_chart_metrics,reviewed_reads,disabled,not applicable (read-only),all re
 reviewed_attendance_series,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; academic year and filters validated; one month per row up to the reporting day
 reviewed_attendance_by_centre_month,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; academic year and filters validated; one row per centre and month up to the reporting day
 reviewed_shift_counts,reviewed_reads,disabled,not applicable (read-only),all requested centres readable; distinct children per shift on the reporting day; counts only
+delete_student_cascade,student_deletion,disabled,physical cascade only through reviewed RPC,Leadership only; current preview token; explicit reason; unexpected dependencies fail closed; idempotent request
+delete_attendance_record,attendance_entry,disabled,physical delete only through reviewed RPC,Teacher/CO assigned centre or Leadership global scope; current row version; explicit reason; idempotent request
+delete_assessment_record,assessment_entry,disabled,physical delete only through reviewed RPC,Teacher/CO assigned centre or Leadership global scope; current row version; explicit reason; idempotent request
+delete_assessment_register,assessment_entry,disabled,physical batch delete only through reviewed RPC,explicit centre/shift/definition/date-or-unknown key; current register token; assigned/global scope; idempotent request
+delete_visit,visit_entry,disabled,physical delete only through reviewed RPC,Cluster Officer assigned centre or Leadership global scope; current row version; explicit reason; idempotent request

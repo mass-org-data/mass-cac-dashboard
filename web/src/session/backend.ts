@@ -55,6 +55,7 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
   const directory = createDirectoryApi(client);
   const memo = new Map<string, {at: number; value: Promise<unknown>}>();
   const singletons = new Map<string, unknown>();
+  const authorizationListeners = new Set<() => void>();
   // Same error contract as the current application: BackendError carries rpc name, status and code.
   const call: Rpc = async (name, args = {}, signal) => {
     let result;
@@ -62,7 +63,14 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
       const query = client.schema('mass_api').rpc(name, args);
       result = await (signal ? query.abortSignal(signal) : query);
     } catch { throw new BackendError({message: 'network'}, 0, false, name); }
-    if (result.error) throw new BackendError(result.error, result.status, false, name);
+    if (result.error) {
+      const error = new BackendError(result.error, result.status, false, name);
+      if (result.status === 401 || result.status === 403) {
+        memo.clear(); singletons.clear();
+        for (const listener of authorizationListeners) listener();
+      }
+      throw error;
+    }
     return result.data;
   };
   // Argument-free startup probes are asked once and shared by every screen (an abort signal is never passed for them).
@@ -80,6 +88,7 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
       return singletons.get(key) as T;
     },
     reset() { memo.clear(); readCache.clear(); singletons.clear(); },
+    onAuthorizationFailure(callback) { authorizationListeners.add(callback); return () => authorizationListeners.delete(callback); },
     getSession: () => client.auth.getSession(),
     getUser: () => client.auth.getUser(),
     async signIn(email, password) { memo.clear(); readCache.clear(); singletons.clear(); await signInVerified(client, email, password, () => clearStoredSession(config)); },

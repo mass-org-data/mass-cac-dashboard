@@ -13,7 +13,7 @@ function Harness({role = 'Teacher', initial = 'overview' as Route, collapsed: st
   return (
     <div>
       <button type="button" onClick={() => setOpen(true)}>open</button>
-      <SideMenu role={role} route={route} onNavigate={r => { onNavigate(r); setRoute(r); }} collapsed={collapsed} onToggleCollapsed={() => setCollapsed(v => !v)} mobileOpen={open} onCloseMobile={() => setOpen(false)} legacyHref="./vanilla/" />
+      <SideMenu role={role} capabilities={{read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership'}} route={route} onNavigate={r => { onNavigate(r); setRoute(r); }} collapsed={collapsed} onToggleCollapsed={() => setCollapsed(v => !v)} mobileOpen={open} onCloseMobile={() => setOpen(false)} legacyHref="./vanilla/" />
     </div>
   );
 }
@@ -31,12 +31,12 @@ describe('side menu', () => {
     for (const role of ['Leadership', 'Teacher', 'Cluster Officer']) expect(itemsFor(role).map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
   it('greys out the screens a role cannot open, with the reason, and does not make them links', () => {
-    expect(unavailableReason('Leadership', 'profiles')).toBeTruthy();
-    expect(unavailableReason('Teacher', 'donors')).toBeTruthy();
-    expect(unavailableReason('Cluster Officer', 'donors')).toBeTruthy();
-    expect(unavailableReason('Teacher', 'visits')).toBeTruthy();
-    expect(unavailableReason('Cluster Officer', 'visits')).toBeNull();
-    expect(unavailableReason('Leadership', 'visits')).toBeNull();
+    expect(unavailableReason('Leadership', 'profiles', {read_profiles: true})).toBeNull();
+    expect(unavailableReason('Teacher', 'donors', {export: false})).toBeTruthy();
+    expect(unavailableReason('Cluster Officer', 'donors', {export: false})).toBeTruthy();
+    expect(unavailableReason('Teacher', 'visits', {read_visits: false})).toBeTruthy();
+    expect(unavailableReason('Cluster Officer', 'visits', {read_visits: true})).toBeNull();
+    expect(unavailableReason('Leadership', 'visits', {read_visits: true})).toBeNull();
     const view = render(<Harness role="Teacher" />);
     expect(labels()).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments', '6. Morarji scholarship', '8. About', 'Activities and monthly meetings (standard application)']);
     const nav = within(screen.getByRole('navigation', {name: 'Primary'}));
@@ -45,8 +45,7 @@ describe('side menu', () => {
     expect(nav.getByText(/unavailable: Leadership reporting only/)).toBeInTheDocument();
     view.unmount();
     render(<Harness role="Leadership" />);
-    expect(screen.getByText('3. Student profiles').closest('[aria-disabled="true"]')).not.toBeNull();
-    expect(labels()).not.toContain('3. Student profiles');
+    expect(screen.getByRole('link', {name: '3. Student profiles'})).toBeInTheDocument();
   });
   it('navigates without leaving the page and reports the screen', async () => {
     const user = userEvent.setup();

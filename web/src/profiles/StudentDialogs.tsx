@@ -4,7 +4,7 @@ import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../componen
 import {Input} from '../components/ui/input';
 import {AsyncState} from '../components/AsyncState';
 import {boardValue, buildNewStudent, emptyStudent, newRequest, STATUSES, validateEdit, validateNewStudent, type EditForm, type NewStudentForm} from './editor';
-import type {AcademicYear, ProfilesService, StudentRow} from './service';
+import type {AcademicYear, ProfilesService, StudentDeletionPreview, StudentRow} from './service';
 import {useI18n} from '../i18n/I18n';
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'The request could not be completed.');
@@ -152,4 +152,38 @@ export function EditStudentDialog({service, student, centreLabel, enabled, onSav
       </DialogContent>
     </Dialog>
   );
+}
+
+export function DeleteStudentDialog({service, student, enabled, onSaved, onClose}: CommonProps & {student: StudentRow}) {
+  const {t} = useI18n();
+  const [preview, setPreview] = useState<StudentDeletionPreview | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [reason, setReason] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'deleting'>('loading');
+  const request = useRef(newRequest());
+  const load = () => { setStatus('loading'); setLoadError(''); service.previewDeletion(student.child).then(value => { setPreview(value); setStatus('ready'); }).catch(error => { setLoadError(messageOf(error)); setStatus('ready'); }); };
+  useEffect(load, [service, student.child]); // eslint-disable-line react-hooks/exhaustive-deps
+  const submit = async () => {
+    if (!enabled || !preview || status !== 'ready' || !reason.trim() || confirmation !== student.studentId) return;
+    setStatus('deleting'); setLoadError('');
+    try { await service.deleteStudent(request.current, student.child, preview.token, reason); }
+    catch (error) { setLoadError(messageOf(error)); setStatus('ready'); return; }
+    await onSaved(t('profile.deleteSuccess'));
+    onClose();
+  };
+  return <Dialog open onOpenChange={open => { if (!open && status !== 'deleting') onClose(); }}>
+    <DialogContent role="alertdialog" aria-describedby="delete-student-help" onInteractOutside={event => event.preventDefault()}>
+      <div><DialogTitle>{t('profile.deleteTitle')}</DialogTitle><DialogDescription id="delete-student-help">{t('profile.deleteHelp', {student: student.name ?? student.studentId})}</DialogDescription></div>
+      {!enabled ? <p className="rounded-md bg-warn-soft p-3 text-sm text-warn">{t('profile.deleteDisabled')}</p> : null}
+      {status === 'loading' ? <AsyncState state="loading" rows={4} /> : preview ? <ul className="max-h-52 overflow-auto rounded-md border border-line p-3 text-sm">
+        {Object.entries(preview.counts).filter(([key]) => !key.endsWith('_retained')).map(([key, count]) => <li key={key} className="flex justify-between gap-3"><span>{key.replaceAll('_', ' ')}</span><strong>{count}</strong></li>)}
+      </ul> : null}
+      <p className="text-sm font-semibold text-bad">{t('profile.deleteCascadeWarning')}</p>
+      <label className={labelClass}>{t('profile.deleteReason')}<Input value={reason} maxLength={300} disabled={status === 'deleting'} onChange={event => setReason(event.target.value)} /></label>
+      <label className={labelClass}>{t('profile.deleteConfirm', {studentId: student.studentId})}<Input value={confirmation} disabled={status === 'deleting'} onChange={event => setConfirmation(event.target.value)} /></label>
+      <p role="alert" className="min-h-5 text-sm text-bad">{loadError}</p>
+      <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose} disabled={status === 'deleting'}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" onClick={() => void submit()} disabled={!enabled || !preview || status !== 'ready' || !reason.trim() || confirmation !== student.studentId}>{t(status === 'deleting' ? 'common.deleting' : 'common.delete')}</Button></div>
+    </DialogContent>
+  </Dialog>;
 }

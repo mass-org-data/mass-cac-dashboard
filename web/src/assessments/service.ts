@@ -7,11 +7,11 @@ import type {Rpc} from '../session/backend';
 export interface RegisterRow {centre_id: string; shift_code: string; assessment_date: string | null; quarter: number; students: number; average_score: number | string | null; created_by?: string | null; last_edited_by?: string | null; last_edited_at?: string | null}
 export interface Filters {centres: string[]; yearId: string; shift: string | null; grade: string | null; gender: string | null}
 export interface RosterStudent {enrolment: string; child: string; studentId: string; name: string | null; grade: string; shift: string}
-export interface SavedResult {enrolment: string; score: number; date: string | null; version: number}
+export interface SavedResult {id?: string; enrolment: string; score: number; date: string | null; version: number}
 export interface ScoreRow {enrolment: string; definition: string; date: string; score: number; expected: number}
 
 interface ReadStudent {child_id: string; student_id: string; enrolment_id: string; grade_label: string; shift_code: string; full_name: string | null}
-interface ReadAssessment {enrolment_id: string; definition_id: string; assessed_on: string | null; score: number | string; row_version: number}
+interface ReadAssessment {id: string; enrolment_id: string; definition_id: string; assessed_on: string | null; score: number | string; row_version: number}
 
 async function all<T>(rpc: Rpc, name: string, args: Record<string, unknown>): Promise<T[]> {
   const rows: T[] = [];
@@ -40,9 +40,12 @@ export function createAssessmentsService(rpc: Rpc) {
     /** Results already saved for one definition in the academic year (one result per child and round is supported). */
     async saved(centre: string, definition: string, from: string, until: string): Promise<Map<string, SavedResult>> {
       const rows = await all<ReadAssessment>(rpc, 'read_assessments', {p_centre: centre, p_from: from, p_until: until, p_child: null});
-      return new Map(rows.filter(r => r.definition_id === definition).map(r => [r.enrolment_id, {enrolment: r.enrolment_id, score: Number(r.score), date: r.assessed_on, version: r.row_version}]));
+      return new Map(rows.filter(r => r.definition_id === definition).map(r => [r.enrolment_id, {id: r.id, enrolment: r.enrolment_id, score: Number(r.score), date: r.assessed_on, version: r.row_version}]));
     },
     save: (rows: ScoreRow[]) => rpc<number>('record_assessment_batch', {p_rows: rows}),
+    deleteRecord: (request: string, record: string, expected: number, reason: string) => rpc<unknown>('delete_assessment_record', {p_request: request, p_record: record, p_expected: expected, p_reason: reason.trim()}),
+    previewRegisterDeletion: (centre: string, shift: string, definition: string, date: string | null) => rpc<{count: number; token: string; assessed_on: string | null}>('preview_assessment_register_deletion', {p_centre: centre, p_shift: shift, p_definition: definition, p_assessed_on: date}),
+    deleteRegister: (request: string, centre: string, shift: string, definition: string, date: string | null, token: string, reason: string) => rpc<unknown>('delete_assessment_register', {p_request: request, p_centre: centre, p_shift: shift, p_definition: definition, p_assessed_on: date, p_token: token, p_reason: reason.trim()}),
   };
 }
 export type AssessmentsService = ReturnType<typeof createAssessmentsService>;

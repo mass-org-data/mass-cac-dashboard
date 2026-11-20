@@ -29,6 +29,8 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'saving' | 'committed'>('loading');
   const [loadError, setLoadError] = useState('');
   const [formError, setFormError] = useState('');
+  const [deletingMark, setDeletingMark] = useState<{id: string; version: number; student: string; request: string} | null>(null);
+  const [markDeleteReason, setMarkDeleteReason] = useState('');
   const sequence = useRef(0);
   const dirty = isDirty(state, capabilities);
 
@@ -48,7 +50,7 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
     if (dirty && !confirm('Discard unsaved attendance changes and change the selection?')) return;
     setFormError('');
     const next = {...state, [field]: value};
-    setState({...next, loaded: false, saved: {}, draft: {}, roster: [], deleting: false});
+    setState({...next, loaded: false, saved: {}, draft: {}, savedRecords: {}, roster: [], deleting: false});
     load(next.centre, next.shift, next.date);
   };
 
@@ -152,6 +154,7 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
                                   className={cn('min-h-11 min-w-11 rounded-md border px-3 font-semibold', code === 'P' ? 'border-ok bg-ok-soft text-ok' : 'border-bad bg-bad-soft text-bad', state.draft[student.id] === code && (code === 'P' ? 'bg-ok text-white' : 'bg-bad text-white'))}>{code}</button>
                               ))}
                               {state.draft[student.id] ? <button type="button" disabled={busy} onClick={() => clear(student.id)} className="min-h-11 px-2 text-xs font-semibold text-muted underline" aria-label={t('register.clearMark', {student: student.name || t('common.student')})}>{t('register.clear')}</button> : null}
+                              {state.savedRecords[student.id] ? <Button variant="ghost" size="sm" className="text-bad" disabled={busy} onClick={() => { const record = state.savedRecords[student.id]!; setDeletingMark({...record, student: student.name || t('common.student'), request: crypto.randomUUID()}); setMarkDeleteReason(''); setFormError(''); }}>{t('common.delete')}</Button> : null}
                             </div>
                           </td>
                         </tr>
@@ -201,6 +204,7 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog open={Boolean(deletingMark)} onOpenChange={open => { if (!open && status !== 'saving') setDeletingMark(null); }}><DialogContent role="alertdialog" className="z-[70] max-w-lg" overlayClassName="z-[60]" aria-describedby="delete-mark-help"><div><DialogTitle>{t('register.deleteMarkTitle')}</DialogTitle><DialogDescription id="delete-mark-help">{t('register.deleteMarkHelp', {student: deletingMark?.student ?? ''})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('register.reasonDeletion')}<Input value={markDeleteReason} maxLength={300} disabled={status === 'saving'} onChange={event => setMarkDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{formError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={status === 'saving'} onClick={() => setDeletingMark(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={!deletingMark || !markDeleteReason.trim() || status === 'saving'} onClick={() => { if (!deletingMark) return; setStatus('saving'); service.deleteRecord(deletingMark.request, deletingMark.id, deletingMark.version, markDeleteReason).then(async () => { setDeletingMark(null); await onSaved(t('register.deleteMarkSuccess')); onClose(); }).catch(error => { setFormError(messageOf(error)); setStatus('ready'); }); }}>{t(status === 'saving' ? 'common.deleting' : 'common.delete')}</Button></div></DialogContent></Dialog>
     </Dialog>
   );
 }

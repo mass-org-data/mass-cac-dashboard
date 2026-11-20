@@ -82,13 +82,11 @@ describe('Morarji page', () => {
     await waitFor(() => expect(within(t).getAllByRole('row')).toHaveLength(2));
     expect(within(t).getByText('Centre 01')).toBeInTheDocument();
   });
-  it('gives Leadership totals only: no student rows are requested', async () => {
-    const {service, profiles} = setup({role: 'Leadership'});
+  it('gives Leadership inherited individual Morarji follow-up', async () => {
+    setup({role: 'Leadership'});
     await ready();
-    expect(screen.queryByRole('table', {name: 'Cohort follow-up'})).not.toBeInTheDocument();
-    expect(service.memberships).not.toHaveBeenCalled();
-    expect(profiles.students).not.toHaveBeenCalled();
-    expect(screen.getByText(/Leadership sees cohort totals only/)).toBeInTheDocument();
+    expect(screen.getByRole('table', {name: 'Cohort follow-up'})).toBeInTheDocument();
+    expect(screen.getByText('Student e1')).toBeInTheDocument();
   });
   it('says plainly when no verified cohorts exist and invents nothing', async () => {
     setup({report: base, memberships: [], noCohorts: true});

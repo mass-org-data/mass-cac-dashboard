@@ -22,16 +22,22 @@ try {
  {const def=(await db.query("SELECT pg_get_functiondef('mass_api.reviewed_chart_metrics(uuid[],date,date,date,uuid,text,text,text,integer,integer)'::regprocedure) d")).rows[0].d;
   if(def.split("e.event_kind='Activity'").length!==2||def.split("e.shift_code='Both shifts'").length!==3||!def.includes("(p.shift_code=e.shift_code OR e.shift_code='Both shifts') AND e.activity_date")||!def.includes("code IN ('WO','MM','H')"))throw new Error('reviewed_chart_metrics must hold the centre-event patch exactly once and keep the Holiday exclusion');
   console.log('PASS reviewed_chart_metrics keeps the centre-event patch after the efficiency migration, applied twice');}
- let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=31 AND bool_and(relrowsecurity AND relforcerowsecurity)')
+ let core=read('tests/core/synthetic.sql').replace('count(*)=17 AND bool_and(relrowsecurity AND relforcerowsecurity)','count(*)=34 AND bool_and(relrowsecurity AND relforcerowsecurity)')
   .replace('bool_and(student_id=upper(id::text))',()=>"bool_and(student_id ~ '^ST_[A-Z]{2}_(10|[1-9])_[0-9]{2,}$')")
   .replace("'428C9','generated permanent student ID cannot be overwritten'","'55000','generated permanent student ID cannot be overwritten'");
  await runSqlScript(db,core);console.log('PASS existing core SQL assertions');
+ await runSqlScript(db,read('tests/security/permission-foundation.sql'));console.log('PASS single-role governance foundation, centre limits and immediate inactive-user denial');
+ await runSqlScript(db,read('tests/security/permission-reconciliation.sql'));console.log('PASS private dual-read reconciliation and cutover drift gate');
+ await runSqlScript(db,read('tests/security/permission-read-cutover.sql'));console.log('PASS governed read cutover, one-role context, current profiles and immediate assignment denial');
+ await runSqlScript(db,read('tests/security/permission-write-cutover.sql'));console.log('PASS governed write hierarchy, date independence and immediate inactive denial');
+ await runSqlScript(db,read('tests/security/permission-frontend-cutover.sql'));console.log('PASS frontend cutover export gates and versioned attendance identity');
  await runSqlScript(db,read('tests/release/visits.sql'));console.log('PASS existing visit/delivery/scoped reporting SQL assertions');
  await runSqlScript(db,read('tests/release/batched-reads.sql'));console.log('PASS batched visit, Morarji and profile reads equal the single-centre functions and keep their scope');
  await runSqlScript(db,read('tests/reviewed-calculations/synthetic.sql'));
  await runSqlScript(db,read('tests/reviewed-calculations/attendance-series.sql'));console.log('PASS batched monthly attendance series equals reviewed_chart_metrics for 63 month and filter cases');
  await runSqlScript(db,read('tests/security/definer-matrix.sql'));console.log('PASS existing definer security matrix');
  await db.exec('RESET ROLE; BEGIN;'+read('supabase/activation/control.sql')+read('supabase/activation/seal.sql')+'COMMIT;');
+ await runSqlScript(db,read('tests/security/permission-destructive-workflows.sql'));console.log('PASS reviewed destructive workflows, atomic cascades, private receipts and cross-role denial');
  await db.exec("SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated calculation check' WHERE feature='reviewed_reads'; RESET ROLE;");
  const exported=(await db.query(read('tests/reviewed-calculations/export.sql'))).rows[0];
  fs.writeFileSync(path.join(out,'input.json'),JSON.stringify(Object.values(exported)[0]));
@@ -56,7 +62,9 @@ try {
  const pageContext="jsonb_build_object('on',y.starts_on,'from',y.starts_on,'until',y.starts_on+30,'year',y.id,'earlier',1,'later',2,'quarter',2)";
  await db.query(`WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('reviewed_centres',c.ids,${pageContext},'','centre',false,0,10) FROM y,c`);
  await db.query("WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('assessment_register',c.ids,jsonb_build_object('year',y.id),'','date',true,0,10),mass_api.dashboard_table_page('annual_centres',c.ids,jsonb_build_object('year',y.id,'today',least(y.ends_before-1,y.starts_on+180)),'','name',false,0,10),mass_api.attendance_register_page_v2(c.ids,y.starts_on,y.starts_on+30,NULL,NULL,NULL,0,10,'date',true,'') FROM y,c");
+ await db.exec("SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000003\"}',false);");
  await db.query("WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('visit_centres',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','centre',false,0,10),mass_api.dashboard_table_page('visit_officers',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','label',false,0,10),mass_api.dashboard_table_page('morarji_cohorts',c.ids,'{}','','cohort',false,0,10) FROM c");
+ await db.exec("SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
  const initialLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;
  const savedLanguage=(await db.query("SELECT mass_api.set_default_language('kn')->>'default_language' language")).rows[0]?.language;
  const currentLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;

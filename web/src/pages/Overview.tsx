@@ -154,7 +154,7 @@ export function Overview({backend, context, role, service: injected, tables: inj
 
         <DataTable<CentreRow>
           reference="1.13" caption={t('overview.centreComparison')} columns={columns} data={centreTable.rows} getRowId={row => row.centre_id}
-          exportName={`MASS-centre-comparison-${month}`} state={centreTable.result.status} server={centreTable.server}
+          exportName={context.capabilities?.export === true ? `MASS-centre-comparison-${month}` : undefined} state={centreTable.result.status} server={centreTable.server}
           errorMessage={centreTable.error} emptyMessage={t('overview.noCentres')} onRetry={centreTable.retry}
         />
         <p className="text-xs text-muted">{t('overview.footnote', {unknown: UNKNOWN, rate: formatPercent(stats?.attendance.percentage ?? null)})}</p>

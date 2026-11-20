@@ -46,38 +46,31 @@ function Shell({backend}: {backend: LiveBackend}) {
           <strong className="text-brand-dark">{t('app.centres')}</strong>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {state.roles.length > 1 ? (
-            <label className="flex items-center gap-2 text-sm">
-              <span className="font-semibold">{t('role.label')}</span>
-              <select className="min-h-11 rounded-md border border-line bg-white px-2" value={state.activeRole} onChange={event => { backend.reset(); controller.selectRole(event.target.value); }}>
-                {state.roles.map(role => <option key={role}>{role}</option>)}
-              </select>
-            </label>
-          ) : <span className="text-sm font-semibold">{state.activeRole}</span>}
+          <span className="text-sm font-semibold">{state.role}</span>
           <LanguageToggle compact />
           <UserMenu email={state.email} defaultLanguage={state.defaultLanguage} onSaveLanguage={controller.setDefaultLanguage} onSignOut={controller.signOut} />
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <SideMenu role={state.activeRole} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} legacyHref="./vanilla/" />
+        <SideMenu role={state.role} capabilities={state.context.capabilities} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} legacyHref="./vanilla/" />
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="w-full space-y-6 p-4 md:p-6">
           <h1 className="text-2xl font-bold text-ink">{currentRoute.number}. {t(currentRoute.labelKey)}</h1>
         {route === 'attendance'
-          ? <Attendance backend={backend} context={state.context} role={state.activeRole} key={`a-${state.activeRole}`} />
+          ? <Attendance backend={backend} context={state.context} role={state.role} key={`a-${state.role}`} />
           : route === 'profiles'
-          ? <Profiles backend={backend} context={state.context} role={state.activeRole} key={`p-${state.activeRole}`} />
+          ? <Profiles backend={backend} context={state.context} role={state.role} key={`p-${state.role}`} />
           : route === 'about'
-          ? <About context={state.context} role={state.activeRole} />
+          ? <About context={state.context} role={state.role} />
           : route === 'donors'
-          ? <AnnualDonor backend={backend} context={state.context} role={state.activeRole} key={`d-${state.activeRole}`} />
+          ? <AnnualDonor backend={backend} context={state.context} role={state.role} key={`d-${state.role}`} />
           : route === 'morarji'
-          ? <Morarji backend={backend} context={state.context} role={state.activeRole} key={`m-${state.activeRole}`} />
+          ? <Morarji backend={backend} context={state.context} role={state.role} key={`m-${state.role}`} />
           : route === 'visits'
-          ? <Visits backend={backend} context={state.context} role={state.activeRole} key={`v-${state.activeRole}`} />
+          ? <Visits backend={backend} context={state.context} role={state.role} key={`v-${state.role}`} />
           : route === 'assessments'
-          ? <Assessments backend={backend} context={state.context} role={state.activeRole} key={`s-${state.activeRole}`} />
-          : <Overview backend={backend} context={state.context} role={state.activeRole} key={`o-${state.activeRole}`} />}
+          ? <Assessments backend={backend} context={state.context} role={state.role} key={`s-${state.role}`} />
+          : <Overview backend={backend} context={state.context} role={state.role} key={`o-${state.role}`} />}
           </div>
         </main>
       </div>
@@ -89,7 +82,9 @@ export function App({config}: {config: RuntimeConfig}) {
   const [language, setLanguage] = useState<Language>('en');
   const {backend, controller} = useMemo(() => {
     const live = createLiveBackend(config);
-    return {backend: live, controller: createSessionController(live)};
+    const session = createSessionController(live);
+    live.onAuthorizationFailure?.(() => { void session.signOut(); });
+    return {backend: live, controller: session};
   }, [config]);
   return <I18nProvider language={language} setLanguage={setLanguage}><SessionProvider controller={controller}><Shell backend={backend} /></SessionProvider></I18nProvider>;
 }

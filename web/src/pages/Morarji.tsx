@@ -70,7 +70,7 @@ export function Morarji({backend, context, role, service: _injected, profiles: _
   const yearLabelOf = useMemo(() => new Map((refs?.academic_years ?? []).map(y => [y.id, years(y)])), [refs]);
   const centreIds = useMemo(() => selected.map(c => c.id), [selected]);
   const key = JSON.stringify(centreIds);
-  const operational = role !== 'Leadership';
+  const operational = context.capabilities?.read_operational !== false;
 
   useEffect(() => {
     if (!year || boot.status !== 'ready') return;
@@ -143,13 +143,13 @@ export function Morarji({backend, context, role, service: _injected, profiles: _
         <ChartCard reference="6.5" title={t('morarji.yearOnYear')} subtitle={t('morarji.yearOnYearHelp')} state={asState(report)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('morarji.noOutcomes')}>
           {trend.length ? <><ColumnChart axis={t('morarji.passedAxis')} description={t('morarji.passedDescription')} items={trend} /><p className="mt-2 text-xs text-muted">{t('morarji.cohortCaution')}</p></> : <p className="text-sm text-muted">{t('morarji.noOutcomes')}</p>}
         </ChartCard>
-        <DataTable<MorarjiCohort> reference="6.6" caption={t('morarji.cohortSizes')} columns={cohortColumns} data={cohortTable.rows} getRowId={r => r.cohortId} exportName="MASS-morarji-cohorts" state={cohortTable.result.status} errorMessage={cohortTable.error} emptyMessage={t('morarji.noOutcomes')} onRetry={cohortTable.retry} server={cohortTable.server} />
+        <DataTable<MorarjiCohort> reference="6.6" caption={t('morarji.cohortSizes')} columns={cohortColumns} data={cohortTable.rows} getRowId={r => r.cohortId} exportName={context.capabilities?.export === true ? 'MASS-morarji-cohorts' : undefined} state={cohortTable.result.status} errorMessage={cohortTable.error} emptyMessage={t('morarji.noOutcomes')} onRetry={cohortTable.retry} server={cohortTable.server} />
       </div>
 
       {operational ? (
         <>
-          <DataTable<CentreLine> reference="6.7" caption={t('morarji.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-morarji-by-centre-${cohortLabel}`} state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage={t('morarji.noRecords')} onRetry={centreTable.retry} server={centreTable.server} />
-          <DataTable<FollowUp> reference="6.8" caption={t('morarji.followup')} columns={followColumns} data={followTable.rows} getRowId={r => r.id} exportName={`MASS-morarji-follow-up-${cohortLabel}`} state={followTable.result.status} errorMessage={followTable.error} emptyMessage={t('morarji.noRecords')} onRetry={followTable.retry} server={followTable.server} />
+          <DataTable<CentreLine> reference="6.7" caption={t('morarji.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-morarji-by-centre-${cohortLabel}` : undefined} state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage={t('morarji.noRecords')} onRetry={centreTable.retry} server={centreTable.server} />
+          <DataTable<FollowUp> reference="6.8" caption={t('morarji.followup')} columns={followColumns} data={followTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-morarji-follow-up-${cohortLabel}` : undefined} state={followTable.result.status} errorMessage={followTable.error} emptyMessage={t('morarji.noRecords')} onRetry={followTable.retry} server={followTable.server} />
         </>
       ) : <p className="text-xs text-muted">{t('morarji.leadership')}</p>}
       <p className="text-xs text-muted">{t('morarji.footnote')}</p>

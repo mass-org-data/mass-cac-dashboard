@@ -62,11 +62,11 @@ describe('Visits page', () => {
     setup({role: 'Leadership', fail: true});
     expect((await screen.findAllByText(/statement timeout/)).length).toBeGreaterThan(0);
   });
-  it('is read-only for Leadership and offers an officer filter from the summary', async () => {
+  it('gives Leadership inherited visit entry, full details and the officer filter', async () => {
     const {service} = setup({role: 'Leadership'});
     expect(await screen.findByLabelText('Officer')).toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: 'Record a visit'})).not.toBeInTheDocument();
-    expect(screen.queryByRole('table', {name: 'Visit log'})).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Record a visit'})).toBeInTheDocument();
+    expect(screen.getByRole('table', {name: 'Visit log'})).toBeInTheDocument();
     expect(vi.mocked(service.summary).mock.calls[0]![2]).toBeNull();
   });
   it('lists the visit log for a Cluster Officer', async () => {

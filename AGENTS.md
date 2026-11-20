@@ -129,13 +129,13 @@ Older schema, deployment, privacy, and reconciliation evidence is under `docs/re
 
 ## Open programme decisions
 
-D01 is answered: L means Leave. D02-D08 remain unresolved unless a later reviewed approval is found:
+D01 is answered: L means Leave. D06 is answered for the permission redesign described in the 20 November 2026 update below. D02-D05 and D07-D08 remain unresolved unless a later reviewed approval is found:
 
 - D02: session types and overlapping sessions.
 - D03: assessment uniqueness and how to represent retests. Preserve the current one-result rule meanwhile.
 - D04: approved activity reporting metrics.
 - D05: Morarji results and rounds.
-- D06: broader Leadership editing permissions. Preserve current read-only Leadership behavior.
+- D06: Leadership inherits operational Teacher and Cluster Officer permissions in the approved permission redesign. This is implemented on the permission branch and Preview only; Production keeps its current behavior until a separately approved release.
 - D07: programme meaning of an enrolment exit date. Existing historical boundaries are exclusive; do not silently reinterpret data.
 - D08: subject/skill-level assessment scoring.
 
@@ -323,4 +323,49 @@ Branch `feature/ui-cleanup-pagination-i18n` was created from `main` at `3be1a4e`
 - **DONE (14 Nov): every role sees all eight numbered menu items; unavailable ones are greyed out, not links, with an accessible reason** (`unavailableReason` in `web/src/app/SideMenu.tsx`: Leadership has no 3 Student profiles, Teacher has no 5 Visits, only Leadership has 7 Annual donor summary).
 - **DONE (15 Nov, `perf/request-reduction`): returning to an already-loaded screen makes no database requests** (read-through cache in `web/src/session/readCache.ts`, 5 minutes, cleared by any save, sign-in/out and role change). Only the 30-second scope check and the tab-visible re-verification still run, by design. See `docs/perf/TAB-SWITCH-RESULT.md`.
 - **Request and database-CPU reduction (done on Preview, PR #19, branch `perf/request-reduction`, base `perf/overview-load-and-ui-rebuild`).** Plan and per-phase results: `docs/perf/REQUEST-REDUCTION-PLAN.md`, `PHASE-A/B/C0/C1-RESULT.md`, `TAB-SWITCH-RESULT.md`. A (client): startup reads shared per session, shared Overview/Profiles/Morarji services (`web/src/data/shared.ts`). B: migration `20261114120000_batched_reads.sql` (`visit_coverage`, `read_visits_v2`, `morarji_followup`, `student_profile_page_v3`, `reviewed_attendance_by_centre_month`). C0: `20261114130000_reviewed_chart_metrics_efficiency.sql` (function now in the migration history, includes Production's H patch; upgrades only where installed, so a fresh database applies the proposal and then this file, as `tests/release/portable-sql.mjs` does). C1: `20261114140000_reviewed_shift_counts.sql`. C2 (rollup) skipped by the owner; D (compute size) only if the Supabase CPU graph shows throttling. Revisits: `web/src/session/readCache.ts` caches read-only RPCs for five minutes in memory, cleared by any save (`CACHED_READS` lists what is cached; add new read functions there, never version tokens or records opened for editing). The client uses each new function when present and falls back on 404/PGRST202 (`web/src/lib/batched.ts`, `web/src/test/legacy.ts` for fallback tests). Applied to the PREVIEW database only (dry run first, then migration plus `seal.sql` in one transaction); **Production is unchanged: the three migrations need the gated release**. Results on Preview: one cold pass through every screen 225/61/38 requests (Leadership/Cluster Officer/Teacher) down to 34 each; moving between screens 219/54/29 down to 6/7/7; returning to a loaded screen 0; Annual donor 12.4 s to 1.2 s; `reviewed_chart_metrics` 92 centres 1.24 s to 0.18 s. Still open: the gated Production release, an Overview cold time of about 2 s for Leadership, and the shared-CPU Preview database's run-to-run noise (Phase D evidence). The 30-second scope check and tab-visible re-verification are intentionally never cached.
-- **Later: let Leadership add, edit and update student profiles.** Owner wants this eventually (it needs a programme and security decision: today Leadership is aggregate-only and the `profiles` gate is hard-off). Not started; when built, un-grey item 3 for Leadership.
+- **Superseded by the 20 November permission work:** Leadership operational/profile access is implemented on the permission branch and Preview as described below. Production remains unchanged pending a separately approved release.
+
+## Permission architecture Phases 1–6 (20 November 2026)
+
+This section supersedes older statements above that describe permissions as deferred, multi-role switching as current, or Leadership as permanently read-only. The implementation is on `fix/permission-architecture`; commits through `bd53aaa` are pushed. It has no PR and is not merged. The latest protected branch Preview is `https://mass-cac-dashboard-omse19t1y-mass-data-dashboard.vercel.app/` and Vercel reports it Ready. Production code, database, Auth and activation settings are unchanged.
+
+Plan and release evidence:
+
+- `docs/PERMISSION-ARCHITECTURE-MIGRATION-PLAN.md`
+- `docs/releases/2026-11-20/PERMISSION-PHASE-6-FRONTEND-CUTOVER.md`
+
+### Completed phases
+
+1. **Governance foundation** — `20261118120000_permission_governance_foundation.sql` adds private forced-RLS application users and centre assignments, exactly one role per user, Active/Inactive authorization status and deterministic backfill. Assignment dates remain administrative history rather than access switches.
+2. **Scope reconciliation** — `20261118130000_permission_scope_reconciliation.sql` compares the new governed role/scope with the prior model and fails closed on drift.
+3. **Read cutover** — `20261118140000_permission_read_cutover.sql` makes the governed model authoritative for reads, returns one server role, limits Teacher/Cluster Officer access to active centre assignments and gives Leadership global read scope. Current enrolment controls identifiable student access.
+4. **Write cutover** — `20261119120000_permission_write_cutover.sql` applies the Teacher → Cluster Officer → Leadership hierarchy to operational writes. Leadership inherits operational writes globally; Cluster Officers can work across their active centres, including CO visit authority. Legacy operational overrides are retired from authority.
+5. **Destructive workflows** — `20261119150000_permission_destructive_workflows.sql` adds narrow, versioned and idempotent deletion APIs for attendance marks/registers, assessment results/registers, visits and Leadership-only student cascades. Student deletion previews dependent counts, requires exact confirmation and a reason, deletes dependent student records transactionally and retains only a minimal non-PII receipt. Direct table deletion remains unavailable.
+6. **React frontend cutover** — `20261119180000_permission_frontend_cutover.sql` and `web/` remove the role switcher, consume one server-selected role, drive navigation from capabilities, expose inherited Leadership operational screens, restrict official bulk export to Leadership in both UI and server functions, connect the reviewed deletion confirmations and terminate the local session after a 401/403 authorization failure. Retryable deletions retain one request ID.
+
+### Current rules and boundaries
+
+- One application user has exactly one role: Teacher, Cluster Officer or Leadership.
+- Teacher: at most one active centre; operational CRUD within that centre, subject to record-specific validation and activation gates.
+- Cluster Officer: multiple active centres; inherits Teacher operations in those centres and can delete any visit in an assigned centre regardless of creator.
+- Leadership: no centre assignments; global current/future-centre scope, inherited operational capabilities, student cascade deletion authority and official export capability.
+- Active/Inactive status controls authorization immediately. `starts_at` and `ends_at` are retained as history but do not grant or revoke access.
+- Database functions and RLS remain the security boundary. Hidden buttons are not treated as authorization.
+- Preview activation values were preserved during Phase 6: `assessment_entry=true`; `attendance_entry=false`, `visit_entry=false` and `student_deletion=false`. Do not enable them without separate owner approval.
+- The React interface at `/` is the only interface changed by Phase 6. The owner explicitly directed that `/vanilla/` remain unchanged because it will be removed in the next dedicated phase. Do not retrofit the permission UI into `/vanilla/`.
+- Any future Preview database change still needs explicit owner approval and a reviewed migration. Production remains out of scope until a separately approved release.
+
+### Validation snapshot
+
+- `npm run web:typecheck`: passed.
+- `npm run test:web`: 27 files, 207 tests passed.
+- `npm run lint -- --no-cache`, `npm run check`, `npm test`, `npm run build`: passed; the existing frontend suite reported 137 tests and 27 workflow/removal checks.
+- `npm run test:sql:portable`: passed, including the governance, read/write cutover, destructive-workflow and frontend export-gate assertions plus 1,440 calculation parity cases.
+- Preview postflight confirmed all Phase 1–6 migration behavior, closed anonymous/service access where required, zero reconciliation drift, Leadership-only export-sized reads and the attendance record identity needed for narrow deletion.
+- Production postflight confirmed the Phase 6 migration and its new function behavior are absent.
+
+### Next phases
+
+- Phase 7: protected Leadership user/role/assignment administration, including disabling the corresponding Supabase Auth account when a user becomes inactive. Do not expose or enable this before separate implementation approval.
+- Phase 8: retire the superseded grant model only after Preview acceptance, rollback planning and an approved recovery window.
+- Remove `/vanilla/` in the owner's next dedicated UI-removal phase; do not combine that removal with unrelated permission work unless requested.
