@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Database migration and Auth hook active on Preview. Restricted database login provisioning, Edge Function deployment, and Phase 7 signed-in acceptance are pending.
+**Status** Database migration and Auth hook active on Preview. Restricted database login and connection secret provisioned. Edge Function deployment and Phase 7 signed-in acceptance are pending.
 
 ## Operator workflow
 
@@ -37,6 +37,12 @@ Read-only postflight verified forced RLS on the three private tables, the bridge
 On 21 November 2026, the owner approved enabling the installed Custom Access Token Hook on Preview. Preview Auth reports `pg-functions://postgres/mass_core/administration_access_token_hook` enabled. Each synthetic role refreshed a session issued before activation, then signed in and refreshed again. All three kept their original role and scope (Teacher 1 centre, Cluster Officer 9, Leadership 92).
 
 Other Preview Auth settings, feature gates, application user records, and centre assignments matched preflight. This check exercised the hook’s existing-user behavior. Managed revocation and post-unban refresh denial will be exercised during Phase 7 acceptance using a separately approved synthetic target.
+
+## Preview database login
+
+On 21 November 2026, the approved `mass_user_admin_login` was provisioned with a single `SET TRUE, INHERIT FALSE` membership in `mass_user_admin_bridge`. Postflight confirmed that the login can connect and has no direct access to the Auth schema, application tables, or administration RPCs. It must explicitly assume the bridge role for the approved operations.
+
+The connection string is registered under `MASS_ADMIN_DATABASE_URL` in Preview Edge Function secrets. It uses the Supavisor session pooler on port 5432 with full TLS verification. No credential values appear in the repository. A real connection from the deployed Edge Function is still pending. Application users, centre assignments, and feature gates matched preflight.
 
 ## Preview installation and acceptance
 
