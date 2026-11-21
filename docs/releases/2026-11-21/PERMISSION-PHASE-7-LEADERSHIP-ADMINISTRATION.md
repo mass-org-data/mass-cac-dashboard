@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Revised migration passed the Preview rollback rehearsal. Preview installation and acceptance require approval.
+**Status** Database migration installed and verified on Preview. Auth hook activation, database login provisioning, Edge Function deployment, and signed-in acceptance are pending.
 
 ## Operator workflow
 
@@ -25,6 +25,12 @@ When changing to Teacher or Leadership, end incompatible assignments first. Deac
 ## Preview rollback rehearsal
 
 The revised migration and activation seal ran in one transaction on Preview. In-transaction checks passed for all three private tables, five bridge functions, the Auth hook’s owner and execution grants, and the feature gates. Postflight matched preflight for the schema, function ACLs, migration ledger, feature gates, and governed account and assignment counts. The Auth hook installation was rolled back and the Auth hook setting is disabled. Managed Auth acceptance remains pending.
+
+## Preview database installation
+
+On 21 November 2026, the approved migration and activation seal committed in one Preview transaction, with ledger entry `20261121120000` (`leadership_user_administration`). The installed migration SHA-256 is `eb43e2eeca87e329b0208ebfe4d7521c9552ca53fdbdb18c1ff9e83e730b63d8`.
+
+Read-only postflight verified forced RLS on the three private tables, the bridge’s five function grants, and the Auth hook’s owner and execute grants. The earlier ledger, the three users and ten active assignments, the attendance register control, and the feature gates matched preflight. Assessment entry remains enabled. Attendance entry, visit entry, and student deletion remain disabled. The Auth hook is installed as a database function and is disabled in Preview Auth settings.
 
 ## Preview installation and acceptance
 
