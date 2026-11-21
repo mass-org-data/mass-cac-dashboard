@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Phase 7 is deployed on the protected branch Preview. Signed-in read-only and synthetic Teacher lifecycle checks passed. Live invitation delivery and password-setup acceptance are pending.
+**Status** Phase 7 is deployed on the protected branch Preview. Signed-in read-only and synthetic Teacher lifecycle checks passed. The owner confirmed live invitation delivery, password setup, and fresh Teacher sign-in.
 
 ## Operator workflow
 
@@ -61,6 +61,12 @@ The reviewed Go template rendered the branch password-setup link and preserved t
 On 21 November 2026, the approved fast-forward push put `6571d23fef54649483e5d729907cf9fa2fe4c754` on `fix/permission-architecture`. Vercel reported Ready and the protected branch alias served that revision backed by Preview Supabase. Vercel Authentication still blocks unauthenticated access to the branch preview. Production still serves `3be1a4e` against Production Supabase.
 
 Fresh Chromium sessions verified all three synthetic roles. Leadership’s administration page rendered the live directory, hid self-role and self-deactivation controls, and showed a confirmation for a peer action that was cancelled. Teacher and Cluster Officer had no menu link, and the direct route showed the denial without calling the Edge Function. A synthetic invite URL rendered the password page and removed the token fragment without consuming it. No administration state or invitation was changed during browser verification.
+
+## Preview invitation acceptance
+
+On 21 November 2026, the approved test invitation was sent through the Phase 7 Edge Function using Preview Resend SMTP. The owner confirmed receipt, opened the link to the React password setup page, set a password, and signed in afresh. The Teacher Overview displayed one assigned centre. The previous read-only directory check showed one centre assignment and confirmed email. No recipient address, invitation URL, credential, or screenshot is recorded here.
+
+The latest recorded reconciliation found two raw mismatches and zero unexplained differences. Completed administration events explain the extra Cluster Officer centre and the governed-only invited Teacher and assignment. Phase 8 requires a fresh reconciliation and separately approved rollback and retention steps.
 
 ## Preview Teacher lifecycle acceptance
 
