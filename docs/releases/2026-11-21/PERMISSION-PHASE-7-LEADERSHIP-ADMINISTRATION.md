@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Database migration, Auth hook, restricted database login, Edge Function, branch invite redirect, and invite template are active on Preview. React deployment and live invite delivery are pending.
+**Status** Phase 7 is deployed on the protected branch Preview. Signed-in read-only checks passed. Live invitation delivery and lifecycle mutations await separate acceptance.
 
 ## Operator workflow
 
@@ -55,6 +55,12 @@ Postflight confirmed the same application user count, active assignment count, a
 On 21 November 2026, the approved branch root `https://dev-mass-cac-dashboard.vercel.app/` was added to Preview Auth’s redirect allowlist. Other Auth settings matched preflight. No invite email was sent.
 
 The reviewed Go template rendered the branch password-setup link and preserved the default confirmation link for other destinations. Supabase rejected the template update because this Free-tier Preview uses the default email provider. The template in the project still uses the default confirmation link. The owner subsequently configured custom Resend SMTP. Supabase accepted the branch template, and read-back confirmed that its branch password-setup link and default fallback are installed. Supabase also marked only the invite template as customized. The redirect list, hook, mail configuration, and other settings matched preflight. Email delivery remains unverified and requires an approved synthetic recipient and an authorized sender.
+
+## Preview React deployment
+
+On 21 November 2026, the approved fast-forward push put `6571d23fef54649483e5d729907cf9fa2fe4c754` on `fix/permission-architecture`. Vercel reported Ready and the protected branch alias served that revision backed by Preview Supabase. Vercel Authentication still blocks unauthenticated access to the branch preview. Production still serves `3be1a4e` against Production Supabase.
+
+Fresh Chromium sessions verified all three synthetic roles. Leadership’s administration page rendered the live directory, hid self-role and self-deactivation controls, and showed a confirmation for a peer action that was cancelled. Teacher and Cluster Officer had no menu link, and the direct route showed the denial without calling the Edge Function. A synthetic invite URL rendered the password page and removed the token fragment without consuming it. No administration state or invitation was changed during browser verification.
 
 ## Preview installation and acceptance
 
