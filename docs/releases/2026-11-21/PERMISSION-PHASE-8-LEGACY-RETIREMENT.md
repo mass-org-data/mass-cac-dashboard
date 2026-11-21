@@ -3,7 +3,7 @@
 **Prepared:** 21 November 2026  
 **Branch:** `fix/permission-architecture`  
 **Migration:** `20261121180000_permission_legacy_retirement.sql`  
-**Hosted status:** local candidate only; Preview installation is not yet approved or installed  
+**Hosted status:** Preview rollback dry run passed; committed installation is not yet approved or installed  
 **Production:** unchanged
 
 ## Fresh preflight
@@ -25,6 +25,22 @@
 - Retire the legacy clone script with a fail-closed operator error.
 - Return only one authoritative `role` and role-neutral centre scope from `get_context`. The React interface no longer consumes role arrays or an operational-role override flag.
 - Keep `/vanilla/` unchanged for its separately approved removal phase.
+
+## Preview rollback dry run
+
+The owner approved one rollback-only Preview transaction. It executed the exact migration followed by `supabase/activation/seal.sql`, inspected the transactional state, and ended with `ROLLBACK`.
+
+Inside the transaction:
+
+- all 18 of 18 officer assignments received a governed link;
+- all 102 legacy grants and both legacy override rows remained present;
+- authenticated legacy discovery and `mass_core_admin` legacy mutation were revoked;
+- the staff Auth foreign key targeted `application_users`;
+- `get_context` no longer contained role arrays;
+- the two reconciliation mismatches remained explained Phase 7 differences; and
+- assessment entry remained enabled while attendance and visit entry remained disabled.
+
+Post-rollback verification confirmed exact restoration of the relevant preflight state: migration ledger count zero for `20261121180000`, no governed officer-assignment column, 18 officer assignments, 102 legacy grants, two legacy overrides, prior ACLs and staff foreign key restored, prior role-array context restored, the same reconciliation summary, and unchanged feature gates.
 
 ## Retention and rollback boundary
 
@@ -48,9 +64,7 @@ Rollback is a reviewed forward migration, not a rewrite of `20261121180000`. Bef
 
 ## Preview gates still required
 
-1. Owner approval for an exact Preview rollback-only dry run of the migration plus activation seal.
-2. Review the dry-run catalog, ACL, function, row-count, feature-gate and reconciliation evidence.
-3. Separate owner approval for the committed Preview database transaction.
-4. Separate owner approval for pushing the frontend commit and allowing a Vercel branch deployment.
-5. Signed-in Teacher, Cluster Officer and Leadership acceptance plus direct API denial checks and fresh zero-unexplained-drift reconciliation.
+1. Separate owner approval for the committed Preview database transaction with migration ledger entry.
+2. Separate owner approval for pushing the frontend commit and allowing a Vercel branch deployment.
+3. Signed-in Teacher, Cluster Officer and Leadership acceptance plus direct API denial checks and fresh zero-unexplained-drift reconciliation.
 
