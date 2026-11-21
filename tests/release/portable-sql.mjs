@@ -11,9 +11,10 @@ const read=name=>fs.readFileSync(path.join(root,name),'utf8');
 const db=new PGlite();await db.waitReady;
 const out=fs.mkdtempSync(path.join(os.tmpdir(),'mass-portable-sql-'));
 const phase7='20261121120000_leadership_user_administration.sql';
+const phase8='20261121180000_permission_legacy_retirement.sql';
 try {
  await db.exec(read('tests/core/bootstrap.sql'));
- for(const name of fs.readdirSync(path.join(root,'supabase/migrations')).filter(n=>n.endsWith('.sql')&&n!==phase7).sort())await db.exec(read('supabase/migrations/'+name));
+ for(const name of fs.readdirSync(path.join(root,'supabase/migrations')).filter(n=>n.endsWith('.sql')&&![phase7,phase8].includes(n)).sort())await db.exec(read('supabase/migrations/'+name));
  await db.exec(read('supabase/proposals/202611030024_reviewed_chart_metrics.sql'));
  // The efficiency migration upgrades the installed function only, so a fresh database applies it again after the reviewed proposal.
  await db.exec(read('supabase/migrations/20261114130000_reviewed_chart_metrics_efficiency.sql'));
@@ -80,4 +81,8 @@ try {
  await db.exec(read('supabase/migrations/'+phase7));
  await runSqlScript(db,read('tests/security/permission-administration.sql'));
  console.log('PASS protected Leadership administration, role and centre invariants, Auth ordering and immutable events');
+ await db.exec(read('supabase/migrations/'+phase8));
+ await db.exec('BEGIN;'+read('supabase/activation/seal.sql')+'COMMIT;');
+ await runSqlScript(db,read('tests/security/permission-legacy-retirement.sql'));
+ console.log('PASS legacy authorization retirement, governed visit links and retained rollback evidence');
 } finally {await db.close();fs.rmSync(out,{recursive:true,force:true});}

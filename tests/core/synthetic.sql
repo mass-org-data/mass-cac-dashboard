@@ -3,6 +3,9 @@ INSERT INTO auth.users(id) SELECT ('00000000-0000-4000-8000-'||lpad(n::text,12,'
 SET ROLE mass_core_admin;
 INSERT INTO mass_core.centres(id,label) VALUES
  ('10000000-0000-4000-8000-000000000001','Synthetic <img src=x onerror="window.__fixtureCentreXSSRan=true">'),('10000000-0000-4000-8000-000000000002','Synthetic centre B');
+-- Historical grant fixtures are installed as the table owner because Phase 8
+-- deliberately removes operator write privileges from this retained evidence.
+SET ROLE mass_core_owner;
 INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,ends_at,verified_by,verified_at,can_read_profiles) VALUES
  ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','Teacher','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',true),
  ('00000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','Teacher','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',false),
@@ -12,6 +15,7 @@ INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,en
  ('00000000-0000-4000-8000-000000000007','10000000-0000-4000-8000-000000000001','Teacher','1999-01-01','2000-01-01','00000000-0000-4000-8000-000000000006','2000-01-01',true),
  ('00000000-0000-4000-8000-000000000008','10000000-0000-4000-8000-000000000001','Leadership','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',false),
  ('00000000-0000-4000-8000-000000000008','10000000-0000-4000-8000-000000000002','Teacher','2000-01-01',NULL,'00000000-0000-4000-8000-000000000006','2000-01-01',false);
+SET ROLE mass_core_admin;
 -- Newer permission phases use one explicit role and role-neutral assignments.
 -- Keep the baseline fixture replayable before those additive tables exist.
 DO $governance_fixture$
