@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Phase 7 is deployed on the protected branch Preview. Signed-in read-only checks passed. Live invitation delivery and lifecycle mutations await separate acceptance.
+**Status** Phase 7 is deployed on the protected branch Preview. Signed-in read-only and synthetic Teacher lifecycle checks passed. Live invitation delivery and password-setup acceptance are pending.
 
 ## Operator workflow
 
@@ -61,6 +61,14 @@ The reviewed Go template rendered the branch password-setup link and preserved t
 On 21 November 2026, the approved fast-forward push put `6571d23fef54649483e5d729907cf9fa2fe4c754` on `fix/permission-architecture`. Vercel reported Ready and the protected branch alias served that revision backed by Preview Supabase. Vercel Authentication still blocks unauthenticated access to the branch preview. Production still serves `3be1a4e` against Production Supabase.
 
 Fresh Chromium sessions verified all three synthetic roles. Leadership’s administration page rendered the live directory, hid self-role and self-deactivation controls, and showed a confirmation for a peer action that was cancelled. Teacher and Cluster Officer had no menu link, and the direct route showed the denial without calling the Edge Function. A synthetic invite URL rendered the password page and removed the token fragment without consuming it. No administration state or invitation was changed during browser verification.
+
+## Preview Teacher lifecycle acceptance
+
+On 21 November 2026, the approved synthetic Teacher was deactivated through the Phase 7 Edge Function. An already-issued access token received HTTP 403 on the next protected register read. Supabase Auth refused a fresh password sign-in as banned and rejected refresh of an existing session. Phase 7 reactivated the application account and granted a new assignment to the same centre. The earlier assignment remained in history with an end date.
+
+After reactivation, a second untouched session issued before deactivation still received HTTP 403 for application context. Its refresh was rejected by Supabase Auth with HTTP 500 (`unexpected_failure`). A fresh password sign-in and refresh both succeeded, and the refreshed session could read the original centre's register. Read-only inspection found one completed event each for deactivation, reactivation, and assignment. Feature gates and other accounts and assignments matched test preflight.
+
+The Cluster Officer had one extra governed centre at preflight. Postflight reconciliation matched that centre to a completed Phase 7 assignment event. Teacher and Leadership had zero reconciliation mismatches.
 
 ## Preview installation and acceptance
 
