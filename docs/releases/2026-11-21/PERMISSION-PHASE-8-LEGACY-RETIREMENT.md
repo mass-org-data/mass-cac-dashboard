@@ -3,7 +3,7 @@
 **Prepared:** 21 November 2026  
 **Branch:** `fix/permission-architecture`  
 **Migration:** `20261121180000_permission_legacy_retirement.sql`  
-**Hosted status:** core Phase 8 migration installed on Preview; temporary context compatibility correction pending approval  
+**Hosted status:** core Phase 8 and temporary context compatibility migrations installed on Preview
 **Production:** unchanged
 
 ## Fresh preflight
@@ -53,7 +53,7 @@ Postflight also found a deployment-order incompatibility. The installed `get_con
 - `20261121183000_permission_context_compatibility.sql` temporarily returns arrays containing exactly the one authoritative role. It changes no authorization decision.
 - `20261121190000_permission_context_retirement.sql` removes those response-only fields after the new React frontend is deployed and accepted.
 
-The portable SQL replay validates both transitions. Neither follow-up migration is installed. Do not apply `20261121190000` before the frontend cutover.
+The portable SQL replay validates both transitions. The temporary compatibility migration is installed as described below. Do not apply `20261121190000` before the frontend cutover.
 
 ### Temporary compatibility rollback rehearsal
 
@@ -61,7 +61,17 @@ The owner approved a rollback-only Preview rehearsal of `20261121183000_permissi
 
 Inside the transaction, `get_context` used the `legacy-retired-compatible-v1` marker, returned exactly two `jsonb_build_array(app_role)` fields (the top-level and per-centre response-only arrays), and advertised `operational_roles_enabled=false`. The core Phase 8 ledger remained present and no compatibility ledger row existed. All 18 of 18 officer assignments remained governed-linked; 102 legacy grants and two override rows remained retained; all three retirement revocations remained enforced; reconciliation remained at two explained mismatches and zero unexplained drift; and assessment, attendance and visit entry remained true, false and false respectively.
 
-The independent post-rollback read confirmed the lasting state is unchanged: the core `legacy-retired-v1` function is installed with zero role arrays, the compatibility marker and ledger entry are absent, all 18 governed links and the retained evidence counts remain intact, the retirement revocations remain enforced, reconciliation is unchanged, and the three feature gates retain the same values. Persistent compatibility installation still requires separate exact approval.
+The independent post-rollback read confirmed the lasting state was unchanged at that point: the core `legacy-retired-v1` function was installed with zero role arrays, the compatibility marker and ledger entry were absent, all 18 governed links and the retained evidence counts remained intact, the retirement revocations remained enforced, reconciliation was unchanged, and the three feature gates retained the same values.
+
+### Temporary compatibility installation
+
+The owner separately approved persistent Preview installation. Fresh preflight confirmed the core ledger, absent compatibility ledger, 18 of 18 governed links and unchanged gates. The migration and its provider ledger row then committed atomically as version `20261121183000`, name `permission_context_compatibility`. The stored ledger statement MD5 matched the reviewed migration file.
+
+Postflight confirmed the compatible API marker and exactly two response-only `jsonb_build_array(app_role)` fields, with operational role switching disabled. All 18 governed links, 102 legacy grants and two legacy override rows remain; the browser discovery, operator mutation and obsolete override-execution revocations remain enforced; reconciliation remains at two explained mismatches and zero unexplained drift; and assessment, attendance and visit entry remain true, false and false respectively.
+
+Fresh authenticated API sessions for Teacher, Cluster Officer and Leadership each returned the expected single authoritative role. The top-level role array and every per-centre role array contained exactly that role, `operational_roles_enabled` was false, and the response advertised `single-role-v1` with `legacy-retired-compatible-v1`. No credentials, tokens, account identifiers or centre identifiers were retained in the evidence.
+
+A fresh read-only Production check found zero Phase 8 ledger versions and no `application_users` or `administration_events` table. Production remains unchanged.
 
 ## Retention and rollback boundary
 
@@ -85,9 +95,8 @@ Rollback is a reviewed forward migration, not a rewrite of `20261121180000`. Bef
 
 ## Preview gates still required
 
-1. Owner approval for the exact Preview installation of temporary compatibility migration `20261121183000` plus its ledger entry.
-2. Separate owner approval for pushing the frontend commits and allowing a Vercel branch deployment.
-3. Signed-in Teacher, Cluster Officer and Leadership acceptance against the compatible API.
-4. Owner approval for Preview installation of final response retirement migration `20261121190000` after frontend acceptance.
-5. Repeat direct API denial checks and fresh zero-unexplained-drift reconciliation.
+1. Separate owner approval for pushing the frontend commits and allowing a Vercel branch deployment.
+2. Signed-in Teacher, Cluster Officer and Leadership UI acceptance on that deployment.
+3. Owner approval for Preview installation of final response retirement migration `20261121190000` after frontend acceptance.
+4. Repeat direct API denial checks and fresh zero-unexplained-drift reconciliation.
 
