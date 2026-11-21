@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Database migration, Auth hook, restricted database login, and Edge Function are active on Preview. Invite Auth configuration, React deployment, and full Phase 7 acceptance are pending.
+**Status** Database migration, Auth hook, restricted database login, and Edge Function are active on Preview. The branch invite redirect is allowlisted. Custom SMTP, the invite template, React deployment, and full Phase 7 acceptance are pending.
 
 ## Operator workflow
 
@@ -49,6 +49,12 @@ The connection string is registered under `MASS_ADMIN_DATABASE_URL` in Preview E
 On 21 November 2026, `MASS_ADMIN_INVITE_URL` was set to the approved branch site root and `leadership-admin` version 1 was deployed to Preview. The function performs bearer-token verification through GoTrue and checks Leadership authorization in the database. Preview browser preflight returned HTTP 204. The read-only directory returned HTTP 200 for Leadership and contained all three governed roles. The handler returned HTTP 403 for Teacher and Cluster Officer and HTTP 401 for anonymous access. Successful directory access verified the restricted login over the live Edge Function connection.
 
 Postflight confirmed the same application user count, active assignment count, and feature gates. Preview Auth still uses the default invite link, the branch redirect is absent from its allowlist, and custom SMTP is unset. Vercel still serves the Phase 6 branch build at `245ceb1`.
+
+## Preview invite configuration
+
+On 21 November 2026, the approved branch root `https://dev-mass-cac-dashboard.vercel.app/` was added to Preview Auth’s redirect allowlist. Other Auth settings matched preflight. No invite email was sent.
+
+The reviewed Go template rendered the branch password-setup link and preserved the default confirmation link for other destinations. Supabase rejected the template update because this Free-tier Preview uses the default email provider. The template in the project still uses the default confirmation link. Configure custom SMTP before applying the branch template and running approved email-delivery acceptance.
 
 ## Preview installation and acceptance
 
