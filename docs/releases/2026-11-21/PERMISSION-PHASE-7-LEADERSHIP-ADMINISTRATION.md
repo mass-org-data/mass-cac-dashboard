@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Database migration installed and verified on Preview. Auth hook activation, database login provisioning, Edge Function deployment, and signed-in acceptance are pending.
+**Status** Database migration and Auth hook active on Preview. Restricted database login provisioning, Edge Function deployment, and Phase 7 signed-in acceptance are pending.
 
 ## Operator workflow
 
@@ -31,6 +31,12 @@ The revised migration and activation seal ran in one transaction on Preview. In-
 On 21 November 2026, the approved migration and activation seal committed in one Preview transaction, with ledger entry `20261121120000` (`leadership_user_administration`). The installed migration SHA-256 is `eb43e2eeca87e329b0208ebfe4d7521c9552ca53fdbdb18c1ff9e83e730b63d8`.
 
 Read-only postflight verified forced RLS on the three private tables, the bridge’s five function grants, and the Auth hook’s owner and execute grants. The earlier ledger, the three users and ten active assignments, the attendance register control, and the feature gates matched preflight. Assessment entry remains enabled. Attendance entry, visit entry, and student deletion remain disabled. The Auth hook is installed as a database function and is disabled in Preview Auth settings.
+
+## Preview Auth hook activation
+
+On 21 November 2026, the owner approved enabling the installed Custom Access Token Hook on Preview. Preview Auth reports `pg-functions://postgres/mass_core/administration_access_token_hook` enabled. Each synthetic role refreshed a session issued before activation, then signed in and refreshed again. All three kept their original role and scope (Teacher 1 centre, Cluster Officer 9, Leadership 92).
+
+Other Preview Auth settings, feature gates, application user records, and centre assignments matched preflight. This check exercised the hook’s existing-user behavior. Managed revocation and post-unban refresh denial will be exercised during Phase 7 acceptance using a separately approved synthetic target.
 
 ## Preview installation and acceptance
 
