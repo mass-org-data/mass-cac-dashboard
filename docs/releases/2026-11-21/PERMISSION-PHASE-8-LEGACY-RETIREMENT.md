@@ -82,6 +82,14 @@ Repeatable system-Chromium acceptance passed with fresh Preview Auth sessions fo
 
 The managed desktop browser-control tool was unavailable, so the documented cloud-desktop fallback used headless Chromium against the actual protected domain. Vercel bypass and Auth session material stayed in permission-restricted temporary files, was never printed, and was removed immediately after the checks.
 
+### Final context-retirement rollback rehearsal
+
+The owner approved a rollback-only Preview rehearsal of `20261121190000_permission_context_retirement.sql`. Fresh preflight confirmed the core and compatibility ledgers, absent final ledger, compatible API marker, two role arrays, 18 of 18 governed links and unchanged gates.
+
+Inside the transaction, `get_context` used the final `legacy-retired-v1` marker, contained zero role arrays and omitted the operational-role flag. The core and compatibility ledgers remained present and the final ledger remained absent. All 18 governed links, 102 legacy grants and two legacy override rows remained; the browser discovery, operator mutation and obsolete override-execution revocations remained enforced; reconciliation remained at two explained mismatches and zero unexplained drift; and assessment, attendance and visit entry remained true, false and false respectively. The transaction ended with `ROLLBACK`.
+
+The independent post-rollback read confirmed exact restoration of the installed compatibility state: `legacy-retired-compatible-v1`, two authoritative role arrays, operational role switching disabled, no final ledger entry, unchanged governed links and evidence counts, unchanged revocations, unchanged reconciliation and unchanged feature gates.
+
 ## Retention and rollback boundary
 
 All legacy authorization rows, override rows, identifiers, indexes and original officer-assignment foreign-key values are retained indefinitely as historical and rollback evidence. This migration drops no legacy data. Archival or deletion requires a later explicit decision, a defined recovery window and a rehearsed backup restoration.
@@ -104,7 +112,6 @@ Rollback is a reviewed forward migration, not a rewrite of `20261121180000`. Bef
 
 ## Preview gates still required
 
-1. Owner approval for a rollback-only Preview rehearsal of final response retirement migration `20261121190000`.
-2. Separate owner approval for persistent Preview installation of that migration after a successful rehearsal.
-3. Repeat signed-in context checks, direct API denial checks and fresh zero-unexplained-drift reconciliation.
+1. Owner approval for persistent Preview installation of final response retirement migration `20261121190000` and its canonical ledger entry.
+2. Repeat signed-in context checks, direct API denial checks and fresh zero-unexplained-drift reconciliation.
 
