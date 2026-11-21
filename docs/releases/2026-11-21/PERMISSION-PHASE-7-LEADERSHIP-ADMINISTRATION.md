@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Database migration, Auth hook, restricted database login, and Edge Function are active on Preview. The branch invite redirect is allowlisted. Custom SMTP, the invite template, React deployment, and full Phase 7 acceptance are pending.
+**Status** Database migration, Auth hook, restricted database login, Edge Function, branch invite redirect, and invite template are active on Preview. React deployment and live invite delivery are pending.
 
 ## Operator workflow
 
@@ -54,7 +54,7 @@ Postflight confirmed the same application user count, active assignment count, a
 
 On 21 November 2026, the approved branch root `https://dev-mass-cac-dashboard.vercel.app/` was added to Preview Auth’s redirect allowlist. Other Auth settings matched preflight. No invite email was sent.
 
-The reviewed Go template rendered the branch password-setup link and preserved the default confirmation link for other destinations. Supabase rejected the template update because this Free-tier Preview uses the default email provider. The template in the project still uses the default confirmation link. Configure custom SMTP before applying the branch template and running approved email-delivery acceptance.
+The reviewed Go template rendered the branch password-setup link and preserved the default confirmation link for other destinations. Supabase rejected the template update because this Free-tier Preview uses the default email provider. The template in the project still uses the default confirmation link. The owner subsequently configured custom Resend SMTP. Supabase accepted the branch template, and read-back confirmed that its branch password-setup link and default fallback are installed. Supabase also marked only the invite template as customized. The redirect list, hook, mail configuration, and other settings matched preflight. Email delivery remains unverified and requires an approved synthetic recipient and an authorized sender.
 
 ## Preview installation and acceptance
 
