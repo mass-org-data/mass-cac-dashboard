@@ -5,7 +5,12 @@ CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE ROLE mass_test_authenticator LOGIN NOINHERIT;
 GRANT anon,authenticated TO mass_test_authenticator;
 CREATE SCHEMA auth;
-CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE TABLE auth.users(
+ id uuid PRIMARY KEY, email text, email_confirmed_at timestamptz, banned_until timestamptz
+);
+CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE);
+CREATE TABLE auth.refresh_tokens(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ session_id uuid REFERENCES auth.sessions(id) ON DELETE CASCADE);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),
  nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid

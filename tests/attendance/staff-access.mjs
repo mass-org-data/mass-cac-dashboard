@@ -38,7 +38,6 @@ try{
  await assert.rejects(()=>rpc('record_visit',{p_id:randomUUID(),p_assignment:assignment,p_shift:'Morning',p_date:'2026-11-09',p_status:'Completed',p_feedback:'Synthetic foreign identity',p_next_action:'',p_expected:0},user(3)),e=>e.code==='42501');checks++;
  const leadershipRead=await rpc('read_attendance_register',{p_centre:other,p_shift:'Morning',p_date:'2026-05-16'},user(4));ok(leadershipRead.roster.every(row=>row.name));
  assert.equal(await rpc('save_attendance_register',{p_request:randomUUID(),p_centre:other,p_shift:'Morning',p_date:'2026-05-16',p_token:leadershipRead.token,p_rows:[{enrolment:leadershipRead.roster[0].id,code:'A'}],p_reason:'Synthetic Leadership global write'},user(4)),1);checks++;
- await db.exec('ALTER TABLE auth.users ADD COLUMN email text;');
  for(const [n,email] of [[8,'source@synthetic.invalid'],[5,'first@synthetic.invalid'],[2,'second@synthetic.invalid'],[6,'approver@synthetic.invalid']])await db.query('UPDATE auth.users SET email=$1 WHERE id=$2',[email,user(n)]);
  let onboarding=fs.readFileSync(new URL('../../scripts/staff/clone-operational-access.sql',import.meta.url),'utf8');
  for(const [key,value] of Object.entries({source_email:'source@synthetic.invalid',target_emails:'first@synthetic.invalid,second@synthetic.invalid,source@synthetic.invalid',approver_email:'approver@synthetic.invalid',approval_reference:'Synthetic source-matched onboarding'}))onboarding=onboarding.replaceAll(`:'${key}'`,"'"+value+"'");

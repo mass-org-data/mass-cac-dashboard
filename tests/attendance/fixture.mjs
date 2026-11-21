@@ -4,7 +4,7 @@ import {runSqlScript} from '../sql-statements.mjs';
 export const centre='10000000-0000-4000-8000-000000000001';
 export const user=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 export async function fixture({metadata=true,centreEvents=true,review=true}={}) {
- let pendingMetadata='',pendingFeedback='',pendingCentreEvents='',pendingReview='',pendingPermissionRead='',pendingPermissionWrite='',pendingDestructive='';
+ let pendingMetadata='',pendingFeedback='',pendingCentreEvents='',pendingReview='',pendingPermissionRead='',pendingPermissionWrite='',pendingDestructive='',pendingAdministration='';
  const db=new PGlite();await db.waitReady;
  const read=name=>fs.readFileSync(new URL('../../'+name,import.meta.url),'utf8');
  await db.exec(read('tests/core/bootstrap.sql'));
@@ -16,6 +16,7 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
   if(file.includes('permission_read_cutover')){pendingPermissionRead=read('supabase/migrations/'+file);continue;}
   if(file.includes('permission_write_cutover')){pendingPermissionWrite=read('supabase/migrations/'+file);continue;}
   if(file.includes('permission_destructive_workflows')){pendingDestructive=read('supabase/migrations/'+file);continue;}
+  if(file.includes('leadership_user_administration')){pendingAdministration=read('supabase/migrations/'+file);continue;}
   const sql=read('supabase/migrations/'+file);
   if(file.includes('attendance_register_workflow')){
    const before=(await db.query("SELECT md5(pg_get_functiondef('mass_core.guard_record()'::regprocedure)) hash")).rows[0].hash;
@@ -38,6 +39,7 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
  if(metadata&&review&&pendingReview)await db.exec(pendingReview);
  const destructiveReady=(await db.query("SELECT to_regprocedure('mass_core.guard_academic_profile()') IS NOT NULL present")).rows[0].present;
  if(pendingDestructive&&destructiveReady){await db.exec(pendingDestructive);await db.exec('BEGIN;'+read('supabase/activation/seal.sql')+'COMMIT;');}
+ if(pendingAdministration)await db.exec(pendingAdministration);
  await db.exec("SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated register test' WHERE feature IN ('attendance_entry','assessment_entry','reviewed_reads'); UPDATE mass_core.attendance_register_control SET enabled=true,approval_reference='isolated approved register test'; RESET ROLE;");
  async function rpc(name,args={},actor=user(1),role='authenticated') {
   if(!/^[a-z_][a-z0-9_]*$/.test(name)||Object.keys(args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid test RPC');

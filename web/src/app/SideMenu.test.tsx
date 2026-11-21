@@ -13,7 +13,7 @@ function Harness({role = 'Teacher', initial = 'overview' as Route, collapsed: st
   return (
     <div>
       <button type="button" onClick={() => setOpen(true)}>open</button>
-      <SideMenu role={role} capabilities={{read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership'}} route={route} onNavigate={r => { onNavigate(r); setRoute(r); }} collapsed={collapsed} onToggleCollapsed={() => setCollapsed(v => !v)} mobileOpen={open} onCloseMobile={() => setOpen(false)} legacyHref="./vanilla/" />
+      <SideMenu role={role} capabilities={{read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership', manage_users: role === 'Leadership'}} route={route} onNavigate={r => { onNavigate(r); setRoute(r); }} collapsed={collapsed} onToggleCollapsed={() => setCollapsed(v => !v)} mobileOpen={open} onCloseMobile={() => setOpen(false)} legacyHref="./vanilla/" />
     </div>
   );
 }
@@ -46,6 +46,7 @@ describe('side menu', () => {
     view.unmount();
     render(<Harness role="Leadership" />);
     expect(screen.getByRole('link', {name: '3. Student profiles'})).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: '9. User administration'})).toBeInTheDocument();
   });
   it('navigates without leaving the page and reports the screen', async () => {
     const user = userEvent.setup();

@@ -15,6 +15,9 @@ CREATE ROLE mass_release_deployer LOGIN NOSUPERUSER NOBYPASSRLS CREATEROLE NOINH
 GRANT CREATE ON DATABASE postgres TO mass_release_deployer;
 GRANT USAGE ON SCHEMA auth TO mass_release_deployer;
 GRANT REFERENCES(id) ON auth.users TO mass_release_deployer;
+GRANT USAGE ON SCHEMA auth TO mass_release_deployer WITH GRANT OPTION;
+GRANT SELECT (id,email,email_confirmed_at,banned_until) ON auth.users TO mass_release_deployer WITH GRANT OPTION;
+GRANT SELECT (id,user_id),DELETE ON auth.sessions TO mass_release_deployer WITH GRANT OPTION;
 ALTER DATABASE postgres SET mass_test.deployment_principal='mass_release_deployer';
 SQL
 migrate(){ docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 -U mass_release_deployer -d postgres; }

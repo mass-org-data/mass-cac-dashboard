@@ -47,10 +47,12 @@ const ready = async () => { await screen.findByRole('table', {name: 'Cohort size
 describe('Morarji page', () => {
   it('shows the selected cohort totals, leaving unrecorded values unknown', async () => {
     setup();
-    await ready();                                                          // members 12
-    expect(screen.getAllByText('10').length).toBeGreaterThan(0);           // took the exam
-    expect(screen.getAllByText('5').length).toBeGreaterThan(0);            // passed
-    expect(screen.getAllByText('3').length).toBeGreaterThan(0);            // 12 - 9 known results pending
+    for (const [label, total] of [
+      ['Children in the training cohort', '12'], ['Took the exam', '10'],
+      ['Children passed', '5'], ['Results pending', '3'],
+    ]) {
+      expect(await within(await screen.findByRole('group', {name: label})).findByText(total)).toBeVisible();
+    }
   });
   it('switches cohort and shows unknown rather than zero for an unrecorded cohort', async () => {
     const user = userEvent.setup();

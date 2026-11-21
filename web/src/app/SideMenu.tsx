@@ -1,12 +1,12 @@
 import {useEffect, useRef} from 'react';
-import {BarChart3, BookOpen, CalendarDays, ExternalLink, Heart, Home, Info, MapPin, PanelLeftClose, PanelLeftOpen, Users, type LucideIcon} from 'lucide-react';
+import {BarChart3, BookOpen, CalendarDays, ExternalLink, Heart, Home, Info, MapPin, PanelLeftClose, PanelLeftOpen, Users, UserCog, type LucideIcon} from 'lucide-react';
 import {cn} from '../lib/utils';
 import {ROUTES, type Route} from './route';
 import {useI18n} from '../i18n/I18n';
 import {en, type MessageKey} from '../i18n/en';
 import type {ProgrammeCapabilities} from '../session/controller';
 
-const ICONS: Record<Route, LucideIcon> = {overview: Home, attendance: CalendarDays, profiles: Users, assessments: BookOpen, visits: MapPin, morarji: BarChart3, donors: Heart, about: Info};
+const ICONS: Record<Route, LucideIcon> = {overview: Home, attendance: CalendarDays, profiles: Users, assessments: BookOpen, visits: MapPin, morarji: BarChart3, donors: Heart, about: Info, admin: UserCog};
 
 /** Every role sees all eight numbered screens so a number always means the same screen. A screen the role cannot use is
  *  shown greyed out and cannot be opened; `unavailableReason` says why (null means the role can open it). */
@@ -17,7 +17,7 @@ export const unavailableReasonKey = (_role: string, id: Route, capabilities?: Pr
   return null;
 };
 export const unavailableReason = (role: string, id: Route, capabilities?: ProgrammeCapabilities): string | null => { const key = unavailableReasonKey(role, id, capabilities); return key ? en[key] : null; };
-export const itemsFor = (_role: string) => ROUTES;
+export const itemsFor = (_role: string, capabilities?: ProgrammeCapabilities) => ROUTES.filter(item => item.id !== 'admin' || capabilities?.manage_users === true);
 
 interface Props {
   role: string;
@@ -55,7 +55,7 @@ export function SideMenu({role, capabilities, route, onNavigate, collapsed, onTo
         <p className={cn('mb-3 px-3 text-xs font-bold uppercase tracking-[0.2em] text-muted', collapsed && 'md:sr-only')}>{t('menu.programme')}</p>
         <nav aria-label={t('menu.primary')} className="min-h-0 flex-1 overflow-y-auto">
           <ul className="space-y-1">
-            {itemsFor(role).map(item => {
+            {itemsFor(role, capabilities).map(item => {
               const Icon = ICONS[item.id];
               const active = route === item.id;
               const reasonKey = unavailableReasonKey(role, item.id, capabilities);

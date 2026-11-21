@@ -17,13 +17,15 @@ import {ROUTES, useRoute} from './route';
 import {SideMenu} from './SideMenu';
 import {I18nProvider, LanguageToggle, useI18n, type Language} from '../i18n/I18n';
 import {UserMenu} from './UserMenu';
+import {UserAdministration} from '../admin/UserAdministration';
+import {InviteAcceptance} from '../admin/InviteAcceptance';
 
 const MENU_KEY = 'mass-menu-collapsed';
 // Only a convenience: the menu works the same when browser storage is blocked.
 const readCollapsed = () => { try { return window.localStorage.getItem(MENU_KEY) === '1'; } catch { return false; } };
 const writeCollapsed = (value: boolean) => { try { window.localStorage.setItem(MENU_KEY, value ? '1' : '0'); } catch { /* ignore */ } };
 
-function Shell({backend}: {backend: LiveBackend}) {
+function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boolean}) {
   const {state, controller} = useSession();
   const {setLanguage, t} = useI18n();
   const [route, go] = useRoute();
@@ -35,7 +37,7 @@ function Shell({backend}: {backend: LiveBackend}) {
   useEffect(() => { const item = ROUTES.find(r => r.id === route); document.title = `${item ? t(item.labelKey) : ''} · ${t('app.centres')}`; }, [route, t]);
   if (state.status === 'loading') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="loading" loadingLabel={t('session.checking')} /></main>;
   if (state.status === 'error') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="error" errorMessage={t(state.messageKey)} onRetry={() => void controller.start()} /></main>;
-  if (state.status === 'signed-out') return <SignIn message={state.messageKey ? t(state.messageKey) : state.message} onSignIn={(email, password) => controller.signIn(email, password)} />;
+  if (state.status === 'signed-out') return <SignIn message={state.messageKey ? t(state.messageKey) : state.message ?? (inviteSaved ? t('invite.saved') : undefined)} onSignIn={(email, password) => controller.signIn(email, password)} />;
   const currentRoute = ROUTES.find(r => r.id === route)!;
   return (
     <div className="flex h-dvh flex-col">
@@ -56,7 +58,11 @@ function Shell({backend}: {backend: LiveBackend}) {
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="w-full space-y-6 p-4 md:p-6">
           <h1 className="text-2xl font-bold text-ink">{currentRoute.number}. {t(currentRoute.labelKey)}</h1>
-        {route === 'attendance'
+        {route === 'admin'
+          ? state.context.capabilities?.manage_users === true
+            ? <UserAdministration call={backend.administration} actor={state.userId} centres={state.context.centres} />
+            : <p role="alert">{t('admin.forbidden')}</p>
+          : route === 'attendance'
           ? <Attendance backend={backend} context={state.context} role={state.role} key={`a-${state.role}`} />
           : route === 'profiles'
           ? <Profiles backend={backend} context={state.context} role={state.role} key={`p-${state.role}`} />
@@ -78,7 +84,9 @@ function Shell({backend}: {backend: LiveBackend}) {
   );
 }
 
-export function App({config}: {config: RuntimeConfig}) {
+export function App({config, inviteToken}: {config: RuntimeConfig; inviteToken?: string}) {
+  const [inviteOpen, setInviteOpen] = useState(inviteToken !== undefined);
+  const [inviteSaved, setInviteSaved] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
   const {backend, controller} = useMemo(() => {
     const live = createLiveBackend(config);
@@ -86,5 +94,9 @@ export function App({config}: {config: RuntimeConfig}) {
     live.onAuthorizationFailure?.(() => { void session.signOut(); });
     return {backend: live, controller: session};
   }, [config]);
-  return <I18nProvider language={language} setLanguage={setLanguage}><SessionProvider controller={controller}><Shell backend={backend} /></SessionProvider></I18nProvider>;
+  return <I18nProvider language={language} setLanguage={setLanguage}>
+    {inviteOpen && inviteToken !== undefined
+      ? <InviteAcceptance config={config} token={inviteToken} onExit={saved => { setInviteSaved(saved); setInviteOpen(false); }} />
+      : <SessionProvider controller={controller}><Shell backend={backend} inviteSaved={inviteSaved} /></SessionProvider>}
+  </I18nProvider>;
 }

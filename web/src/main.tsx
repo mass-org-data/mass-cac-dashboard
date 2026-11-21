@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {runtimeConfig} from 'mass-runtime-config';
 import {validateConfig} from '../../src/live/config.js';
 import {App} from './app/App';
+import {takeInviteToken} from './admin/InviteAcceptance';
 import type {RuntimeConfig} from './session/backend';
 import './index.css';
 import {en} from './i18n/en';
@@ -12,7 +13,8 @@ try {
   // Same fail-closed check as the current application: an unapproved or missing configuration shows a notice, never data.
   const config = validateConfig(runtimeConfig) as RuntimeConfig;
   if (config.mode === 'demo') throw new Error('The new interface has no demo mode.');
-  root.render(<StrictMode><App config={config} /></StrictMode>);
+  const inviteToken = takeInviteToken(window.location, window.history);
+  root.render(<StrictMode><App config={config} inviteToken={inviteToken} /></StrictMode>);
 } catch (error) {
   root.render(<main className="mx-auto max-w-xl p-6"><h1 className="text-xl font-bold">{en['app.configurationRequired']}</h1><p role="alert" className="mt-2 text-bad">{(error as Error).message}</p></main>);
 }
