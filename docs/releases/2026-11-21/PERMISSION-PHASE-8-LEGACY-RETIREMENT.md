@@ -3,7 +3,7 @@
 **Prepared:** 21 November 2026  
 **Branch:** `fix/permission-architecture`  
 **Migration:** `20261121180000_permission_legacy_retirement.sql`  
-**Hosted status:** Preview rollback dry run passed; committed installation is not yet approved or installed  
+**Hosted status:** core Phase 8 migration installed on Preview; temporary context compatibility correction pending approval  
 **Production:** unchanged
 
 ## Fresh preflight
@@ -42,6 +42,19 @@ Inside the transaction:
 
 Post-rollback verification confirmed exact restoration of the relevant preflight state: migration ledger count zero for `20261121180000`, no governed officer-assignment column, 18 officer assignments, 102 legacy grants, two legacy overrides, prior ACLs and staff foreign key restored, prior role-array context restored, the same reconciliation summary, and unchanged feature gates.
 
+## Preview installation and compatibility hold
+
+The owner approved the committed Preview transaction. The first attempt failed before `COMMIT` because the transaction still held `mass_core_owner` while inserting the provider ledger row. PostgreSQL aborted it, and a read-only check confirmed full rollback. The retry reset the transaction role before the ledger insert and committed successfully.
+
+Preview now has ledger entry `20261121180000` (`permission_legacy_retirement`). All 18 officer assignments are governed-linked. The 102 legacy grants and two override rows remain retained. Browser legacy discovery, operator legacy mutation and override execution are revoked. The staff Auth foreign key targets `application_users`, visit runtime functions contain no legacy authorization joins, reconciliation remains at two explained mismatches and zero unexplained drift, and feature gates are unchanged. Production remains unchanged.
+
+Postflight also found a deployment-order incompatibility. The installed `get_context` correctly omits role arrays, but deployed frontend commit `6571d23` still evaluates `centre.roles.includes(...)`. Two append-only candidates address the sequence:
+
+- `20261121183000_permission_context_compatibility.sql` temporarily returns arrays containing exactly the one authoritative role. It changes no authorization decision.
+- `20261121190000_permission_context_retirement.sql` removes those response-only fields after the new React frontend is deployed and accepted.
+
+The portable SQL replay validates both transitions. Neither follow-up migration is installed. Do not apply `20261121190000` before the frontend cutover.
+
 ## Retention and rollback boundary
 
 All legacy authorization rows, override rows, identifiers, indexes and original officer-assignment foreign-key values are retained indefinitely as historical and rollback evidence. This migration drops no legacy data. Archival or deletion requires a later explicit decision, a defined recovery window and a rehearsed backup restoration.
@@ -64,7 +77,9 @@ Rollback is a reviewed forward migration, not a rewrite of `20261121180000`. Bef
 
 ## Preview gates still required
 
-1. Separate owner approval for the committed Preview database transaction with migration ledger entry.
-2. Separate owner approval for pushing the frontend commit and allowing a Vercel branch deployment.
-3. Signed-in Teacher, Cluster Officer and Leadership acceptance plus direct API denial checks and fresh zero-unexplained-drift reconciliation.
+1. Owner approval for the exact Preview installation of temporary compatibility migration `20261121183000` plus its ledger entry.
+2. Separate owner approval for pushing the frontend commits and allowing a Vercel branch deployment.
+3. Signed-in Teacher, Cluster Officer and Leadership acceptance against the compatible API.
+4. Owner approval for Preview installation of final response retirement migration `20261121190000` after frontend acceptance.
+5. Repeat direct API denial checks and fresh zero-unexplained-drift reconciliation.
 
