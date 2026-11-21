@@ -1,7 +1,7 @@
 # Permission Phase 7 · Leadership user administration
 
 **Branch** `fix/permission-architecture`
-**Status** Database migration and Auth hook active on Preview. Restricted database login and connection secret provisioned. Edge Function deployment and Phase 7 signed-in acceptance are pending.
+**Status** Database migration, Auth hook, restricted database login, and Edge Function are active on Preview. Invite Auth configuration, React deployment, and full Phase 7 acceptance are pending.
 
 ## Operator workflow
 
@@ -43,6 +43,12 @@ Other Preview Auth settings, feature gates, application user records, and centre
 On 21 November 2026, the approved `mass_user_admin_login` was provisioned with a single `SET TRUE, INHERIT FALSE` membership in `mass_user_admin_bridge`. Postflight confirmed that the login can connect and has no direct access to the Auth schema, application tables, or administration RPCs. It must explicitly assume the bridge role for the approved operations.
 
 The connection string is registered under `MASS_ADMIN_DATABASE_URL` in Preview Edge Function secrets. It uses the Supavisor session pooler on port 5432 with full TLS verification. No credential values appear in the repository. A real connection from the deployed Edge Function is still pending. Application users, centre assignments, and feature gates matched preflight.
+
+## Preview Edge Function deployment
+
+On 21 November 2026, `MASS_ADMIN_INVITE_URL` was set to the approved branch site root and `leadership-admin` version 1 was deployed to Preview. The function performs bearer-token verification through GoTrue and checks Leadership authorization in the database. Preview browser preflight returned HTTP 204. The read-only directory returned HTTP 200 for Leadership and contained all three governed roles. The handler returned HTTP 403 for Teacher and Cluster Officer and HTTP 401 for anonymous access. Successful directory access verified the restricted login over the live Edge Function connection.
+
+Postflight confirmed the same application user count, active assignment count, and feature gates. Preview Auth still uses the default invite link, the branch redirect is absent from its allowlist, and custom SMTP is unset. Vercel still serves the Phase 6 branch build at `245ceb1`.
 
 ## Preview installation and acceptance
 
