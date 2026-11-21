@@ -11,7 +11,7 @@ import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
-const ctx = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: true, centres: [{id: 'c1', label: 'Centre 01', roles, can_write: write}, {id: 'c2', label: 'Centre 02', roles, can_write: write}]}) as unknown as ProgrammeContext;
+const ctx = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: write}, {id: 'c2', label: 'Centre 02', can_write: write}]});
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}], assessment_periods: [1, 2, 3, 4].map(q => ({id: `p${q}`, academic_year_id: 'y1', quarter: q})), assessment_definitions: [1, 2, 3, 4].map(q => ({id: `d${q}`, period_id: `p${q}`, max_score: 25}))};
 const report: Report = {children: 40, grades: {}, genders: {}, attendance: {p: 0, a: 0, l: 0, excluded: 0, percentage: null},
   quarters: [{quarter: 1, n: 30, mean: 12, low: 3, developing: 10, good: 12, strong: 5, precision_review: 0}, {quarter: 2, n: 32, mean: 15.25, above20: 8, low: 2, developing: 8, good: 14, strong: 8, precision_review: 1}],

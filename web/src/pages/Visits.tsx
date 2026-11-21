@@ -62,7 +62,7 @@ export function Visits({backend, context, role, service: injected, tables: injec
     return () => { live = false; };
   }, [backend, service, role, bootAttempt]);
 
-  const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
+  const scope = context.centres;
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
   const writable = useMemo(() => scope.filter(c => c.can_write && role !== 'Teacher'), [scope, role]);
   const refs = boot.status === 'ready' ? boot.value.refs : null;

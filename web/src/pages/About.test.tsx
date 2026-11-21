@@ -4,7 +4,7 @@ import {About} from './About';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
 
-const ctx = (centres: Array<{id: string; roles: string[]}>): ProgrammeContext => ({user_id: 'u', operational_roles_enabled: true, centres: centres.map(c => ({...c, label: c.id, can_write: false}))}) as unknown as ProgrammeContext;
+const ctx = (centres: Array<{id: string; roles: string[]}>): ProgrammeContext => ({user_id: 'u', role: centres[0]?.roles[0] ?? 'Teacher', centres: centres.map(c => ({id: c.id, label: c.id, can_write: false}))});
 
 describe('About page', () => {
   it('states the approved reporting rules and the unknown-is-not-zero rule', () => {

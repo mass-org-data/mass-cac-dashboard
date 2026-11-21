@@ -39,7 +39,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
   );
 }
 
-export function Attendance({backend, context, role, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AttendanceService; overview?: OverviewService; tables?: TableService}) {
+export function Attendance({backend, context, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AttendanceService; overview?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
   const service = useMemo(() => injected ?? createAttendanceService(backend.rpc), [backend, injected]);
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
@@ -68,7 +68,7 @@ export function Attendance({backend, context, role, service: injected, overview:
     return () => { live = false; };
   }, [backend, service, bootAttempt]);
 
-  const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
+  const scope = context.centres;
   // Same entry rule as the current register: write access is per centre, only for the active operational role, never Leadership.
   const writable = useMemo(() => scope.filter(c => c.can_write), [scope]);
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);

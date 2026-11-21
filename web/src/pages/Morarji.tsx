@@ -37,7 +37,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 interface FollowUp {id: string; cohort: string; name: string | null; studentId: string; centre: string; applied: boolean | null; attended: boolean | null; result: string; school: string | null}
 interface CentreLine {id: string; name: string; members: number; applied: number; attended: number; passed: number}
 
-export function Morarji({backend, context, role, service: _injected, profiles: _injectedProfiles, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: MorarjiService; profiles?: ProfilesService; overview?: OverviewService; tables?: TableService}) {
+export function Morarji({backend, context, service: _injected, profiles: _injectedProfiles, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: MorarjiService; profiles?: ProfilesService; overview?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
   const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
@@ -59,7 +59,7 @@ export function Morarji({backend, context, role, service: _injected, profiles: _
     return () => { live = false; };
   }, [backend, bootAttempt, t]);
 
-  const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
+  const scope = context.centres;
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
   const selected = useMemo(() => scope.filter(c => !filters.centre || c.id === filters.centre), [scope, filters.centre]);
   const refs = boot.status === 'ready' ? boot.value.refs : null;

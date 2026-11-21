@@ -12,7 +12,7 @@ import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
-const ctx = (roles: string[]): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: true, centres: [{id: 'c1', label: 'Centre 01', roles, can_write: true}, {id: 'c2', label: 'Centre 02', roles, can_write: true}]}) as unknown as ProgrammeContext;
+const ctx = (roles: string[]): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: true}, {id: 'c2', label: 'Centre 02', can_write: true}]});
 const cohorts = [{id: 'k1', label: '2024–25', academic_year_id: 'y0'}, {id: 'k2', label: '2025–26', academic_year_id: 'y1'}];
 const refs = {academic_years: [{id: 'y0', starts_on: '2025-04-01', ends_before: '2026-04-01'}, {id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}], assessment_periods: [], assessment_definitions: [], programme_cohorts: cohorts};
 const base: Report = {children: 40, grades: {}, genders: {}, attendance: {p: 0, a: 0, l: 0, excluded: 0, percentage: null}, quarters: [], centres: []};
