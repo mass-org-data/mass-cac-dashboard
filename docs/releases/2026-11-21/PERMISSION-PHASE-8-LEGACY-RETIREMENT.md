@@ -4,6 +4,7 @@
 **Branch:** `fix/permission-architecture`  
 **Migration:** `20261121180000_permission_legacy_retirement.sql`  
 **Hosted status:** core Phase 8 and temporary context compatibility migrations installed on Preview
+
 **Production:** unchanged
 
 ## Fresh preflight
@@ -73,6 +74,14 @@ Fresh authenticated API sessions for Teacher, Cluster Officer and Leadership eac
 
 A fresh read-only Production check found zero Phase 8 ledger versions and no `application_users` or `administration_events` table. Production remains unchanged.
 
+### Frontend deployment and signed-in acceptance
+
+The owner separately approved pushing the thirteen local commits after `6571d23`. The remote `fix/permission-architecture` branch fast-forwarded to `9858d59`. Vercel reported the exact commit Ready, and `dev-mass-cac-dashboard.vercel.app` was aliased to that deployment.
+
+Repeatable system-Chromium acceptance passed with fresh Preview Auth sessions for Teacher, Cluster Officer and Leadership. Every role reached Overview with the correct authoritative role, received its approved navigation scope, opened About and signed out. Leadership alone received User administration and its invite control. There were zero page errors and zero failed application API responses. One generic Teacher console 404 was traced to the absent optional `/favicon.ico`, not an application API or authorization request. No mutation workflow was exercised.
+
+The managed desktop browser-control tool was unavailable, so the documented cloud-desktop fallback used headless Chromium against the actual protected domain. Vercel bypass and Auth session material stayed in permission-restricted temporary files, was never printed, and was removed immediately after the checks.
+
 ## Retention and rollback boundary
 
 All legacy authorization rows, override rows, identifiers, indexes and original officer-assignment foreign-key values are retained indefinitely as historical and rollback evidence. This migration drops no legacy data. Archival or deletion requires a later explicit decision, a defined recovery window and a rehearsed backup restoration.
@@ -95,8 +104,7 @@ Rollback is a reviewed forward migration, not a rewrite of `20261121180000`. Bef
 
 ## Preview gates still required
 
-1. Separate owner approval for pushing the frontend commits and allowing a Vercel branch deployment.
-2. Signed-in Teacher, Cluster Officer and Leadership UI acceptance on that deployment.
-3. Owner approval for Preview installation of final response retirement migration `20261121190000` after frontend acceptance.
-4. Repeat direct API denial checks and fresh zero-unexplained-drift reconciliation.
+1. Owner approval for a rollback-only Preview rehearsal of final response retirement migration `20261121190000`.
+2. Separate owner approval for persistent Preview installation of that migration after a successful rehearsal.
+3. Repeat signed-in context checks, direct API denial checks and fresh zero-unexplained-drift reconciliation.
 
