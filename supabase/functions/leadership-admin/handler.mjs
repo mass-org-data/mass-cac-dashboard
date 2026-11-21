@@ -8,7 +8,7 @@ function parse(body) {
   if (action === 'directory') {
     const search = body.search ?? '';
     const offset = body.offset ?? 0;
-    if (typeof search === 'string' && search.length <= 254 && Number.isInteger(offset) && offset >= 0 && offset <= 100000) {
+    if (typeof search === 'string' && search.length <= 254 && Number.isInteger(offset) && offset >= 0 && offset <= 100000 && offset % 20 === 0) {
       return {action, search, offset};
     }
   }
@@ -31,7 +31,7 @@ function parse(body) {
   return null;
 }
 
-export function administrationHandler({origin, verify, withDatabase, administer}) {
+export function administrationHandler({origin, verify, withDatabase, listAccounts, resolveAccount, administer}) {
   return async request => {
     const cors = request.headers.get('origin') === origin
       ? {'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
@@ -44,16 +44,27 @@ export function administrationHandler({origin, verify, withDatabase, administer}
     const authorization = request.headers.get('authorization');
     if (!authorization?.startsWith('Bearer ')) return reply(401, {error: 'sign_in_required'});
     try {
-      const actor = await verify(authorization);
-      if (!uuid.test(actor ?? '')) return reply(401, {error: 'sign_in_required'});
+      const identity = await verify(authorization);
+      if (!uuid.test(identity?.id ?? '') || !uuid.test(identity?.session ?? '')) return reply(401, {error: 'sign_in_required'});
       const text = await request.text();
       if (text.length > 4096) return reply(400, {error: 'invalid_request'});
       const operation = parse(JSON.parse(text));
       if (!operation) return reply(400, {error: 'invalid_request'});
-      const result = await withDatabase(async db => {
-        if (operation.action === 'directory') return await db.directory(actor, operation.search, operation.offset);
+      const actor = identity.id;
+      const result = await withDatabase(identity.session, async db => {
+        if (operation.action === 'directory') {
+          await db.authorize(actor);
+          const page = await listAccounts(operation.search, operation.offset);
+          return {...await db.directory(actor, page.accounts), more: page.more};
+        }
         return await db.lock(operation.id, async () => {
           const {action, input} = operation.action === 'retry' ? await db.retry(actor, operation.id) : operation;
+          if (action === 'link') {
+            await db.authorize(actor);
+            const subject = await resolveAccount(input.email);
+            if (!uuid.test(subject ?? '')) throw Object.assign(new Error('Verified Auth account required.'), {code: '22023'});
+            return await db.prepare(actor, operation.id, action, {...input, subject});
+          }
           const prepared = await db.prepare(actor, operation.id, action, input);
           if (!lifecycle.has(action) || prepared.state !== 'pending') return prepared;
           let authResult;

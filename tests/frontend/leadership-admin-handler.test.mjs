@@ -5,6 +5,7 @@ import {administrationHandler} from '../../supabase/functions/leadership-admin/h
 const origin = 'https://dashboard.example.invalid';
 const actor = '00000000-0000-4000-8000-000000000001';
 const subject = '00000000-0000-4000-8000-000000000002';
+const session = '00000000-0000-4000-8000-000000000014';
 const id = '00000000-0000-4000-8000-000000000003';
 const request = (body, authenticated = true, requestOrigin = origin) => new Request(origin, {
   method: 'POST',
@@ -13,14 +14,22 @@ const request = (body, authenticated = true, requestOrigin = origin) => new Requ
 });
 const statusError = code => Object.assign(new Error('test'), {code});
 
-function fixture({providerFails = false, databaseFails = false, denied = false} = {}) {
+function fixture({providerFails = false, databaseFails = false, denied = false, linked = null} = {}) {
   const steps = [];
   let state = 'Active';
   let completed = false;
   const handler = administrationHandler({
     origin,
-    verify: async () => actor,
-    withDatabase: async action => action({
+    verify: async () => ({id:actor, session}),
+    listAccounts: async () => ({accounts:[],more:false}),
+    resolveAccount: async () => linked,
+    withDatabase: async (verifiedSession, action) => {
+      assert.equal(verifiedSession,session);
+      return action({
+      authorize: async caller => {
+        assert.equal(caller, actor);
+        if (denied) throw statusError('42501');
+      },
       directory: async caller => {
         assert.equal(caller, actor);
         if (denied) throw statusError('42501');
@@ -33,7 +42,7 @@ function fixture({providerFails = false, databaseFails = false, denied = false} 
         assert.equal(operation, id);
         if (denied) throw statusError('42501');
         steps.push(['prepare', action, input]);
-        if (completed) return {state:'complete'};
+        if (completed || action === 'link') return {state:'complete'};
         if (action === 'deactivate') state = 'Inactive';
         if (action === 'reactivate') assert.equal(state, 'Inactive');
         return {state:'pending', subject};
@@ -52,7 +61,8 @@ function fixture({providerFails = false, databaseFails = false, denied = false} 
         completed = true;
         return {state:'complete'};
       },
-    }),
+      });
+    },
     administer: async (action, _input, target) => {
       assert.equal(state, 'Inactive');
       assert.equal(target, subject);
@@ -92,4 +102,12 @@ test('Edge returns sanitized retry state for provider and post-Auth database fai
     assert.deepEqual(await response.json(), {state:'retry',failure});
     assert.deepEqual(steps.map(step=>step[0]), ['prepare','ban','retry']);
   }
+});
+
+test('manual linking takes its subject from the verified provider lookup', async () => {
+  const input={action:'link',id,email:'synthetic@example.invalid',role:'Teacher',subject:actor};
+  assert.equal((await fixture().handler(request(input))).status,400);
+  const {handler,steps}=fixture({linked:subject});
+  assert.equal((await handler(request(input))).status,200);
+  assert.deepEqual(steps,[['prepare','link',{email:input.email,role:input.role,subject}]]);
 });
