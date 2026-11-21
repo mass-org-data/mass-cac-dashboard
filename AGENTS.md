@@ -2,6 +2,23 @@
 
 This file is the reusable working context for coding agents. Read it before changing the repository. Treat dated deployment and PR details as a snapshot: fetch the remotes and inspect GitHub, Vercel, and Supabase before acting on them.
 
+## Current permission work (21 November 2026)
+
+Use this section for the current handoff. Dated status statements below and the earlier phase documents are historical. Fetch and verify the relevant remotes and hosted state before deployment-sensitive work.
+
+- Work on the existing `fix/permission-architecture` branch. The pushed ref and the protected Vercel branch Preview both serve `6571d23` at `https://dev-mass-cac-dashboard.vercel.app/`, backed by Preview Supabase `nilzfsahxoxibvrwsqkd`. Later acceptance notes are local. GitHub PR #26 squash-merged the earlier Phases 1–6 into `staging` at `2bd3e1d`. Phase 7 has no PR. Production Vercel and `main` remained at `3be1a4e` against Production Supabase `pbkwpfdpdtelmvbkzgvx`.
+- Preview has the live Phases 1–6 database objects. The ledger has Phase 4 under provider version `20261119030757`, Phases 5–6 under their canonical versions, and Phase 7 under `20261121120000`. Phase 1–3 catalog objects were verified but their matching ledger entries are missing. Preserve that discrepancy for provenance review. Replaying installed migrations is unsafe.
+- The approved Phase 7 migration and activation seal are installed on Preview only. The Custom Access Token Hook is enabled. The restricted database login and the Preview Edge Function secrets `MASS_ADMIN_DATABASE_URL` and `MASS_ADMIN_INVITE_URL` are provisioned. `leadership-admin` v1 is Active and verified from the deployed React UI. The Auth Admin credential stays inside Supabase Edge Runtime.
+- Active Leadership can invite staff, link a verified manually provisioned Auth account, change other users’ roles, manage centre assignments and assignment history, and deactivate or reactivate other accounts. One Leadership actor is sufficient. Self-role change and self-deactivation are forbidden. The UI omits administration history, while immutable administration events remain in the backend.
+- The live synthetic Teacher lifecycle passed. An existing JWT, password sign-in, and refresh were denied on deactivation. The old JWT and untouched old refresh were denied after reactivation. Supabase returned HTTP 500 for that rejected refresh. Fresh sign-in and refresh worked. The original centre was restored through a new assignment, with the ended assignment and completed events retained.
+- Preview uses Resend SMTP with `onboarding@resend.dev`. The exact branch URL is allowlisted and its invite template routes to React password setup. The owner approved one invitation to the mailbox bound as `PREVIEW_INVITE_TEST_EMAIL`. Supabase and the Edge Function accepted it, and the resulting unassigned Teacher is awaiting email confirmation. Inbox receipt and password setup remain unverified. Have the recipient open the email through the protected Preview and confirm the result. Keep mailbox addresses, invite URLs, tokens, and passwords out of chat and logs. Avoid a duplicate invite.
+- The latest Preview snapshot has four governed accounts and eleven active centre assignments. Both legacy/governed mismatches were explained by completed Phase 7 events, one extra Cluster Officer centre and the new governed-only invite. Assessment entry remains enabled. Attendance entry, visit entry and deletion, and student cascade deletion remain disabled.
+- The signed-in Vercel Preview checks passed for all roles, including Leadership-only directory access, hidden self-administration actions, and the token-free password setup screen from a synthetic URL. Portable SQL tests, native concurrency tests, and the React build passed. The broader Docker release and centre-events test suite failures reproduce at the pre-Phase-7 branch baseline.
+- Finish pending Invite acceptance before Phase 7 sign-off. Start Phase 8 only after Preview acceptance, zero unexplained reconciliation drift, and explicit approval of rollback and retention. Retire legacy authorization using new append-only migrations. Preserve historic evidence. Keep `/vanilla/` removal separate.
+- Obtain separate approval for every Preview database or Supabase/Vercel control-plane mutation. Get explicit approval before opening a PR, merging, promoting, or acting on Production. Production release requires its own backup, rehearsal, dry run, sealing, postflight and release record. Leave operational feature gates at their reviewed values.
+
+Current release details are in `docs/releases/2026-11-21/PERMISSION-PHASE-7-LEADERSHIP-ADMINISTRATION.md`. Use the current section above for the latest invitation result.
+
 ## Project and services
 
 - Repository: `mass-org-data/mass-cac-dashboard`
@@ -327,7 +344,7 @@ Branch `feature/ui-cleanup-pagination-i18n` was created from `main` at `3be1a4e`
 
 ## Permission architecture Phases 1–6 (20 November 2026)
 
-This section supersedes older statements above that describe permissions as deferred, multi-role switching as current, or Leadership as permanently read-only. The implementation is on `fix/permission-architecture`; commits through `bd53aaa` are pushed. It has no PR and is not merged. The latest protected branch Preview is `https://mass-cac-dashboard-omse19t1y-mass-data-dashboard.vercel.app/` and Vercel reports it Ready. Production code, database, Auth and activation settings are unchanged.
+This section records the Phases 1–6 cutover on `fix/permission-architecture` and Preview Supabase. The current handoff at the top of this file supersedes the original branch, deployment, and next-phase status.
 
 Plan and release evidence:
 
@@ -365,8 +382,8 @@ Plan and release evidence:
 - Preview postflight confirmed all Phase 1–6 migration behavior, closed anonymous/service access where required, zero reconciliation drift, Leadership-only export-sized reads and the attendance record identity needed for narrow deletion.
 - Production postflight confirmed the Phase 6 migration and its new function behavior are absent.
 
-### Next phases
+### Next phases from the Phase 6 handoff
 
-- Phase 7: protected Leadership user/role/assignment administration, including disabling the corresponding Supabase Auth account when a user becomes inactive. Do not expose or enable this before separate implementation approval.
+- Phase 7 introduced protected Leadership user, role, and assignment administration. The current handoff above records its deployment and acceptance status.
 - Phase 8: retire the superseded grant model only after Preview acceptance, rollback planning and an approved recovery window.
 - Remove `/vanilla/` in the owner's next dedicated UI-removal phase; do not combine that removal with unrelated permission work unless requested.
