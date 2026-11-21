@@ -55,6 +55,14 @@ Postflight also found a deployment-order incompatibility. The installed `get_con
 
 The portable SQL replay validates both transitions. Neither follow-up migration is installed. Do not apply `20261121190000` before the frontend cutover.
 
+### Temporary compatibility rollback rehearsal
+
+The owner approved a rollback-only Preview rehearsal of `20261121183000_permission_context_compatibility.sql`. The exact migration ran inside a transaction, followed by catalog and reconciliation checks, and ended with `ROLLBACK`.
+
+Inside the transaction, `get_context` used the `legacy-retired-compatible-v1` marker, returned exactly two `jsonb_build_array(app_role)` fields (the top-level and per-centre response-only arrays), and advertised `operational_roles_enabled=false`. The core Phase 8 ledger remained present and no compatibility ledger row existed. All 18 of 18 officer assignments remained governed-linked; 102 legacy grants and two override rows remained retained; all three retirement revocations remained enforced; reconciliation remained at two explained mismatches and zero unexplained drift; and assessment, attendance and visit entry remained true, false and false respectively.
+
+The independent post-rollback read confirmed the lasting state is unchanged: the core `legacy-retired-v1` function is installed with zero role arrays, the compatibility marker and ledger entry are absent, all 18 governed links and the retained evidence counts remain intact, the retirement revocations remain enforced, reconciliation is unchanged, and the three feature gates retain the same values. Persistent compatibility installation still requires separate exact approval.
+
 ## Retention and rollback boundary
 
 All legacy authorization rows, override rows, identifiers, indexes and original officer-assignment foreign-key values are retained indefinitely as historical and rollback evidence. This migration drops no legacy data. Archival or deletion requires a later explicit decision, a defined recovery window and a rehearsed backup restoration.
