@@ -1,10 +1,10 @@
 # New interface (web/)
 
-Vite, React, TypeScript, Tailwind CSS (v4), shadcn/ui-style primitives and TanStack Table (v8). It is the **default interface at `/`**. The original vanilla-JS interface is kept unchanged at `/vanilla/`; `npm run build` builds both.
+Vite, React, TypeScript, Tailwind CSS (v4), shadcn/ui-style primitives and TanStack Table (v8). It is the sole deployed interface at `/`; the retired `/vanilla/` application is not built or routed.
 
 ```bash
 npm run web:dev        # Vite dev server (needs MASS_SUPABASE_URL / MASS_SUPABASE_PUBLISHABLE_KEY for the preview project)
-npm run web:build      # same as npm run build: React at dist/, original at dist/vanilla/
+npm run web:build      # same as npm run build: React at dist/
 npm run web:typecheck  # tsc, strict
 npm run test:web       # Vitest + Testing Library + axe-core
 ```

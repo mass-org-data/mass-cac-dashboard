@@ -25,8 +25,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), runtimeConfig()],
   build: {
     outDir: fileURLToPath(new URL('../dist', import.meta.url)),
-    // The build script has already written the original app to dist/vanilla and must not be cleared.
-    emptyOutDir: false,
+    // React is the sole deployable interface; stale output must never survive a build.
+    emptyOutDir: true,
     sourcemap: false,
     // No inline script: the CSP allows script-src 'self' only.
     modulePreload: {polyfill: false},

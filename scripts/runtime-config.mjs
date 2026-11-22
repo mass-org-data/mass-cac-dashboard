@@ -1,5 +1,5 @@
-// Single source for the build-time runtime configuration used by both the current
-// esbuild app (scripts/build.mjs) and the new web/ Vite app. Keys are never written
+// Single source for the build-time runtime configuration used by the React/Vite
+// app. Keys are never written
 // to release metadata; the publishable key is public by design.
 import {validateConfig,PRODUCTION_PROJECT} from '../src/live/config.js';
 

@@ -1,5 +1,5 @@
 import {useEffect, useRef} from 'react';
-import {BarChart3, BookOpen, CalendarDays, ExternalLink, Heart, Home, Info, MapPin, PanelLeftClose, PanelLeftOpen, Users, UserCog, type LucideIcon} from 'lucide-react';
+import {BarChart3, BookOpen, CalendarDays, Heart, Home, Info, MapPin, PanelLeftClose, PanelLeftOpen, Users, UserCog, type LucideIcon} from 'lucide-react';
 import {cn} from '../lib/utils';
 import {ROUTES, type Route} from './route';
 import {useI18n} from '../i18n/I18n';
@@ -30,11 +30,9 @@ interface Props {
   /** Phone: the menu slides over the page with a scrim. */
   mobileOpen: boolean;
   onCloseMobile: () => void;
-  /** Where the original interface, which still holds Activities and monthly meetings, lives. */
-  legacyHref: string;
 }
 
-export function SideMenu({role, capabilities, route, onNavigate, collapsed, onToggleCollapsed, mobileOpen, onCloseMobile, legacyHref}: Props) {
+export function SideMenu({role, capabilities, route, onNavigate, collapsed, onToggleCollapsed, mobileOpen, onCloseMobile}: Props) {
   const {t} = useI18n();
   const first = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
@@ -82,15 +80,6 @@ export function SideMenu({role, capabilities, route, onNavigate, collapsed, onTo
                 </li>
               );
             })}
-          </ul>
-          <ul className="mt-4 space-y-1 border-t border-line pt-4">
-            <li>
-              <a href={legacyHref} title={collapsed ? t('menu.activities') : undefined}
-                className={cn('flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted hover:bg-brand-soft hover:text-ink', collapsed && 'md:justify-center md:px-0')}>
-                <ExternalLink aria-hidden="true" className="size-5 shrink-0" />
-                {label(t('menu.activities'))}
-              </a>
-            </li>
           </ul>
         </nav>
         <button type="button" onClick={onToggleCollapsed} aria-expanded={!collapsed} aria-controls="side-menu"

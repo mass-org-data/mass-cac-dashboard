@@ -3,8 +3,10 @@
 **Prepared:** 20 November 2026  
 **Repository:** `mass-org-data/mass-cac-dashboard`  
 **Working branch:** `fix/permission-architecture`  
-**Completed implementation:** Phases 1–6  
-**Remaining implementation:** Phases 7–8, acceptance/release, and the separately planned legacy-interface removal
+**Completed implementation:** Phases 1–8 on Preview
+**Remaining implementation:** separately gated Production release only; legacy-interface removal is implemented on the permission branch pending its Preview deployment record
+
+> **22 November 2026 status:** This is a historical takeover plan. Phase 7 and Phase 8 are complete and accepted on Preview, public signup is disabled there, reconciliation has zero unexplained drift, and Production remains unchanged. The detailed current state is in `AGENTS.md` and the Phase 7/8 release records below.
 
 ## 1. Read this first
 
@@ -43,18 +45,17 @@ The latest recorded Preview activation state is:
 
 Re-check these values before relying on them. Do not enable a feature as an incidental part of another change.
 
-The legacy interface at `/vanilla/` was deliberately not updated. The owner intends to remove it in a separate next phase.
+The legacy interface was deliberately not updated during Phases 1–8. Its separately approved removal is now implemented on the same permission branch without changing shared React integration modules.
 
 ## 3. Remaining work overview
 
 | Workstream | Status | Requires hosted mutation? | Approval boundary |
 | --- | --- | --- | --- |
-| Phase 1–6 signed-in acceptance | Pending | Read-only, except explicitly approved synthetic tests | May inspect Preview; do not create permanent facts without approval |
-| Phase 7 administration backend | Not started | Preview database and trusted server function | Obtain approval before each Preview database/control-plane change |
-| Phase 7 Leadership admin UI | Not yet approved as a separate deliverable | Preview frontend | Confirm scope with owner before building |
-| Auth signup and account-disable configuration | Unverified/not implemented | Supabase Auth control plane | Preview only after explicit approval; Production separately |
-| Phase 8 retirement of legacy authorization | Not started | Preview database | Only after acceptance, parity and rollback approval |
-| Remove `/vanilla/` | Planned separately | Frontend/build/routing | Keep separate from Phase 7 unless owner combines them |
+| Phase 1–6 signed-in acceptance | Complete on Preview | Completed approved synthetic checks | Production remains separately gated |
+| Phase 7 administration backend and UI | Complete on Preview | Preview database and trusted Edge Function | Production separately gated |
+| Auth signup and account-disable configuration | Complete on Preview | Public signup disabled; admin lifecycle accepted | Production separately gated |
+| Phase 8 retirement of legacy authorization | Complete on Preview | Three append-only migrations installed | Evidence retained; no legacy data deletion |
+| Remove `/vanilla/` | Implemented, Preview verification pending | Frontend/build/routing only | No database or Production change |
 | Production release | Not authorized | Production frontend, database and Auth | Requires a separate gated release approval |
 
 ## 4. Immediate takeover checks

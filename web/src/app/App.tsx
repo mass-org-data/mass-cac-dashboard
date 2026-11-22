@@ -54,7 +54,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <SideMenu role={state.role} capabilities={state.context.capabilities} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} legacyHref="./vanilla/" />
+        <SideMenu role={state.role} capabilities={state.context.capabilities} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} />
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="w-full space-y-6 p-4 md:p-6">
           <h1 className="text-2xl font-bold text-ink">{currentRoute.number}. {t(currentRoute.labelKey)}</h1>

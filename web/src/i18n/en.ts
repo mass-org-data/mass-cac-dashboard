@@ -95,7 +95,6 @@ export const en = {
   'menu.expand': 'Expand menu',
   'menu.collapse': 'Collapse menu',
   'menu.unavailable': 'unavailable: {reason}',
-  'menu.activities': 'Activities and monthly meetings (standard application)',
   'menu.profilesLeadership': 'Not available to Leadership: student records are private and Leadership sees aggregates only',
   'menu.donorsLeadership': 'Leadership reporting only',
   'menu.visitsTeacher': 'Not available to Teachers: visits are recorded by Cluster Officers',

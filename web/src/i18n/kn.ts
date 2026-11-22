@@ -102,7 +102,6 @@ export const kn: Record<MessageKey, string> = {
   'menu.expand': 'ಮೆನು ವಿಸ್ತರಿಸಿ',
   'menu.collapse': 'ಮೆನು ಕುಗ್ಗಿಸಿ',
   'menu.unavailable': 'ಲಭ್ಯವಿಲ್ಲ: {reason}',
-  'menu.activities': 'ಚಟುವಟಿಕೆಗಳು ಮತ್ತು ಮಾಸಿಕ ಸಭೆಗಳು (ಪ್ರಮಾಣಿತ ಅಪ್ಲಿಕೇಶನ್)',
   'menu.profilesLeadership': 'ನಾಯಕತ್ವಕ್ಕೆ ಲಭ್ಯವಿಲ್ಲ: ವಿದ್ಯಾರ್ಥಿ ದಾಖಲೆಗಳು ಖಾಸಗಿಯಾಗಿದ್ದು ನಾಯಕತ್ವವು ಒಟ್ಟು ಮಾಹಿತಿಯನ್ನು ಮಾತ್ರ ನೋಡುತ್ತದೆ',
   'menu.donorsLeadership': 'ನಾಯಕತ್ವ ವರದಿಗೆ ಮಾತ್ರ',
   'menu.visitsTeacher': 'ಶಿಕ್ಷಕರಿಗೆ ಲಭ್ಯವಿಲ್ಲ: ಭೇಟಿಗಳನ್ನು ಕ್ಲಸ್ಟರ್ ಅಧಿಕಾರಿಗಳು ದಾಖಲಿಸುತ್ತಾರೆ',

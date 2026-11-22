@@ -13,7 +13,7 @@ function Harness({role = 'Teacher', initial = 'overview' as Route, collapsed: st
   return (
     <div>
       <button type="button" onClick={() => setOpen(true)}>open</button>
-      <SideMenu role={role} capabilities={{read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership', manage_users: role === 'Leadership'}} route={route} onNavigate={r => { onNavigate(r); setRoute(r); }} collapsed={collapsed} onToggleCollapsed={() => setCollapsed(v => !v)} mobileOpen={open} onCloseMobile={() => setOpen(false)} legacyHref="./vanilla/" />
+      <SideMenu role={role} capabilities={{read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership', manage_users: role === 'Leadership'}} route={route} onNavigate={r => { onNavigate(r); setRoute(r); }} collapsed={collapsed} onToggleCollapsed={() => setCollapsed(v => !v)} mobileOpen={open} onCloseMobile={() => setOpen(false)} />
     </div>
   );
 }
@@ -38,7 +38,7 @@ describe('side menu', () => {
     expect(unavailableReason('Cluster Officer', 'visits', {read_visits: true})).toBeNull();
     expect(unavailableReason('Leadership', 'visits', {read_visits: true})).toBeNull();
     const view = render(<Harness role="Teacher" />);
-    expect(labels()).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments', '6. Morarji scholarship', '8. About', 'Activities and monthly meetings (standard application)']);
+    expect(labels()).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments', '6. Morarji scholarship', '8. About']);
     const nav = within(screen.getByRole('navigation', {name: 'Primary'}));
     expect(nav.getByText('7. Annual donor summary').closest('[aria-disabled="true"]')).not.toBeNull();
     expect(nav.getByText('5. Visits').closest('[aria-disabled="true"]')).not.toBeNull();
@@ -70,10 +70,6 @@ describe('side menu', () => {
     await user.click(screen.getByRole('button', {name: 'Expand menu'}));
     expect(screen.getByRole('complementary', {name: 'Menu'})).toHaveAttribute('data-collapsed', 'false');
     expect(within(screen.getByRole('link', {name: '2. Attendance'})).getByText('2. Attendance')).not.toHaveClass('md:sr-only');
-  });
-  it('links to the standard application for Activities and monthly meetings', () => {
-    render(<Harness />);
-    expect(screen.getByRole('link', {name: /Activities and monthly meetings/})).toHaveAttribute('href', './vanilla/');
   });
   it('opens on a phone with a scrim, closes with the scrim, Escape or a choice', async () => {
     const user = userEvent.setup();
