@@ -14,7 +14,7 @@ import {Morarji} from '../pages/Morarji';
 import {AnnualDonor} from '../pages/AnnualDonor';
 import {About} from '../pages/About';
 import {ROUTES, useRoute} from './route';
-import {SideMenu} from './SideMenu';
+import {SideMenu, unavailableReasonKey} from './SideMenu';
 import {I18nProvider, LanguageToggle, useI18n, type Language} from '../i18n/I18n';
 import {UserMenu} from './UserMenu';
 import {UserAdministration} from '../admin/UserAdministration';
@@ -58,7 +58,9 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="w-full space-y-6 p-4 md:p-6">
           <h1 className="text-2xl font-bold text-ink">{currentRoute.number === null ? null : <span className="text-brand-dark">{currentRoute.number}.</span>}{currentRoute.number === null ? '' : ' '}{t(currentRoute.labelKey)}</h1>
-        {route === 'admin'
+        {unavailableReasonKey(state.role, route, state.context.capabilities)
+          ? <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t(unavailableReasonKey(state.role, route, state.context.capabilities)!)}</p>
+          : route === 'admin'
           ? state.context.capabilities?.manage_users === true
             ? <UserAdministration call={backend.administration} actor={state.userId} centres={state.context.centres} />
             : <p role="alert">{t('admin.forbidden')}</p>
