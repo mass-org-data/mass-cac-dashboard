@@ -62,12 +62,13 @@ export function Visits({backend, context, role, service: injected, tables: injec
   const months = useMemo(() => (year ? academicMonths(year.starts_on) : []), [year]);
   const month = filters.month || (year && year.starts_on <= today && today < year.ends_before ? today.slice(0, 7) : months[0] ?? '');
   const selected = useMemo(() => scope.filter(c => !filters.centre || c.id === filters.centre), [scope, filters.centre]);
-  // A Cluster Officer sees their own coverage: one verified staff identity is required for officer-specific targets.
+  // A Cluster Officer sees coverage of their own centres. With exactly one verified staff identity the officer filter also
+  // applies; with several (one account, many directory records) coverage is by centre and no officer filter is sent.
   const officerIds = boot.status === 'ready' ? [...new Set(boot.value.assignments.map(a => a.officer_id))] : [];
-  const ownOfficer = role === 'Cluster Officer' ? (officerIds.length === 1 ? officerIds[0]! : null) : null;
+  const ownOfficer = role === 'Cluster Officer' && officerIds.length === 1 ? officerIds[0]! : null;
   const officer = role === 'Cluster Officer' ? ownOfficer : (filters.officer || null);
   const key = JSON.stringify([month, selected.map(c => c.id), officer]);
-  const officerBlocked = role === 'Cluster Officer' && boot.status === 'ready' && ownOfficer === null;
+  const officerBlocked = role === 'Cluster Officer' && boot.status === 'ready' && officerIds.length === 0;
 
   useEffect(() => {
     if (boot.status !== 'ready' || !month || officerBlocked) return;
@@ -133,7 +134,7 @@ export function Visits({backend, context, role, service: injected, tables: injec
   ], [nameOf, conductorName, t]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('visit.preparing')} rows={5} />;
-  if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{boot.value.assignments.length === 0 ? t('visit.noAssignment') : t('visit.multipleIdentities', {count: officerIds.length})}</p>;
+  if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t('visit.noAssignment')}</p>;
   const canRecord = role !== 'Teacher' && boot.value.assignments.length > 0 && writable.length > 0;
   const entryEnabled = boot.value.capabilities.writes?.visit_entry === true;
   const msg = data.status === 'error' ? data.message : undefined;

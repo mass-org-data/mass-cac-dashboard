@@ -438,7 +438,6 @@ export const en = {
   'visit.feedbackShort': 'Feedback',
   'visit.preparing': 'Preparing Visits',
   'visit.noAssignment': 'No verified, dated officer assignment is configured for this account. Names and directory observations do not establish permission, so visit coverage is unavailable.',
-  'visit.multipleIdentities': 'This account is linked to {count} different officer identities. Officer-specific targets need one verified staff identity, so visit coverage is unavailable until the assignments are corrected.',
   'visit.officerVisits': 'Officer visits',
   'visit.yourCentres': 'Visits to your centres',
   'visit.intro': '{heading}: the official monthly target is two Morning and two Evening completed visits per applicable centre.',
