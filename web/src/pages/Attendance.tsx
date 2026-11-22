@@ -61,7 +61,7 @@ export function Attendance({backend, context, service: injected, overview: injec
   }, [backend, service, bootAttempt]);
 
   const scope = context.centres;
-  // Same entry rule as the current register: write access is per centre, only for the active operational role, never Leadership.
+  // Write access is per centre and comes from the server (`can_write`). Leadership inherits operational writes for every centre; the server still enforces it.
   const writable = useMemo(() => scope.filter(c => c.can_write), [scope]);
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
 
