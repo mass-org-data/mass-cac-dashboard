@@ -3,6 +3,7 @@
 **Prepared:** 22 November 2026  
 **Branch:** `fix/permission-architecture`  
 **Scope:** frontend/build/routing only  
+**Deployed commit:** `4c9ef08`
 **Production:** unchanged
 
 ## Change
@@ -31,4 +32,10 @@ Rollback is a Git revert of this frontend-only commit followed by a Preview rebu
 - `npm run test:web`
 - `npm run build`, including absence of `dist/vanilla`
 
-Protected Preview deployment and signed-in role acceptance are pending the approved branch push. Record the exact deployment commit and results here after acceptance.
+## Protected Preview acceptance
+
+Vercel reported the exact removal commit Ready and aliased `dev-mass-cac-dashboard.vercel.app` to it. `/release.json` identifies the full commit, `ui: react`, `legacyRemoved: true`, Preview environment and the Preview Supabase project; it contains no `legacyPath`. Both `/vanilla` and `/vanilla/` return 404.
+
+Fresh Preview Auth sessions for Leadership, Cluster Officer and Teacher each reached Overview with the expected role, received role-correct User administration visibility, opened About, had no retired-interface link and signed out. There were no page errors or failed application responses before sign-out. The managed desktop browser-control tool was unavailable, so the documented cloud-desktop fallback used headless system Chromium against the actual protected domain. Permission-restricted temporary session, asset and browser files were removed after the run.
+
+A final read-only Production query found zero Phase 8 ledger versions and no `application_users` or `administration_events` tables. No Production code, database, Auth or Vercel setting changed.

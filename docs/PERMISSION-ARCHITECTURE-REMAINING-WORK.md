@@ -4,7 +4,7 @@
 **Repository:** `mass-org-data/mass-cac-dashboard`  
 **Working branch:** `fix/permission-architecture`  
 **Completed implementation:** Phases 1–8 on Preview
-**Remaining implementation:** separately gated Production release only; legacy-interface removal is implemented on the permission branch pending its Preview deployment record
+**Remaining implementation:** separately gated Production release only; legacy-interface removal is deployed and accepted on Preview
 
 > **22 November 2026 status:** This is a historical takeover plan. Phase 7 and Phase 8 are complete and accepted on Preview, public signup is disabled there, reconciliation has zero unexplained drift, and Production remains unchanged. The detailed current state is in `AGENTS.md` and the Phase 7/8 release records below.
 
@@ -55,7 +55,7 @@ The legacy interface was deliberately not updated during Phases 1–8. Its separ
 | Phase 7 administration backend and UI | Complete on Preview | Preview database and trusted Edge Function | Production separately gated |
 | Auth signup and account-disable configuration | Complete on Preview | Public signup disabled; admin lifecycle accepted | Production separately gated |
 | Phase 8 retirement of legacy authorization | Complete on Preview | Three append-only migrations installed | Evidence retained; no legacy data deletion |
-| Remove `/vanilla/` | Implemented, Preview verification pending | Frontend/build/routing only | No database or Production change |
+| Remove `/vanilla/` | Deployed and accepted on Preview | Frontend/build/routing only | No database or Production change |
 | Production release | Not authorized | Production frontend, database and Auth | Requires a separate gated release approval |
 
 ## 4. Immediate takeover checks
