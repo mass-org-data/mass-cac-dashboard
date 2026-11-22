@@ -414,3 +414,7 @@ Plan and release evidence:
 - Phase 7 introduced protected Leadership user, role, and assignment administration. The current handoff above records its deployment and acceptance status.
 - Phase 8 is complete on Preview; legacy authorization evidence remains retained and Production remains unchanged.
 - The separately approved `/vanilla/` removal is deployed and accepted on the protected branch Preview. Production remains unchanged.
+
+## CI on pull requests (23 November 2026)
+
+Every pull request runs `frontend` (lint, check, tests, build, web typecheck and tests, audit) and `portable-sql` (portable SQL, attendance, staff-access), plus the Vercel deployment check. The real-browser `browser-acceptance` job (it fails on a legacy `user_scope_grants` fixture since Phase 8) and `test:centre-events` (fails on `Missing expected rejection` at the pre-Phase-7 baseline) moved to the manual workflow `.github/workflows/extended-tests.yml` (Actions tab, Run workflow). Fix those suites before returning them to every pull request. The `Vercel Preview Comments` check is Vercel's own: it reports unresolved comment threads and goes green when they are resolved. It is not a required check (staging has no branch protection) and cannot be changed to a warning from this repository.
