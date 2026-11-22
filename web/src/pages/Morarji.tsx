@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {AsyncState, type LoadState} from '../components/AsyncState';
 import {ChartCard} from '../components/ChartCard';
+import {GroupedColumnChart} from '../components/charts/GroupedColumnChart';
 import {ColumnChart} from '../components/charts/ColumnChart';
 import {DataTable, type Column} from '../components/DataTable';
 import {Scorecard, type ScorecardState} from '../components/Scorecard';
@@ -15,6 +16,7 @@ import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
+import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -22,20 +24,11 @@ const asState = <T,>(slice: Slice<T>): LoadState => slice.status;
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status;
 const years = (range: {starts_on: string; ends_before: string}) => `${range.starts_on.slice(0, 4)}–${range.ends_before.slice(0, 4)}`;
 
-function Select({label, value, options, onChange, allLabel}: {label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void; allLabel?: string}) {
-  return (
-    <label className="flex min-w-40 flex-col gap-1 text-xs font-semibold text-muted">
-      {label}
-      <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
-        {allLabel ? <option value="">{allLabel}</option> : null}
-        {options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}
-      </select>
-    </label>
-  );
-}
 
 interface FollowUp {id: string; cohort: string; name: string | null; studentId: string; centre: string; applied: boolean | null; attended: boolean | null; result: string; school: string | null}
 interface CentreLine {id: string; name: string; members: number; applied: number; attended: number; passed: number}
+
+const INITIAL_FILTERS = {cohort: '', centre: ''};
 
 export function Morarji({backend, context, service: _injected, profiles: _injectedProfiles, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: MorarjiService; profiles?: ProfilesService; overview?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
@@ -44,7 +37,7 @@ export function Morarji({backend, context, service: _injected, profiles: _inject
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; capabilities: Capabilities}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
-  const [filters, setFilters] = useState({cohort: '', centre: ''});
+  const [filters, setFilters] = useState<typeof INITIAL_FILTERS>(INITIAL_FILTERS);
   const [report, setReport] = useState<Slice<Report>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -88,13 +81,8 @@ export function Morarji({backend, context, service: _injected, profiles: _inject
   const pending = cohortStat ? (cohortStat.knownPassed ? cohortStat.members - cohortStat.knownPassed : null) : null;
   const trend = (stats?.morarjiYears ?? []).map(y => ({label: yearLabelOf.get(y.academicYear) ?? y.academicYear, value: y.passed})).sort((a, b) => a.label.localeCompare(b.label));
 
-  const cohortColumns = useMemo<Column<MorarjiCohort>[]>(() => [
-    {id: 'cohort', header: t('morarji.cohort'), value: r => r.cohort},
-    {id: 'members', header: t('morarji.inCohort'), value: r => r.members, numeric: true},
-    {id: 'applied', header: t('morarji.applied'), value: r => r.applied, numeric: true},
-    {id: 'attended', header: t('morarji.tookExam'), value: r => r.attended, numeric: true},
-    {id: 'passed', header: t('morarji.passed'), value: r => r.passed, numeric: true},
-  ], [t]);
+  // Chart 6.6: one group per cohort (x-axis), four bars each: in training, applied, took the exam, passed. Unknown stays unknown.
+  const cohortGroups = useMemo(() => [...(stats?.morarji ?? [])].sort((a, b) => a.cohort.localeCompare(b.cohort)).map(c => ({label: c.cohort, values: [c.members, c.applied, c.attended, c.passed] as Array<number | null>})), [stats]);
   const centreColumns = useMemo<Column<CentreLine>[]>(() => [
     {id: 'name', header: t('common.centre'), value: r => r.name},
     {id: 'members', header: t('morarji.inCohort'), value: r => r.members, numeric: true},
@@ -110,12 +98,9 @@ export function Morarji({backend, context, service: _injected, profiles: _inject
     {id: 'school', header: t('morarji.school'), value: r => r.school ?? t('common.notRecorded')},
   ], [nameOf, t]);
   const cohort = cohorts.find(c => c.label === cohortLabel);
-  const emptyContext = useMemo(() => ({}), []);
   const cohortContext = useMemo(() => ({cohort: cohort?.id ?? ''}), [cohort?.id]);
-  const loadCohorts = useCallback((request: TableRequest) => tables.page<MorarjiCohort>('morarji_cohorts', centreIds, emptyContext, request), [tables, centreIds, emptyContext]);
   const loadCentres = useCallback((request: TableRequest) => cohort?.id ? tables.page<CentreLine>('morarji_centres', centreIds, cohortContext, request) : Promise.resolve({rows: [], total: 0}), [tables, centreIds, cohortContext, cohort?.id]);
   const loadFollowUp = useCallback((request: TableRequest) => cohort?.id ? tables.page<FollowUp>('morarji_followup', centreIds, cohortContext, request) : Promise.resolve({rows: [], total: 0}), [tables, centreIds, cohortContext, cohort?.id]);
-  const cohortTable = useServerTable({key: `${key}:cohorts`, load: loadCohorts, initialSort: 'cohort', refreshKey});
   const centreTable = useServerTable({key: `${key}:${cohort?.id}:centres`, load: loadCentres, initialSort: 'name', refreshKey});
   const followTable = useServerTable({key: `${key}:${cohort?.id}:follow`, load: loadFollowUp, initialSort: 'student', refreshKey});
 
@@ -126,10 +111,10 @@ export function Morarji({backend, context, service: _injected, profiles: _inject
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted">{t('morarji.intro', {followup: operational ? t('morarji.followupSuffix') : ''})}</p>
-      <div role="group" aria-label={t('morarji.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        {cohorts.length ? <Select label={t('morarji.cohortYear')} value={cohortLabel} options={cohorts.map(c => [c.label, c.label])} onChange={value => setFilters(f => ({...f, cohort: value}))} /> : null}
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={t('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
-      </div>
+      <FilterPanel label={t('morarji.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
+        {cohorts.length ? <Select active={filters.cohort !== ''} label={t('morarji.cohortYear')} value={cohortLabel} options={cohorts.map(c => [c.label, c.label])} onChange={value => setFilters(f => ({...f, cohort: value}))} /> : null}
+        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+      </FilterPanel>
       {none ? <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">{t('morarji.noneImported')}</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -143,7 +128,9 @@ export function Morarji({backend, context, service: _injected, profiles: _inject
         <ChartCard reference="6.5" title={t('morarji.yearOnYear')} subtitle={t('morarji.yearOnYearHelp')} state={asState(report)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('morarji.noOutcomes')}>
           {trend.length ? <><ColumnChart axis={t('morarji.passedAxis')} description={t('morarji.passedDescription')} items={trend} /><p className="mt-2 text-xs text-muted">{t('morarji.cohortCaution')}</p></> : <p className="text-sm text-muted">{t('morarji.noOutcomes')}</p>}
         </ChartCard>
-        <DataTable<MorarjiCohort> reference="6.6" caption={t('morarji.cohortSizes')} columns={cohortColumns} data={cohortTable.rows} getRowId={r => r.cohortId} exportName={context.capabilities?.export === true ? 'MASS-morarji-cohorts' : undefined} state={cohortTable.result.status} errorMessage={cohortTable.error} emptyMessage={t('morarji.noOutcomes')} onRetry={cohortTable.retry} server={cohortTable.server} />
+        <ChartCard reference="6.6" title={t('morarji.cohortSizes')} subtitle={t('morarji.cohortSizesHelp')} state={asState(report)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('morarji.noCohort')}>
+          {cohortGroups.length ? <GroupedColumnChart axis={t('morarji.studentsAxis')} description={t('morarji.cohortSizes')} series={[t('morarji.inTraining'), t('morarji.cohortApplied'), t('morarji.tookExam'), t('morarji.passed')]} items={cohortGroups} /> : <p className="text-sm text-muted">{t('morarji.noCohort')}</p>}
+        </ChartCard>
       </div>
 
       {operational ? (

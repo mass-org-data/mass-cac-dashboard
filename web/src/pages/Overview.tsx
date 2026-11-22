@@ -15,6 +15,7 @@ import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
+import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 const FROM_QUARTER = 1;
 const TO_QUARTER = 2; // the exam shown on the scorecards (F2), as in the current Overview
@@ -26,17 +27,8 @@ const EMPTY_DONORS: Record<string, string | null> = {};
 const sliceState = <T,>(slice: Slice<T>): LoadState => slice.status === 'ready' ? 'ready' : slice.status === 'error' ? 'error' : slice.status === 'future' ? 'empty' : 'loading';
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status === 'ready' ? 'ready' : slice.status === 'error' ? 'error' : slice.status === 'future' ? 'unavailable' : 'loading';
 
-function Select({label, value, options, onChange, allLabel}: {label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void; allLabel?: string}) {
-  return (
-    <label className="flex min-w-40 flex-col gap-1 text-xs font-semibold text-muted">
-      {label}
-      <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
-        {allLabel ? <option value="">{allLabel}</option> : null}
-        {options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}
-      </select>
-    </label>
-  );
-}
+
+const INITIAL_FILTERS = {month: '', centre: '', donor: '', shift: '', grade: '', gender: ''};
 
 export function Overview({backend, context, role, service: injected, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
@@ -44,7 +36,7 @@ export function Overview({backend, context, role, service: injected, tables: inj
   const tables = useMemo(() => injectedTables ?? createTableService(backend.rpc), [backend, injectedTables]);
   const [boot, setBoot] = useState<Slice<Bootstrap>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
-  const [filters, setFilters] = useState({month: '', centre: '', donor: '', shift: '', grade: '', gender: ''});
+  const [filters, setFilters] = useState<typeof INITIAL_FILTERS>(INITIAL_FILTERS);
 
   // References and capabilities gate the first report; the donor directory only adds labels and the donor filter.
   useEffect(() => {
@@ -107,16 +99,16 @@ export function Overview({backend, context, role, service: injected, tables: inj
 
   return (
     <div className="space-y-6">
-      <div role="group" aria-label={t('overview.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <Select label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={t('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
-        {leadership && donorNames.length > 0 ? <Select label={t('overview.donor')} value={filters.donor} options={donorNames.map(n => [n, n])} allLabel={t('overview.allDonors')} onChange={value => setFilters(f => ({...f, donor: value}))} /> : null}
+      <FilterPanel label={t('overview.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
+        <Select active={filters.month !== ''} label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
+        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        {leadership && donorNames.length > 0 ? <Select label={t('overview.donor')} value={filters.donor} options={donorNames.map(n => [n, n])} allLabel={english('overview.allDonors')} onChange={value => setFilters(f => ({...f, donor: value}))} /> : null}
         {leadership ? null : <>
-          <Select label={t('common.shift')} value={filters.shift} options={[['Morning', t('common.morning')], ['Evening', t('common.evening')]]} allLabel={t('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
-          <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={t('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
-          <Select label={t('common.gender')} value={filters.gender} options={[['Girl', t('common.girls')], ['Boy', t('common.boys')], ['Unknown', t('common.unknown')]]} allLabel={t('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
+          <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
+          <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={english('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
+          <Select label={t('common.gender')} value={filters.gender} options={[['Girl', english('common.girls')], ['Boy', english('common.boys')], ['Unknown', english('common.unknown')]]} allLabel={english('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
         </>}
-      </div>
+      </FilterPanel>
 
       {selected.length === 0 ? <AsyncState state="empty" emptyMessage={t('overview.noCentres')} /> : <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -129,8 +121,8 @@ export function Overview({backend, context, role, service: injected, tables: inj
           <Scorecard reference="1.7" label={t('overview.lowAttendance')} state="unavailable" message={t('overview.lowAttendanceHelp')} tone="alert" />
           <Scorecard
             reference="1.8" label={t('overview.above20')}
-            value={quarter ? formatCount(quarter.above20 ?? null) : null}
-            hint={t('overview.outOf25', {round: TO_QUARTER})}
+            value={quarter && quarter.above20 !== null && quarter.above20 !== undefined && population > 0 ? formatPercent((quarter.above20 / population) * 100) : null}
+            hint={quarter && quarter.above20 !== null && quarter.above20 !== undefined ? t('overview.above20Count', {count: formatCount(quarter.above20), round: TO_QUARTER}) : t('overview.outOf25', {round: TO_QUARTER})}
             state={!configuredQuarters.has(TO_QUARTER) ? 'unavailable' : cardState(report)}
             message={!configuredQuarters.has(TO_QUARTER) ? t('overview.noDefinition') : reportMessage}
           />

@@ -7,6 +7,7 @@ import {applyRead, buildSave, canSubmit, initialEditor, isDirty, markedCount, va
 import type {AttendanceService, RegisterCapabilities} from './service';
 import {cn} from '../lib/utils';
 import {useI18n} from '../i18n/I18n';
+import {english} from '../components/FilterPanel';
 
 export interface Selection {centre: string; shift: string; date: string}
 interface Props {
@@ -116,7 +117,7 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('common.shift')}
             <select value={state.shift} disabled={busy} onChange={event => changeContext('shift', event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
-              <option value="Morning">{t('common.morning')}</option><option value="Evening">{t('common.evening')}</option>
+              <option value="Morning">{english('common.morning')}</option><option value="Evening">{english('common.evening')}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('common.date')}

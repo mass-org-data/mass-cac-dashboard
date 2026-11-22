@@ -43,7 +43,8 @@ export function SideMenu({role, capabilities, route, onNavigate, collapsed, onTo
     return () => document.removeEventListener('keydown', onKey);
   }, [mobileOpen, onCloseMobile]);
 
-  const label = (text: string) => <span className={cn(collapsed && 'md:sr-only')}>{text}</span>;
+  const label = (number: number | null, text: string) => <span className={cn(collapsed && 'md:sr-only')}>{number === null ? null : <span className="font-bold text-brand-dark">{number}.</span>}{number === null ? '' : ' '}{text}</span>;
+  const titleOf = (number: number | null, text: string) => number === null ? text : `${number}. ${text}`;
   return (
     <>
       {mobileOpen ? <button type="button" aria-label={t('menu.close')} onClick={onCloseMobile} className="fixed inset-0 z-30 bg-ink/50 md:hidden" /> : null}
@@ -61,21 +62,21 @@ export function SideMenu({role, capabilities, route, onNavigate, collapsed, onTo
               const reason = reasonKey ? t(reasonKey) : null;
               if (reason) return (
                 <li key={item.id}>
-                  <span aria-disabled="true" title={`${item.number}. ${itemLabel} - ${reason}`}
+                  <span aria-disabled="true" title={`${titleOf(item.number, itemLabel)} - ${reason}`}
                     className={cn('flex min-h-11 cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-base font-semibold text-muted/50', collapsed && 'md:justify-center md:px-0')}>
                     <Icon aria-hidden="true" className="size-5 shrink-0" />
-                    {label(`${item.number}. ${itemLabel}`)}
+                    {label(item.number, itemLabel)}
                     <span className="sr-only">({t('menu.unavailable', {reason})})</span>
                   </span>
                 </li>
               );
               return (
                 <li key={item.id}>
-                  <a ref={item.id === 'overview' ? first : undefined} href={`#/${item.id}`} aria-current={active ? 'page' : undefined} title={collapsed ? `${item.number}. ${itemLabel}` : undefined}
+                  <a ref={item.id === 'overview' ? first : undefined} href={`#/${item.id}`} aria-current={active ? 'page' : undefined} title={collapsed ? titleOf(item.number, itemLabel) : undefined}
                     onClick={event => { event.preventDefault(); onNavigate(item.id); onCloseMobile(); }}
                     className={cn('flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-base font-semibold', collapsed && 'md:justify-center md:px-0', active ? 'bg-brand-soft text-brand-dark' : 'text-muted hover:bg-brand-soft hover:text-ink')}>
                     <Icon aria-hidden="true" className="size-5 shrink-0" />
-                    {label(`${item.number}. ${itemLabel}`)}
+                    {label(item.number, itemLabel)}
                   </a>
                 </li>
               );

@@ -5,6 +5,7 @@ import {Input} from '../components/ui/input';
 import {assignmentFor, emptyVisit, newId, validateVisit, type VisitForm} from './editor';
 import type {Assignment, VisitsService} from './service';
 import {useI18n} from '../i18n/I18n';
+import {english} from '../components/FilterPanel';
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'The request could not be completed.');
 const selectClass = 'min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink';
@@ -47,7 +48,7 @@ export function VisitDialog({service, assignments, centres, initialCentre, initi
             <select value={form.centre} disabled={busy || centres.length === 1} onChange={event => set('centre', event.target.value)} className={selectClass}>{centres.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
           </label>
           <label className={labelClass}>{t('common.shift')}
-            <select value={form.shift} disabled={busy} onChange={event => set('shift', event.target.value)} className={selectClass}><option value="Morning">{t('common.morning')}</option><option value="Evening">{t('common.evening')}</option></select>
+            <select value={form.shift} disabled={busy} onChange={event => set('shift', event.target.value)} className={selectClass}><option value="Morning">{english('common.morning')}</option><option value="Evening">{english('common.evening')}</option></select>
           </label>
           <label className={labelClass}>{t('visit.date')}<Input type="date" value={form.date} disabled={busy} onChange={event => set('date', event.target.value)} /></label>
           <label className={labelClass}>{t('visit.status')}

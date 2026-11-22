@@ -40,7 +40,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
   if (state.status === 'signed-out') return <SignIn message={state.messageKey ? t(state.messageKey) : state.message ?? (inviteSaved ? t('invite.saved') : undefined)} onSignIn={(email, password) => controller.signIn(email, password)} />;
   const currentRoute = ROUTES.find(r => r.id === route)!;
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="relative flex h-dvh flex-col overflow-hidden">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-2">
         <div className="flex items-center gap-3">
           <button type="button" aria-label={t('menu.open')} aria-expanded={mobileOpen} aria-controls="side-menu" onClick={() => setMobileOpen(true)} className="inline-flex size-11 items-center justify-center rounded-md border border-line md:hidden"><Menu aria-hidden="true" className="size-5" /></button>
@@ -57,7 +57,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
         <SideMenu role={state.role} capabilities={state.context.capabilities} route={route} onNavigate={go} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={closeMobile} />
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="w-full space-y-6 p-4 md:p-6">
-          <h1 className="text-2xl font-bold text-ink">{currentRoute.number}. {t(currentRoute.labelKey)}</h1>
+          <h1 className="text-2xl font-bold text-ink">{currentRoute.number === null ? null : <span className="text-brand-dark">{currentRoute.number}.</span>}{currentRoute.number === null ? '' : ' '}{t(currentRoute.labelKey)}</h1>
         {route === 'admin'
           ? state.context.capabilities?.manage_users === true
             ? <UserAdministration call={backend.administration} actor={state.userId} centres={state.context.centres} />

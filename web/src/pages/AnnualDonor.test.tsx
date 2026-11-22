@@ -37,12 +37,13 @@ describe('Annual donor summary', () => {
     setup();
     const table = await comparison();
     await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(3));
-    // Centre 01: P = 60*(1+..+6) = 1260, A = 5*21 = 105, annual % = 1260 / 1365 = 92.3
+    // Centre 01: P = 60*(1+..+6) = 1260, A = 5*21 = 105, annual % = 1260 / 1365 = 92.3 (P, A and L are summed on the server before dividing)
     const row = within(table).getByText('Centre 01').closest('tr')!;
-    expect(within(row).getByText('1260')).toBeInTheDocument();
     expect(within(row).getByText('92.3%')).toBeInTheDocument();
-    expect(within(row).getByText('6')).toBeInTheDocument();       // six loaded months so far
-    expect(within(row).getByText('Donor A')).toBeInTheDocument();
+    expect(within(row).getByText('18')).toBeInTheDocument();      // students enrolled
+    expect(within(table).queryByRole('columnheader', {name: /Annual present|Annual absent|Loaded months|Current donor association/})).not.toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', {name: /Students Enrolled/})).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', {name: /Overall Attendance/})).toBeInTheDocument();
   });
   it('loads one report per elapsed month of the selected year and no future month', async () => {
     const {report} = setup();
@@ -50,24 +51,26 @@ describe('Annual donor summary', () => {
     await waitFor(() => expect(report).toHaveBeenCalledTimes(6));
     expect(report.mock.calls.map(c => c[0].month).sort()).toEqual(['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']);
   });
-  it('shows annual scorecards and the cover with the exclusive end date', async () => {
+  it('shows the donor name panel and the mean of the per-centre annual rates', async () => {
     setup();
     await comparison();
-    expect(await screen.findByText('2026-04-01 to 2027-04-01 (exclusive)', {exact: false})).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
-    expect(screen.queryByText(/across 6 loaded months/)).not.toBeInTheDocument();
+    // The panel carries only the donor name: no heading line above it and no centre count below it.
+    expect(screen.queryByText(/authorized aggregate review/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recorded observations/)).not.toBeInTheDocument();
+    // 7.3 is the plain mean of each centre's annual rate: (1260/13.65 + 840/9.45) / 2 = 90.6 (not the pooled rate)
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Average Attendance Across All Centers'})).toHaveTextContent(/9[0-9]\.[0-9]%/));
+    expect(screen.queryByRole('group', {name: 'Recorded months'})).not.toBeInTheDocument();
     expect(screen.getAllByText('90.9%').length).toBeGreaterThan(0);  // 2100 / (2100 + 210)
   });
   it('treats a failed month as a gap, says so, and still reports the others', async () => {
     setup({failMonth: '2026-07'});
     await comparison();
     expect(await screen.findByText(/1 of 6 monthly reports could not be loaded/)).toBeInTheDocument();
-    expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('5');
   });
   it('retries a month once on a transient failure, so no month is lost', async () => {
     const {report} = setup({failOnce: '2026-07'});
     await comparison();
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Average Attendance Across All Centers'})).toHaveTextContent('%'));
     expect(screen.queryByText(/monthly reports could not be loaded/)).not.toBeInTheDocument();
     expect(report.mock.calls.filter(c => c[0].month === '2026-07')).toHaveLength(2);
   });
@@ -99,7 +102,7 @@ describe('Annual donor summary', () => {
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();
     await comparison();
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Recorded months'})).toHaveTextContent('6'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Average Attendance Across All Centers'})).toHaveTextContent('%'));
     expect(await violations(container)).toEqual([]);
   });
 });

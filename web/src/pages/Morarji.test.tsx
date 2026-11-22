@@ -42,7 +42,7 @@ function setup(options: {role?: string; report?: Report; memberships?: typeof me
   return {service, profiles, overview, ...view};
 }
 
-const ready = async () => { await screen.findByRole('table', {name: 'Cohort sizes compared'}); await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0)); };
+const ready = async () => { await screen.findByRole('img', {name: /Cohort sizes compared/}); await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0)); };
 
 describe('Morarji page', () => {
   it('shows the selected cohort totals, leaving unrecorded values unknown', async () => {
@@ -64,8 +64,9 @@ describe('Morarji page', () => {
   });
   it('compares cohorts and charts passed children per year, with a dash for an unrecorded year', async () => {
     setup();
-    const table = await screen.findByRole('table', {name: 'Cohort sizes compared'});
-    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(3));
+    // 6.6 is a grouped vertical bar chart: one group per cohort, four bars (in training, applied, took the exam, passed).
+    const chart = await screen.findByRole('img', {name: /Cohort sizes compared/});
+    expect(chart).toHaveAccessibleName(/In training 12.*Cohort applied.*Took the exam.*Passed/s);
     expect(screen.getByRole('img', {name: /Children who passed by cohort year/})).toBeInTheDocument();
   });
   it('lists the follow-up for the selected cohort with names, ids and unknown results as Pending', async () => {

@@ -9,7 +9,8 @@ const messageOf = (error: unknown) => (error instanceof Error && error.message ?
 
 // Loads the Overview slices one after another so the first scorecards never wait for the charts:
 // report first, then the shift counts and the monthly series (which run behind the same two-at-a-time queue).
-export function useOverview(service: OverviewService, selection: Selection | null, env: Environment | null) {
+export function useOverview(service: OverviewService, selection: Selection | null, env: Environment | null, options: {series?: boolean} = {}) {
+  const withSeries = options.series !== false;
   const [report, setReport] = useState<Slice<Report>>(idle);
   const [shifts, setShifts] = useState<Slice<ShiftCounts>>(idle);
   const [series, setSeries] = useState<Slice<Series>>(idle);
@@ -24,13 +25,13 @@ export function useOverview(service: OverviewService, selection: Selection | nul
     const current = () => run === latest.current;
     if (isFutureMonth(selection.month, env.today)) { setReport({status: 'future'}); setShifts({status: 'future'}); setSeries(idle); }
     else { setReport({status: 'loading'}); setShifts({status: 'loading'}); }
-    setSeries({status: 'loading'});
+    if (withSeries) setSeries({status: 'loading'});
     const reportPromise = isFutureMonth(selection.month, env.today) ? Promise.resolve(null) : service.report(selection, env);
     reportPromise.then(value => { if (current() && value) setReport({status: 'ready', value}); }).catch(error => { if (current()) setReport({status: 'error', message: messageOf(error)}); });
     if (!isFutureMonth(selection.month, env.today)) {
       service.shifts(selection, env).then(value => { if (current()) setShifts({status: 'ready', value}); }).catch(error => { if (current()) setShifts({status: 'error', message: messageOf(error)}); });
     }
-    service.series(selection, env).then(value => { if (current()) setSeries({status: 'ready', value}); }).catch(error => { if (current()) setSeries({status: 'error', message: messageOf(error)}); });
+    if (withSeries) service.series(selection, env).then(value => { if (current()) setSeries({status: 'ready', value}); }).catch(error => { if (current()) setSeries({status: 'error', message: messageOf(error)}); });
     return () => { latest.current++; };
     // selectionKey captures every input that changes what is requested.
     // eslint-disable-next-line react-hooks/exhaustive-deps

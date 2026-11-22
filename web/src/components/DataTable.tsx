@@ -50,6 +50,8 @@ export interface DataTableProps<T> {
   onRetry?: () => void;
   /** Page-numbered reference such as 1.13, shown before the title. */
   reference?: string;
+  /** Text above the search box (default: Search). */
+  searchLabel?: string;
   /** Server-side paging, sorting and optional search. The server returns one page. */
   server?: {
     note?: string;
@@ -81,7 +83,7 @@ const sortValues: SortingFn<unknown> = (a, b, columnId) => {
 
 const asCsv = (value: string | number | null | undefined): CsvValue => (value === undefined ? null : value);
 
-export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage, onRetry, reference, server}: DataTableProps<T>) {
+export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage, onRetry, reference, searchLabel, server}: DataTableProps<T>) {
   const {t} = useI18n();
   const searchId = useId();
   const captionId = useId();
@@ -152,13 +154,12 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
 
   const body = (
     <>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        {server && !server.onQueryChange ? <p className="text-sm text-muted">{server.note ?? t('table.serverNote')}</p> : <div className="relative w-full max-w-sm">
-          <label htmlFor={searchId} className="mb-1 block text-xs font-semibold text-muted">{t('table.search')}</label>
+      <div className={cn('flex flex-wrap items-end justify-between gap-3', (server && !server.onQueryChange) ? '' : 'mb-3')}>
+        {server && !server.onQueryChange ? null : <div className="relative w-full max-w-sm">
+          <label htmlFor={searchId} className="mb-1 block text-xs font-semibold text-muted">{searchLabel ?? t('table.search')}</label>
           <Search aria-hidden="true" className="pointer-events-none absolute bottom-3 left-3 size-4 text-muted" />
           <Input id={searchId} type="search" value={server ? server.query ?? '' : search} onChange={event => server?.onQueryChange ? server.onQueryChange(event.target.value) : setSearch(event.target.value)} placeholder={t('table.filterPlaceholder')} className="pl-9" autoComplete="off" />
         </div>}
-        {exportName ? <Button variant="outline" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{t(exporting ? 'table.exporting' : 'table.export')}</Button> : null}
       </div>
       <div className="max-h-[62vh] overflow-auto rounded-md border border-line">
         <table aria-labelledby={captionId} className="w-full border-collapse text-sm">
@@ -176,7 +177,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
                       aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none'}
                       className={cn('sticky top-0 z-10 border-b border-line bg-brand-soft px-3 py-2 text-left font-semibold text-ink', numeric && 'text-right')}
                     >
-                      {(header.column.columnDef.meta as {sortable?: boolean} | undefined)?.sortable === false ? <span className="inline-flex min-h-11 items-center font-semibold">{flexRender(header.column.columnDef.header, header.getContext())}</span> : <button type="button" onClick={server ? () => server.onSortChange(header.column.id) : header.column.getToggleSortingHandler()} className={cn('inline-flex min-h-11 items-center gap-1 font-semibold', numeric && 'flex-row-reverse')}>
+                      {(header.column.columnDef.meta as {sortable?: boolean} | undefined)?.sortable === false ? <span className="inline-flex min-h-11 items-center font-semibold">{flexRender(header.column.columnDef.header, header.getContext())}</span> : <button type="button" onClick={server ? () => server.onSortChange(header.column.id) : header.column.getToggleSortingHandler()} className="inline-flex min-h-11 items-center gap-1 font-semibold">
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {sorted === 'asc' ? <ArrowUp aria-hidden="true" className="size-4" /> : sorted === 'desc' ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUpDown aria-hidden="true" className="size-4 text-muted" />}
                         <span className="sr-only">{t(sorted === 'asc' ? 'table.sortedAscending' : sorted === 'desc' ? 'table.sortedDescending' : 'table.sortAscending')}</span>
@@ -206,6 +207,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
           <nav aria-label={t('table.pages', {caption})} className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => server ? server.onPageChange(pageIndex - 1) : table.previousPage()} disabled={server ? pageIndex <= 0 : !table.getCanPreviousPage()} aria-label={t('table.previousPage')}>{t('table.previous')}</Button>
             <span aria-current="page">{t('table.pageOf', {page: pageIndex + 1, pages: pageCount})}</span>
+            <PageJump key={`${caption}-${pageIndex}`} label={t('table.goToPage')} goLabel={t('table.go')} current={pageIndex + 1} pages={pageCount} onGo={index => server ? server.onPageChange(index) : table.setPageIndex(index)} />
             <Button variant="outline" size="sm" onClick={() => server ? server.onPageChange(pageIndex + 1) : table.nextPage()} disabled={server ? pageIndex + 1 >= pageCount : !table.getCanNextPage()} aria-label={t('table.nextPage')}>{t('table.next')}</Button>
           </nav>
         ) : null}
@@ -215,8 +217,28 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
 
   return (
     <section aria-labelledby={`${captionId}-title`} className="rounded-lg border border-line bg-white p-4 shadow-sm">
-      <h2 id={`${captionId}-title`} className="mb-3 text-lg font-semibold text-ink">{reference ? <span className="mr-1 text-xs font-bold text-brand-dark">{reference}</span> : null}{caption}</h2>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 id={`${captionId}-title`} className="text-sm font-semibold text-ink">{reference ? <span className="mr-1 text-xs font-bold text-brand-dark">{reference}</span> : null}{caption}</h2>
+        {exportName && state === 'ready' && data.length > 0 ? <Button variant="outline" size="sm" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{t(exporting ? 'table.exporting' : 'table.export')}</Button> : null}
+      </div>
       <AsyncState state={state === 'ready' && data.length === 0 ? 'empty' : state} errorMessage={errorMessage} emptyMessage={emptyMessage ?? t('table.noRecords')} onRetry={onRetry}>{body}</AsyncState>
     </section>
+  );
+}
+
+// A box where a user types a page number and goes straight to it (Enter, or the Go button). Out-of-range numbers are clamped.
+function PageJump({label, goLabel, current, pages, onGo}: {label: string; goLabel: string; current: number; pages: number; onGo: (zeroBasedIndex: number) => void}) {
+  const [text, setText] = useState(String(current));
+  const go = () => {
+    const wanted = Math.min(pages, Math.max(1, Math.trunc(Number(text)) || current));
+    setText(String(wanted));
+    if (wanted !== current) onGo(wanted - 1);
+  };
+  return (
+    <form noValidate onSubmit={event => { event.preventDefault(); go(); }} className="flex items-center gap-1">
+      <label className="sr-only" htmlFor={`jump-${label}`}>{label}</label>
+      <Input id={`jump-${label}`} type="number" inputMode="numeric" min={1} max={pages} value={text} onChange={event => setText(event.target.value)} className="h-11 w-20 px-2 text-center" />
+      <Button type="submit" variant="outline" size="sm">{goLabel}</Button>
+    </form>
   );
 }

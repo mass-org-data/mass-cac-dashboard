@@ -6,6 +6,7 @@ import {AsyncState} from '../components/AsyncState';
 import {boardValue, buildNewStudent, emptyStudent, newRequest, STATUSES, validateEdit, validateNewStudent, type EditForm, type NewStudentForm} from './editor';
 import type {AcademicYear, ProfilesService, StudentDeletionPreview, StudentRow} from './service';
 import {useI18n} from '../i18n/I18n';
+import {english} from '../components/FilterPanel';
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'The request could not be completed.');
 const selectClass = 'min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink';
@@ -52,10 +53,10 @@ export function AddStudentDialog({service, centres, initialCentre, today, enable
             <select value={form.grade} disabled={busy} onChange={event => set('grade', event.target.value)} className={selectClass}>{Array.from({length: 10}, (_, i) => String(i + 1)).map(g => <option key={g}>{g}</option>)}</select>
           </label>
           <label className={labelClass}>{t('common.shift')}
-            <select value={form.shift} disabled={busy} onChange={event => set('shift', event.target.value)} className={selectClass}><option value="">{t('profile.selectShift')}</option><option value="Morning">{t('common.morning')}</option><option value="Evening">{t('common.evening')}</option></select>
+            <select value={form.shift} disabled={busy} onChange={event => set('shift', event.target.value)} className={selectClass}><option value="">{t('profile.selectShift')}</option><option value="Morning">{english('common.morning')}</option><option value="Evening">{english('common.evening')}</option></select>
           </label>
           <label className={labelClass}>{t('common.gender')}
-            <select value={form.gender} disabled={busy} onChange={event => set('gender', event.target.value)} className={selectClass}><option value="">{t('common.unknown')}</option><option value="Girl">{t('common.girls')}</option><option value="Boy">{t('common.boys')}</option></select>
+            <select value={form.gender} disabled={busy} onChange={event => set('gender', event.target.value)} className={selectClass}><option value="">{english('common.unknown')}</option><option value="Girl">{english('common.girls')}</option><option value="Boy">{english('common.boys')}</option></select>
           </label>
           <label className={labelClass}>{t('profile.startDate')}<Input type="date" value={form.start} max={today} disabled={busy} onChange={event => set('start', event.target.value)} /></label>
         </div>
@@ -70,7 +71,7 @@ export function AddStudentDialog({service, centres, initialCentre, today, enable
   );
 }
 
-export function EditStudentDialog({service, student, centreLabel, enabled, onSaved, onClose}: CommonProps & {student: StudentRow; centreLabel: string}) {
+export function EditStudentDialog({service, student, centreLabel, enabled, onSaved, onClose, onDelete}: CommonProps & {student: StudentRow; centreLabel: string; /** When given, a Delete button appears inside this dialog (never in the table row). */ onDelete?: () => void}) {
   const {t} = useI18n();
   const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
@@ -125,10 +126,10 @@ export function EditStudentDialog({service, student, centreLabel, enabled, onSav
             <label className={labelClass}>{t('profile.currentGrade')}<Input value={current?.grade ?? student.grade} readOnly /></label>
             <label className={labelClass}>{t('common.shift')}<Input value={student.shift} readOnly /></label>
             <label className={labelClass}>{t('common.gender')}
-              <select value={form.gender} disabled={busy} onChange={event => set('gender', event.target.value)} className={selectClass}><option value="">{t('common.unknown')}</option><option value="Girl">{t('common.girls')}</option><option value="Boy">{t('common.boys')}</option></select>
+              <select value={form.gender} disabled={busy} onChange={event => set('gender', event.target.value)} className={selectClass}><option value="">{english('common.unknown')}</option><option value="Girl">{english('common.girls')}</option><option value="Boy">{english('common.boys')}</option></select>
             </label>
             <label className={labelClass}>{t('profile.boardPassed')}
-              <select value={form.board} disabled={busy} onChange={event => set('board', event.target.value)} className={selectClass}><option value="">{t('common.unknown')}</option><option value="true">{t('common.yes')}</option><option value="false">{t('common.no')}</option></select>
+              <select value={form.board} disabled={busy} onChange={event => set('board', event.target.value)} className={selectClass}><option value="">{english('common.unknown')}</option><option value="true">{english('common.yes')}</option><option value="false">{english('common.no')}</option></select>
             </label>
             {current ? (
               <label className={labelClass}>{t('profile.currentYearStatus', {year: current.label})}
@@ -144,7 +145,8 @@ export function EditStudentDialog({service, student, centreLabel, enabled, onSav
           ) : <p className="text-sm text-muted">{t('profile.noHistory')}</p>}
         </AsyncState>
         <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{error}</p>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {onDelete ? <Button variant="outline" className="mr-auto border-bad text-bad" onClick={onDelete} disabled={status === 'saving'}>{t('common.delete')}</Button> : null}
           <Button variant="outline" onClick={onClose} disabled={status === 'saving'}>{t('common.cancel')}</Button>
           <Button onClick={() => void submit()} disabled={!enabled || busy}>{t(status === 'saving' ? 'common.saving' : 'profile.saveProfile')}</Button>
         </div>
