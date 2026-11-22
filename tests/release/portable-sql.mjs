@@ -14,9 +14,11 @@ const phase7='20261121120000_leadership_user_administration.sql';
 const phase8='20261121180000_permission_legacy_retirement.sql';
 const phase8Compatibility='20261121183000_permission_context_compatibility.sql';
 const phase8ContextRetirement='20261121190000_permission_context_retirement.sql';
+// Replaces record_visit, which the Phase 8 file recreates, so a fresh replay applies it after Phase 8 (hosted databases already apply by timestamp).
+const visitConductedBy='20261122180000_visit_conducted_by.sql';
 try {
  await db.exec(read('tests/core/bootstrap.sql'));
- for(const name of fs.readdirSync(path.join(root,'supabase/migrations')).filter(n=>n.endsWith('.sql')&&![phase7,phase8,phase8Compatibility,phase8ContextRetirement].includes(n)).sort())await db.exec(read('supabase/migrations/'+name));
+ for(const name of fs.readdirSync(path.join(root,'supabase/migrations')).filter(n=>n.endsWith('.sql')&&![phase7,phase8,phase8Compatibility,phase8ContextRetirement,visitConductedBy].includes(n)).sort())await db.exec(read('supabase/migrations/'+name));
  await db.exec(read('supabase/proposals/202611030024_reviewed_chart_metrics.sql'));
  // The efficiency migration upgrades the installed function only, so a fresh database applies it again after the reviewed proposal.
  await db.exec(read('supabase/migrations/20261114130000_reviewed_chart_metrics_efficiency.sql'));
@@ -106,4 +108,8 @@ try {
  {const source=(await db.query("SELECT prosrc FROM pg_proc WHERE oid='mass_api.get_context()'::regprocedure")).rows[0].prosrc;
   if(source.includes("'roles',jsonb_build_array(app_role)")||source.includes("'operational_roles_enabled',false"))throw new Error('final Phase 8 context must retire compatibility arrays');
   console.log('PASS final context retirement after the React cutover');}
+ await db.exec('BEGIN;'+read('supabase/migrations/'+visitConductedBy)+read('supabase/activation/seal.sql')+'COMMIT;');
+ {const r=(await db.query("SELECT (SELECT count(*) FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='record_visit') versions,(SELECT pronargs FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='record_visit') args,(SELECT prosrc LIKE '%MASS_ACTIVATION_GUARD_V1%' FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='record_visit') guarded,(SELECT count(*) FROM information_schema.columns WHERE table_schema='mass_core' AND table_name='cluster_officer_visits' AND column_name='conducted_by') col,has_function_privilege('anon','mass_api.visit_conductors(uuid[])','execute') anon,has_function_privilege('authenticated','mass_api.visit_conductors(uuid[])','execute') auth")).rows[0];
+  if(Number(r.versions)!==1||Number(r.args)!==10||r.guarded!==true||Number(r.col)!==1||r.anon!==false||r.auth!==true)throw new Error('visit conducted-by migration shape is wrong: '+JSON.stringify(r));
+  console.log('PASS visit conducted-by column, single guarded record_visit and scoped conductor read');}
 } finally {await db.close();fs.rmSync(out,{recursive:true,force:true});}

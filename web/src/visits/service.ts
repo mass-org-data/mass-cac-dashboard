@@ -7,9 +7,11 @@ import {chunk, isMissingFunction} from '../lib/batched';
 
 export interface SummaryRow {centre_id: string; morning: number | string; evening: number | string; target_morning: number; target_evening: number; achieved: boolean; recorded_count: number | string}
 export interface OfficerRow {centre_id: string; officer_id: string; label: string; morning: number | string; evening: number | string; recorded_count: number | string}
-export interface VisitRow {id: string; centre_id: string; officer_id: string; shift_code: string; visit_date: string; status: string; feedback: string; next_action: string; row_version: number}
+export interface VisitRow {id: string; centre_id: string; officer_id: string; shift_code: string; visit_date: string; status: string; feedback: string; next_action: string; row_version: number; conducted_by?: string | null}
 export interface Assignment {id: string; centre_id: string; officer_id: string; shift_scope: string; starts_on: string; ends_before: string | null}
-export interface NewVisit {id: string; assignment: string; shift: string; date: string; status: string; feedback: string; nextAction: string}
+export interface NewVisit {id: string; assignment: string; shift: string; date: string; status: string; feedback: string; nextAction: string; conductedBy?: string | null}
+/** Who may be named as the person who conducted a visit: every active Leadership user (centre null) and the centre's Cluster Officer. */
+export interface Conductor {user_id: string; centre_id: string | null; role_code: string; label: string}
 
 export const monthWindow = (month: string) => {
   const from = `${month}-01`;
@@ -78,7 +80,13 @@ export function createVisitsService(rpc: Rpc, limit: (job: () => Promise<unknown
         throw new Error('Visit limit exceeded; narrow the scope.');
       });
     },
-    record: (v: NewVisit) => rpc<number>('record_visit', {p_id: v.id, p_assignment: v.assignment, p_shift: v.shift, p_date: v.date, p_status: v.status, p_feedback: v.feedback, p_next_action: v.nextAction, p_expected: 0, p_reason: null}),
+    /** Empty when the database does not have the function yet (the field is then hidden and not sent). */
+    async conductors(centres: string[]): Promise<Conductor[] | null> {
+      if (!centres.length) return [];
+      try { const rows = await rpc<Conductor[]>('visit_conductors', {p_centres: centres}); return Array.isArray(rows) ? rows : []; }
+      catch (error) { if (isMissingFunction(error)) return null; throw error; }
+    },
+    record: (v: NewVisit) => rpc<number>('record_visit', {p_id: v.id, p_assignment: v.assignment, p_shift: v.shift, p_date: v.date, p_status: v.status, p_feedback: v.feedback, p_next_action: v.nextAction, p_expected: 0, p_reason: null, ...(v.conductedBy ? {p_conducted_by: v.conductedBy} : {})}),
     deleteVisit: (request: string, visit: string, expected: number, reason: string) => rpc<unknown>('delete_visit', {p_request: request, p_visit: visit, p_expected: expected, p_reason: reason.trim()}),
   };
 }

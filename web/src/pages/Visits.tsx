@@ -6,7 +6,7 @@ import {Button} from '../components/ui/button';
 import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
 import {Input} from '../components/ui/input';
 import {VisitDialog} from '../visits/VisitDialog';
-import {createVisitsService, monthWindow, type Assignment, type OfficerRow, type SummaryRow, type VisitRow, type VisitsService} from '../visits/service';
+import {createVisitsService, monthWindow, type Assignment, type Conductor, type OfficerRow, type SummaryRow, type VisitRow, type VisitsService} from '../visits/service';
 import {academicMonths, monthLabel, todayIst} from '../lib/dates';
 import {formatCount} from '../lib/format';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
@@ -22,7 +22,7 @@ const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status;
 const num = (value: number | string) => Number(value);
 
 
-interface Boot {refs: References; capabilities: Capabilities; assignments: Assignment[]}
+interface Boot {refs: References; capabilities: Capabilities; assignments: Assignment[]; conductors: Conductor[]}
 interface Data {summary: SummaryRow[]; officers: OfficerRow[]}
 interface OfficerLine {id: string; label: string; completed: number; target: number; records: number}
 
@@ -48,8 +48,8 @@ export function Visits({backend, context, role, service: injected, tables: injec
   useEffect(() => {
     let live = true;
     setBoot({status: 'loading'});
-    Promise.all([backend.readReferences(), backend.readCapabilities(), role !== 'Teacher' ? service.assignments() : Promise.resolve([] as Assignment[])])
-      .then(([refs, capabilities, assignments]) => { if (live) setBoot({status: 'ready', value: {refs, capabilities, assignments}}); })
+    Promise.all([backend.readReferences(), backend.readCapabilities(), role !== 'Teacher' ? service.assignments() : Promise.resolve([] as Assignment[]), role !== 'Teacher' ? service.conductors(context.centres.filter(c => c.can_write).map(c => c.id)).catch(() => null) : Promise.resolve(null)])
+      .then(([refs, capabilities, assignments, conductors]) => { if (live) setBoot({status: 'ready', value: {refs, capabilities, assignments, conductors: conductors ?? []}}); })
       .catch(error => { if (live) setBoot({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
   }, [backend, service, role, bootAttempt]);
@@ -120,15 +120,17 @@ export function Visits({backend, context, role, service: injected, tables: injec
     {id: 'evening', header: t('visit.eveningCompleted'), value: r => (num(r.recorded_count) ? num(r.evening) : null), numeric: true},
     {id: 'status', header: t('visit.standard'), value: r => (num(r.recorded_count) ? t(r.achieved ? 'visit.targetAchieved' : 'visit.targetMissed') : t('visit.noVerified'))},
   ], [nameOf, t]);
+  const conductorName = useMemo(() => new Map((boot.status === 'ready' ? boot.value.conductors : []).map(c => [c.user_id, c.label])), [boot]);
   const logColumns = useMemo<Column<VisitRow>[]>(() => [
     {id: 'date', header: t('common.date'), value: r => r.visit_date},
     {id: 'centre', header: t('common.centre'), value: r => nameOf.get(r.centre_id) ?? r.centre_id},
     {id: 'shift', header: t('common.shift'), value: r => r.shift_code},
     {id: 'status', header: t('common.status'), value: r => r.status},
     {id: 'feedback', header: t('visit.feedbackShort'), value: r => r.feedback},
+    {id: 'conductor', header: t('visit.conductedBy'), sortable: false, value: r => conductorName.get(r.conducted_by ?? '') ?? t('common.unknown')},
     {id: 'next', header: t('visit.nextAction'), value: r => r.next_action},
     {id: 'action', header: t('common.action'), sortable: false, value: () => t('common.delete'), cell: r => <Button variant="ghost" size="sm" className="text-bad" onClick={() => { setDeleting({...r, request: crypto.randomUUID()}); setDeleteReason(''); setDeleteError(''); }}>{t('common.delete')}</Button>},
-  ], [nameOf, t]);
+  ], [nameOf, conductorName, t]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('visit.preparing')} rows={5} />;
   if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{boot.value.assignments.length === 0 ? t('visit.noAssignment') : t('visit.multipleIdentities', {count: officerIds.length})}</p>;

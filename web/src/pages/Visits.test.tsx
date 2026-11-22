@@ -2,7 +2,7 @@ import {render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {describe, expect, it, vi} from 'vitest';
 import {Visits} from './Visits';
-import type {Assignment, OfficerRow, SummaryRow, VisitRow, VisitsService} from '../visits/service';
+import type {Assignment, Conductor, OfficerRow, SummaryRow, VisitRow, VisitsService} from '../visits/service';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
@@ -17,9 +17,10 @@ const officers: OfficerRow[] = [{centre_id: 'c1', officer_id: 'o1', label: 'Meer
 const assignment: Assignment = {id: 'a1', centre_id: 'c1', officer_id: 'o1', shift_scope: 'Both shifts', starts_on: '2026-04-01', ends_before: null};
 const visit: VisitRow = {id: 'v1', centre_id: 'c1', officer_id: 'o1', shift_code: 'Morning', visit_date: '2026-11-03', status: 'Completed', feedback: 'Roster complete', next_action: 'Follow up', row_version: 1};
 
-function setup(options: {role?: string; writes?: Record<string, boolean>; summary?: SummaryRow[]; assignments?: Assignment[]; fail?: boolean} = {}) {
+function setup(options: {role?: string; writes?: Record<string, boolean>; summary?: SummaryRow[]; assignments?: Assignment[]; conductors?: Conductor[] | null; fail?: boolean} = {}) {
   const service = {
     assignments: vi.fn(async () => options.assignments ?? [assignment]),
+    conductors: vi.fn(async () => options.conductors === undefined ? [{user_id: 'u-lead', centre_id: null, role_code: 'Leadership', label: 'Priya Rao'}, {user_id: 'u-co', centre_id: 'c1', role_code: 'Cluster Officer', label: 'Anil Kumar'}, {user_id: 'u-co2', centre_id: 'c2', role_code: 'Cluster Officer', label: 'Other Officer'}] : options.conductors),
     summary: vi.fn(async () => { if (options.fail) throw new Error('statement timeout'); return options.summary ?? [sum('c1', 2, 2), sum('c2', 1, 0)]; }),
     officers: vi.fn(async () => officers), log: vi.fn(async () => [visit]), record: vi.fn(async () => 1),
   } as unknown as VisitsService;
@@ -95,6 +96,26 @@ describe('Visits page', () => {
     await waitFor(() => expect(service.record).toHaveBeenCalledWith(expect.objectContaining({assignment: 'a1', shift: 'Morning', date: '2026-11-14', status: 'Completed', feedback: 'Registers complete', id: expect.any(String)})));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(vi.mocked(service.summary).mock.calls.length).toBeGreaterThan(1);
+  });
+  it('offers Leadership users and the centre Cluster Officer as who conducted the visit, and sends the choice', async () => {
+    const user = userEvent.setup();
+    const {service} = setup({writes: {visit_entry: true}});
+    await user.click(await screen.findByRole('button', {name: 'Record a visit'}));
+    const dialog = within(await screen.findByRole('dialog'));
+    const field = await dialog.findByLabelText('Visit conducted by');
+    const names = within(field).getAllByRole('option').map(o => o.textContent);
+    expect(names).toEqual(['Me (the person recording)', 'Priya Rao (Leadership)', 'Anil Kumar (Cluster Officer)']);   // not the other centre's officer
+    await user.selectOptions(field, 'u-lead');
+    await user.click(dialog.getByRole('button', {name: 'Save visit'}));
+    await waitFor(() => expect(service.record).toHaveBeenCalledWith(expect.objectContaining({conductedBy: 'u-lead'})));
+  });
+  it('hides the field when the database does not have it yet', async () => {
+    const user = userEvent.setup();
+    setup({writes: {visit_entry: true}, conductors: null});
+    await user.click(await screen.findByRole('button', {name: 'Record a visit'}));
+    const dialog = within(await screen.findByRole('dialog'));
+    await dialog.findByLabelText('Visit date');
+    expect(dialog.queryByLabelText('Visit conducted by')).not.toBeInTheDocument();
   });
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();
