@@ -47,7 +47,8 @@ jobs:
       - run: npm run test:centre-events
 
   browser-acceptance:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright's browser installer does not support the newer ubuntu-latest image yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
