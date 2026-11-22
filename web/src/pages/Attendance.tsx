@@ -26,6 +26,8 @@ const messageOf = (error: unknown) => (error instanceof Error && error.message ?
 const asState = <T,>(slice: Slice<T>): LoadState => slice.status === 'ready' ? 'ready' : slice.status;
 
 // Attendance bands from the server's days-present distribution. Same bands as the current page; the last band is open-ended.
+// Owner rule (22 Nov): fewer than 10 recorded present days in the month (about 50%). Recorded days only; no scheduled-day coverage.
+const LOW_ATTENDANCE_DAYS = 10;
 const BANDS: Array<[MessageKey, (days: number) => boolean]> = [['attendance.below15', d => d < 15], ['attendance.15days', d => d === 15], ['attendance.16to20', d => d >= 16 && d <= 20], ['attendance.21plus', d => d > 20]];
 
 
@@ -134,6 +136,7 @@ export function Attendance({backend, context, service: injected, overview: injec
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [nameOf, writable, canWrite, t]);
 
+  const lowCount = distribution.status === 'ready' ? distribution.value.days.filter(d => d.days < LOW_ATTENDANCE_DAYS).reduce((n, d) => n + d.students, 0) : null;
   const bandItems = distribution.status === 'ready' ? BANDS.map(([label, test]) => ({label: t(label), value: distribution.value.days.filter(d => test(d.days)).reduce((n, d) => n + d.students, 0)})) : [];
   const trend = series.status === 'ready' ? months.map(m => ({label: monthShort(m), value: series.value[m] ?? null})) : [];
   const stats = report.status === 'ready' ? report.value : null;
@@ -178,7 +181,7 @@ export function Attendance({backend, context, service: injected, overview: injec
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Scorecard reference="2.1" label={t('attendance.studentRate')} value={stats ? formatPercent(stats.attendance.percentage) : null} state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : report.status === 'error' ? report.message : undefined} />
-        <Scorecard reference="2.2" label={t('attendance.low')} state="unavailable" message={t('attendance.lowHelp')} tone="alert" />
+        <Scorecard reference="2.2" label={t('attendance.low')} value={lowCount === null ? null : formatCount(lowCount)} hint={t('attendance.lowHelp')} state={future ? 'unavailable' : distribution.status === 'ready' ? 'ready' : distribution.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : distribution.status === 'error' ? distribution.message : undefined} tone="alert" />
       </div>
 
       {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (

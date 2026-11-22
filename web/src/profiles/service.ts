@@ -8,7 +8,7 @@ import {CACHE_TTL_MS, memoise, type Rpc} from '../session/backend';
 import {isMissingFunction} from '../lib/batched';
 
 export interface ProfileCapabilities {version: number; profile_pages?: boolean; profile_sort_v2?: boolean; academic_history?: boolean}
-export type ProfileSort = 'name' | 'id' | 'centre' | 'grade' | 'gender' | 'shift' | 'newest';
+export type ProfileSort = 'name' | 'id' | 'centre' | 'grade' | 'gender' | 'shift' | 'newest' | 'default';
 export interface ProfileFilters {centres: string[]; query: string; idQuery: string; grade: string | null; shift: string | null; gender: string | null}
 export interface ProfilePageRequest {offset: number; sort: ProfileSort; reverse: boolean; limit?: number}
 export interface ProfileIds {ids: string[]; total: number; rows?: ReadStudent[]}

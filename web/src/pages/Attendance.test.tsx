@@ -116,7 +116,7 @@ describe('Attendance page', () => {
   it('shows the scorecards, the attendance bands and the centre table from the same reports', async () => {
     setup();
     await waitFor(() => expect(screen.getByRole('group', {name: 'Student attendance rate'})).toHaveTextContent('90.0%'));
-    expect(screen.getByRole('group', {name: 'Students with low attendance'})).toHaveTextContent('—');
+    expect(screen.getByRole('group', {name: 'Students with low attendance'})).toHaveTextContent('Students with low attendance2Fewer than 10');
     const bands = await screen.findByRole('img', {name: /Students by days present.*Below 15 2, 15 days 4, 16–20 6, 21 or more 3/});
     expect(bands).toBeInTheDocument();
     const centreTable = await screen.findByRole('table', {name: 'Attendance by centre'});

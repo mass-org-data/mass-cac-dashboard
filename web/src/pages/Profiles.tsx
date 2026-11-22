@@ -15,8 +15,8 @@ import {activeFieldClass, FilterPanel, FilterSelect as Select, english} from '..
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
-// Centre first, ascending (the server orders ties by name). A composite default is added with the server sort key in a later workstream.
-const DEFAULT_PAGE: ProfilePageRequest = {offset: 0, sort: 'centre', reverse: false};
+// Server composite order: centre A-Z, Morning before Evening, grade ascending, then name.
+const DEFAULT_PAGE: ProfilePageRequest = {offset: 0, sort: 'default', reverse: false};
 
 
 function useDebounced(value: string, ms = 350) {

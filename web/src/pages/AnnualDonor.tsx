@@ -21,7 +21,7 @@ const asState = <T,>(slice: Slice<T>): LoadState => slice.status;
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status;
 
 interface Loaded {months: string[]; reports: Array<Report | null>; failed: number}
-interface Line {id: string; name: string; donor: string; students: number | null; p: number | null; a: number | null; l: number | null; percentage: number | null; loaded: number}
+interface Line {id: string; name: string; donor: string; students: number | null; p: number | null; a: number | null; l: number | null; percentage: number | null; loaded: number; recorded_days?: number | null}
 const EMPTY_DONORS: Record<string, string | null> = {};
 
 
@@ -93,6 +93,7 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
   const columns = useMemo<Column<Line>[]>(() => [
     {id: 'name', header: t('common.centre'), value: r => r.name},
     {id: 'students', header: t('donor.studentsEnrolledColumn'), value: r => r.students, numeric: true},
+    {id: 'days', header: t('donor.recordedDaysColumn'), value: r => r.recorded_days ?? null, numeric: true},
     {id: 'percentage', header: t('donor.overallAttendance'), value: r => (r.percentage === null ? null : Number(r.percentage.toFixed(1))), numeric: true, cell: r => (r.percentage === null ? t('common.unknown') : formatPercent(r.percentage))},
   ], [t]);
   const tableContext = useMemo(() => ({year: year?.id ?? '', today}), [year?.id, today]);

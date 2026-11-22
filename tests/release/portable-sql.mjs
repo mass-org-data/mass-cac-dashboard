@@ -71,6 +71,14 @@ try {
  // Regression: the follow-up page sorts by a column named result, which used to clash with the function's own variable (42702).
  for(const sort of ['student','result','school'])await db.query(`WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('morarji_followup',c.ids,jsonb_build_object('cohort',(SELECT id FROM mass_core.programme_cohorts ORDER BY id LIMIT 1)),'','${sort}',false,0,10) FROM c`);
  console.log('PASS morarji_followup table page sorts by result without an ambiguity error');
+ // Profile list: the composite default sort is accepted and returns the same population as the single-key sort.
+ {const both=(await db.query("WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 3)s) SELECT mass_api.student_profile_page(c.ids,current_date,'','default',NULL,NULL,NULL,0,100,'')->>'total' a,mass_api.student_profile_page(c.ids,current_date,'','centre',NULL,NULL,NULL,0,100,'')->>'total' b FROM c")).rows[0];
+  if(both.a!==both.b)throw new Error('default profile sort must not change the population');
+  console.log('PASS profile default sort key is accepted');}
+ // Annual donor table: recorded_days column is present and sortable.
+ {const annual=(await db.query("WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('annual_centres',c.ids,jsonb_build_object('year',y.id,'today',least(y.ends_before-1,y.starts_on+180)),'','days',true,0,10) page FROM y,c")).rows[0].page;
+  if(!Array.isArray(annual.rows)||annual.rows.some(r=>!('recorded_days' in r)))throw new Error('annual_centres rows must expose recorded_days');
+  console.log('PASS annual donor table exposes recorded_days and sorts by it');}
  await db.exec("SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
  const initialLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;
  const savedLanguage=(await db.query("SELECT mass_api.set_default_language('kn')->>'default_language' language")).rows[0]?.language;

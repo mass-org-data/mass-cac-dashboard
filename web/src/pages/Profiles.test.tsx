@@ -37,11 +37,11 @@ describe('Student profiles page', () => {
     const t = await table();
     await waitFor(() => expect(bodyRows(t)).toHaveLength(10));
     expect(vi.mocked(service.page).mock.calls[0]![0]).toEqual(expect.objectContaining({centres: ['c1', 'c2'], query: '', grade: null}));
-    expect(vi.mocked(service.page).mock.calls[0]![1]).toEqual({offset: 0, sort: 'centre', reverse: false});
+    expect(vi.mocked(service.page).mock.calls[0]![1]).toEqual({offset: 0, sort: 'default', reverse: false});
     expect(within(t).getByText('Name not recorded')).toBeInTheDocument();
     expect(within(t).getAllByText('Unknown').length).toBeGreaterThan(0);
     await user.click(within(screen.getByRole('region', {name: /Student profiles/})).getByRole('button', {name: 'Next page'}));
-    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![1]).toEqual({offset: 10, sort: 'centre', reverse: false}));
+    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![1]).toEqual({offset: 10, sort: 'default', reverse: false}));
   });
   it('sorts on the server: ascending first, then descending, and returns to the first page', async () => {
     const user = userEvent.setup();
