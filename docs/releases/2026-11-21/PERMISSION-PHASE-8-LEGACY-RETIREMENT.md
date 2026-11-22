@@ -3,7 +3,7 @@
 **Prepared:** 21 November 2026  
 **Branch:** `fix/permission-architecture`  
 **Migration:** `20261121180000_permission_legacy_retirement.sql`  
-**Hosted status:** core Phase 8 and temporary context compatibility migrations installed on Preview
+**Hosted status:** complete on Preview; final context retirement installed
 
 **Production:** unchanged
 
@@ -25,7 +25,7 @@
 - Remove browser discovery of `user_scope_grants`, revoke operator mutation of legacy grants and overrides, and revoke execution of the inert override helper.
 - Retire the legacy clone script with a fail-closed operator error.
 - Return only one authoritative `role` and role-neutral centre scope from `get_context`. The React interface no longer consumes role arrays or an operational-role override flag.
-- Keep `/vanilla/` unchanged for its separately approved removal phase.
+- Keep interface removal in its separately approved frontend change.
 
 ## Preview rollback dry run
 
@@ -110,8 +110,11 @@ Rollback is a reviewed forward migration, not a rewrite of `20261121180000`. Bef
 - `npm run test:directory` still stops at `current centre scope includes current student identity`. The same failure reproduces from an isolated archive of starting commit `def58f6`; Phase 8 does not change that baseline directory behavior.
 - `npm audit --audit-level=high` reports no high-severity finding. Four transitive ESLint/minimatch findings remain moderate with no published fix.
 
-## Preview gates still required
+## Final Preview installation and acceptance
 
-1. Owner approval for persistent Preview installation of final response retirement migration `20261121190000` and its canonical ledger entry.
-2. Repeat signed-in context checks, direct API denial checks and fresh zero-unexplained-drift reconciliation.
+The owner approved persistent Preview installation of `20261121190000_permission_context_retirement.sql`. It committed atomically with canonical ledger version `20261121190000`; the stored statement MD5 matches the reviewed migration. Postflight confirmed `legacy-retired-v1`, no role arrays or operational-role flag, all 18 governed officer links, retained 102 legacy grants and two override rows, the retirement revocations, two explained reconciliation mismatches and zero unexplained drift. Feature gates remain assessment enabled and attendance, visit and student deletion disabled.
+
+Fresh authenticated contexts passed for Teacher, Cluster Officer and Leadership. Anonymous context access returned 401, a Teacher foreign-centre read returned 403, and a Teacher Leadership-directory request returned 403. Preview Auth public signup is disabled; email invitation remains enabled and confirmation remains required. A read-only Production check found no Phase 8 ledger entries or permission-administration tables. Production is unchanged.
+
+Phase 8 is complete on Preview. Legacy rows remain retained as rollback evidence; their deletion is not authorized.
 
