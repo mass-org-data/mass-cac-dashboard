@@ -143,7 +143,7 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
       <p className="text-xs text-muted">{t('profile.footnote')}</p>
 
       {adding ? <AddStudentDialog service={service} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={filters.centre || writable[0]!.id} today={today} enabled={addEnabled} onSaved={afterSave} onClose={() => setAdding(false)} /> : null}
-      {editing ? <EditStudentDialog service={service} student={editing} centreLabel={nameOf.get(editing.centre) ?? editing.centre} enabled={editEnabled} onSaved={afterSave} onClose={() => setEditing(null)} onDelete={canDelete ? () => { setDeleting(editing); setEditing(null); } : undefined} /> : null}
+      {editing ? <EditStudentDialog service={service} student={editing} centreLabel={nameOf.get(editing.centre) ?? editing.centre} enabled={editEnabled} enrolEnabled={writes.enrolments === true} onSaved={afterSave} onClose={() => setEditing(null)} onDelete={canDelete ? () => { setDeleting(editing); setEditing(null); } : undefined} /> : null}
       {deleting ? <DeleteStudentDialog service={service} student={deleting} enabled={writes.student_deletion === true} onSaved={afterSave} onClose={() => setDeleting(null)} /> : null}
     </div>
   );

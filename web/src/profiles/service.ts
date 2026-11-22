@@ -91,6 +91,8 @@ export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unkno
         ? rpc<unknown>('save_student_profile_year', {...base, p_enrolment: edit.enrolment, p_profile_expected: edit.revision, p_year: edit.year.id, p_status: edit.year.status, p_year_expected: edit.year.version})
         : rpc<unknown>('correct_profile', {...base, p_expected: edit.revision});
     },
+    /** Closes the open enrolment as Promoted on 1 April and opens the next-grade enrolment atomically (gate: enrolments). */
+    promote: (e: {enrolment: string; version: number; grade: string; start: string; shift: string | null}) => rpc<string>('promote_student', {p_enrolment: e.enrolment, p_expected: e.version, p_grade: e.grade, p_start: e.start, p_shift: e.shift, p_centre: null}),
     previewDeletion: (child: string) => rpc<StudentDeletionPreview>('preview_student_deletion', {p_child: child}),
     deleteStudent: (request: string, child: string, token: string, reason: string) => rpc<unknown>('delete_student_cascade', {p_request: request, p_child: child, p_token: token, p_reason: reason.trim()}),
   };

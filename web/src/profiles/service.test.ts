@@ -57,4 +57,9 @@ describe('profiles service', () => {
     await service.saveProfile({child: 'c', enrolment: 'e', revision: 5, name: 'A', gender: 'Girl', board: null});
     expect(rpc).toHaveBeenLastCalledWith('correct_profile', {p_child: 'c', p_name: 'A', p_gender: 'Girl', p_board: null, p_expected: 5});
   });
+  it('promotes through one atomic server call', async () => {
+    const rpc = vi.fn(async () => 'new-id');
+    await createProfilesService(rpc as never).promote({enrolment: 'e1', version: 3, grade: '5', start: '2027-04-01', shift: null});
+    expect(rpc).toHaveBeenCalledWith('promote_student', {p_enrolment: 'e1', p_expected: 3, p_grade: '5', p_start: '2027-04-01', p_shift: null, p_centre: null});
+  });
 });

@@ -71,7 +71,7 @@ export function AddStudentDialog({service, centres, initialCentre, today, enable
   );
 }
 
-export function EditStudentDialog({service, student, centreLabel, enabled, onSaved, onClose, onDelete}: CommonProps & {student: StudentRow; centreLabel: string; /** When given, a Delete button appears inside this dialog (never in the table row). */ onDelete?: () => void}) {
+export function EditStudentDialog({service, student, centreLabel, enabled, enrolEnabled, onSaved, onClose, onDelete}: CommonProps & {student: StudentRow; centreLabel: string; /** Shows Add enrollment when the server's enrolments switch is on. */ enrolEnabled?: boolean; /** When given, a Delete button appears inside this dialog (never in the table row). */ onDelete?: () => void}) {
   const {t} = useI18n();
   const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
@@ -81,6 +81,7 @@ export function EditStudentDialog({service, student, centreLabel, enabled, onSav
   const [form, setForm] = useState<EditForm>({name: student.name ?? '', gender: student.gender ?? '', board: student.board === null ? '' : String(student.board), status: ''});
   const [error, setError] = useState('');
   const [status, setStatus] = useState<'ready' | 'saving' | 'committed'>('ready');
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -143,6 +144,7 @@ export function EditStudentDialog({service, student, centreLabel, enabled, onSav
               <tbody>{years.map(y => <tr key={y.academic_year_id}><td className="border-b border-line px-3 py-1">{y.label} · {t(y.editable ? 'profile.current' : 'profile.readOnly')}</td><td className="border-b border-line px-3 py-1">{y.grade}</td><td className="border-b border-line px-3 py-1">{y.status ?? t('common.notRecorded')}</td></tr>)}</tbody>
             </table>
           ) : <p className="text-sm text-muted">{t('profile.noHistory')}</p>}
+          {enrolEnabled ? <div><Button variant="outline" onClick={() => setEnrolling(true)} disabled={busy}>{t('profile.addEnrolment')}</Button></div> : null}
         </AsyncState>
         <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{error}</p>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -152,8 +154,45 @@ export function EditStudentDialog({service, student, centreLabel, enabled, onSav
         </div>
         {enabled ? null : <p className="text-xs text-muted">{t('profile.activationPending')}</p>}
       </DialogContent>
+      {enrolling ? <AddEnrolmentDialog service={service} student={student} onSaved={onSaved} onDone={() => { setEnrolling(false); onClose(); }} onCancel={() => setEnrolling(false)} /> : null}
     </Dialog>
   );
+}
+
+/** First 1 April after the academic year the enrolment started in. */
+export function nextYearStart(enrolledOn: string): string {
+  const [y, m] = enrolledOn.split('-').map(Number);
+  return `${(m! >= 4 ? y! : y! - 1) + 1}-04-01`;
+}
+
+export function AddEnrolmentDialog({service, student, onSaved, onDone, onCancel}: {service: ProfilesService; student: StudentRow; onSaved: CommonProps['onSaved']; onDone: () => void; onCancel: () => void}) {
+  const {t} = useI18n();
+  const first = nextYearStart(student.enrolled);
+  const starts = [first, `${Number(first.slice(0, 4)) + 1}-04-01`];
+  const [start, setStart] = useState(first);
+  const [grade, setGrade] = useState(String(Math.min(10, Number(student.grade) + 1)));
+  const [shift, setShift] = useState(student.shift);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async () => {
+    setBusy(true); setError('');
+    try { await service.promote({enrolment: student.enrolment, version: student.version, grade, start, shift}); }
+    catch (e) { setError(messageOf(e)); setBusy(false); return; }
+    try { await onSaved(t('profile.enrolmentSaved')); } catch { /* the list refresh failed; the enrolment is saved */ }
+    onDone();
+  };
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onCancel(); }}>
+    <DialogContent aria-describedby="add-enrolment-help" onInteractOutside={event => event.preventDefault()}>
+      <div><DialogTitle>{t('profile.addEnrolment')}</DialogTitle><DialogDescription id="add-enrolment-help">{t('profile.addEnrolmentHelp')}</DialogDescription></div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className={labelClass}>{t('profile.newYearStart')}<select value={start} disabled={busy} onChange={event => setStart(event.target.value)} className={selectClass}>{starts.map(d => <option key={d} value={d}>{d}</option>)}</select></label>
+        <label className={labelClass}>{t('common.grade')}<select value={grade} disabled={busy} onChange={event => setGrade(event.target.value)} className={selectClass}>{Array.from({length: 10}, (_, i) => String(i + 1)).map(g => <option key={g}>{g}</option>)}</select></label>
+        <label className={labelClass}>{t('common.shift')}<select value={shift} disabled={busy} onChange={event => setShift(event.target.value)} className={selectClass}><option value="Morning">{english('common.morning')}</option><option value="Evening">{english('common.evening')}</option></select></label>
+      </div>
+      <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{error}</p>
+      <div className="flex justify-end gap-2"><Button variant="outline" onClick={onCancel} disabled={busy}>{t('common.cancel')}</Button><Button onClick={() => void submit()} disabled={busy}>{t(busy ? 'common.saving' : 'profile.saveEnrolment')}</Button></div>
+    </DialogContent>
+  </Dialog>;
 }
 
 export function DeleteStudentDialog({service, student, enabled, onSaved, onClose}: CommonProps & {student: StudentRow}) {

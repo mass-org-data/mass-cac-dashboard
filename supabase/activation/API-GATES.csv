@@ -9,6 +9,7 @@ correct_profile,profiles,disabled,prohibited; constrained hard-off,can_write_chi
 correct_student,profiles,disabled,prohibited; constrained hard-off,same child/enrolment plus profile and optional closure permissions
 add_enrolment,enrolments,disabled,prohibited; constrained hard-off,existing child write scope and destination write scope
 close_enrolment,enrolments,disabled,prohibited; constrained hard-off,writable enrolment; cannot invalidate recorded history
+promote_student,enrolments,disabled,prohibited; constrained hard-off,writable enrolment and destination centre; closes the current enrolment as Promoted on 1 April and opens the next grade atomically
 register_student,registration,disabled,not permitted by this phase,assigned centre write scope
 register_student_once,registration,disabled,not permitted by this phase,assigned centre write scope; request identity/idempotency
 record_calendar,calendar,disabled,prohibited; constrained hard-off,assigned centre write scope; approved calendar reference
