@@ -22,7 +22,7 @@ const rows: RegisterRow[] = [{centre_id: 'c1', shift_code: 'Evening', assessment
 function setup(options: {role?: string; writes?: Record<string, boolean>; reportFn?: OverviewService['report']; write?: boolean; reviewed?: boolean} = {}) {
   const service = {
     register: vi.fn(async () => rows),
-    roster: vi.fn(async () => [{enrolment: 'e1', child: 'k1', studentId: 'S001', name: 'Asha', grade: '4', shift: 'Evening'}, {enrolment: 'e2', child: 'k2', studentId: 'S002', name: null, grade: '5', shift: 'Evening'}]),
+    roster: vi.fn(async () => [{enrolment: 'e1', child: 'k1', studentId: 'S001', name: 'Asha', grade: '4', shift: 'Evening', gender: 'Girl'}, {enrolment: 'e2', child: 'k2', studentId: 'S002', name: null, grade: '5', shift: 'Evening', gender: null}]),
     saved: vi.fn(async () => new Map()), save: vi.fn(async () => 1),
   } as unknown as AssessmentsService;
   const overview = {report: options.reportFn ?? vi.fn(async () => report), shifts: vi.fn(), series: vi.fn(), clear: vi.fn()} as unknown as OverviewService;
@@ -66,7 +66,9 @@ describe('Assessments page', () => {
     const table = await screen.findByRole('table', {name: 'Assessment register'});
     await waitFor(() => expect(within(table).getAllByRole('row').length).toBe(3));
     expect(within(table).getByText('Unknown', {selector: 'span'})).toBeInTheDocument();
-    expect(within(table).getAllByText('Source import / not recorded').length).toBeGreaterThan(0);
+    expect(within(table).queryByText('Source import / not recorded')).not.toBeInTheDocument();
+    expect(within(table).getAllByRole('button', {name: 'Edit'}).length).toBeGreaterThan(0);
+    expect(within(table).queryByRole('button', {name: 'Delete'})).not.toBeInTheDocument();
   });
   it('shows an error with retry when the report fails, without hiding the register', async () => {
     setup({reportFn: vi.fn(async () => { throw new Error('statement timeout'); }) as never});
@@ -89,6 +91,7 @@ describe('Assessments page', () => {
     await screen.findByText('32 of 40 enrolled students have a score');
     await user.click(screen.getByRole('button', {name: 'Enter marks'}));
     expect(await screen.findByText(/This date is in round F3/)).toBeInTheDocument();
+    await user.selectOptions(within(await screen.findByRole('dialog')).getByLabelText('Shift'), 'Evening');
     await user.click(screen.getByRole('button', {name: 'Continue'}));
     expect(await screen.findByRole('table', {name: 'Students to score'})).toBeInTheDocument();
     expect(screen.getByRole('button', {name: 'Save assessment'})).toBeDisabled();
@@ -99,6 +102,7 @@ describe('Assessments page', () => {
     const {service} = setup({writes: {assessment_entry: true}});
     await screen.findByText('32 of 40 enrolled students have a score');
     await user.click(screen.getByRole('button', {name: 'Enter marks'}));
+    await user.selectOptions(within(await screen.findByRole('dialog')).getByLabelText('Shift'), 'Evening');
     await user.click(await screen.findByRole('button', {name: 'Continue'}));
     await screen.findByRole('table', {name: 'Students to score'});
     await user.type(screen.getByLabelText('Marks for Asha'), '30');
@@ -109,6 +113,18 @@ describe('Assessments page', () => {
     await user.click(screen.getByRole('button', {name: 'Save assessment'}));
     await waitFor(() => expect(service.save).toHaveBeenCalledWith([{enrolment: 'e1', definition: 'd3', date: '2026-11-14', score: 19, expected: 0}]));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+  it('edits a saved register: marks come filled in and a changed mark is saved as a correction with its version', async () => {
+    const user = userEvent.setup();
+    const {service} = setup({writes: {assessment_entry: true}});
+    (service.saved as ReturnType<typeof vi.fn>).mockResolvedValue(new Map([['e1', {id: 'r1', enrolment: 'e1', score: 10, date: '2026-10-05', version: 3}]]));
+    const table = await screen.findByRole('table', {name: 'Assessment register'});
+    await user.click((await within(table).findAllByRole('button', {name: 'Edit'}))[0]!);
+    const marks = await screen.findByLabelText('Marks for Asha');
+    expect(marks).toHaveValue(10);
+    await user.clear(marks); await user.type(marks, '14');
+    await user.click(screen.getByRole('button', {name: 'Save assessment'}));
+    await waitFor(() => expect(service.save).toHaveBeenCalledWith([{enrolment: 'e1', definition: 'd2', date: '2026-10-05', score: 14, expected: 3}]));
   });
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();

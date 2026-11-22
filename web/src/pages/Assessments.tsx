@@ -7,7 +7,7 @@ import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {Button} from '../components/ui/button';
 import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
 import {Input} from '../components/ui/input';
-import {EntryDialog} from '../assessments/EntryDialog';
+import {EntryDialog, type EditTarget} from '../assessments/EntryDialog';
 import {createAssessmentsService, type AssessmentsService, type RegisterRow} from '../assessments/service';
 import {type OverviewService, type Report} from '../data/overview';
 import {academicMonths, todayIst} from '../lib/dates';
@@ -46,8 +46,9 @@ export function Assessments({backend, context, service: injected, overview: inje
   const [report, setReport] = useState<Slice<Report>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
   const [entering, setEntering] = useState(false);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const [notice, setNotice] = useState('');
-  const [deletingRegister, setDeletingRegister] = useState<{row: RegisterRow; definition: string; count: number; token: string; request: string} | null>(null);
+  const [deletingRegister, setDeletingRegister] = useState<{row: RegisterRow; definition: string; targets: Array<{date: string | null; count: number; token: string; request: string}>} | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -105,8 +106,12 @@ export function Assessments({backend, context, service: injected, overview: inje
     const definition = refs.assessment_definitions.find(d => d.period_id === period?.id)?.id;
     if (!definition) { setNotice(t('assessment.definitionMissing')); return; }
     setDeleteError(''); setDeleteReason('');
-    try { const preview = await service.previewRegisterDeletion(row.centre_id, row.shift_code, definition, row.assessment_date); setDeletingRegister({row, definition, count: preview.count, token: preview.token, request: crypto.randomUUID()}); }
-    catch (error) { setNotice(messageOf(error)); }
+    try {
+      // Registers are grouped by round, so every observed date inside this centre, shift and round is previewed and deleted together.
+      const dates = await service.registerDates(row.centre_id, row.shift_code, definition, year.starts_on, year.ends_before);
+      const targets = await Promise.all((dates.length ? dates : [row.assessment_date]).map(async date => { const preview = await service.previewRegisterDeletion(row.centre_id, row.shift_code, definition, date); return {date, count: preview.count, token: preview.token, request: crypto.randomUUID()}; }));
+      setDeletingRegister({row, definition, targets});
+    } catch (error) { setNotice(messageOf(error)); }
   }, [refs, year, service, t]);
   const centreColumns = useMemo<Column<CentreRow>[]>(() => [
     {id: 'centre', header: t('common.centre'), value: r => r.centre_label},
@@ -120,11 +125,8 @@ export function Assessments({backend, context, service: injected, overview: inje
     {id: 'round', header: t('assessment.round'), value: r => `F${r.quarter}`},
     {id: 'students', header: t('assessment.studentsScores'), value: r => Number(r.students), numeric: true},
     {id: 'average', header: t('assessment.averageScore'), value: r => (r.average_score === null ? null : Number(Number(r.average_score).toFixed(1))), numeric: true, cell: r => (r.average_score === null ? t('common.unknown') : Number(r.average_score).toFixed(1))},
-    {id: 'created', header: t('assessment.createdBy'), value: r => r.created_by ?? t('common.notRecorded')},
-    {id: 'edited', header: t('assessment.lastEditedBy'), value: r => r.last_edited_by ?? t('common.notRecorded')},
-    {id: 'at', header: t('assessment.lastEditedAt'), value: r => r.last_edited_at ?? t('common.notRecorded')},
-    {id: 'action', header: t('common.action'), sortable: false, value: () => t('common.delete'), cell: r => writable.some(c => c.id === r.centre_id) ? <Button variant="ghost" size="sm" className="text-bad" onClick={() => void openRegisterDeletion(r)}>{t('common.delete')}</Button> : null},
-  ], [nameOf, writable, openRegisterDeletion, t]);
+    {id: 'action', header: t('common.action'), sortable: false, value: () => t('attendance.edit'), cell: r => writable.some(c => c.id === r.centre_id) ? <Button variant="ghost" size="sm" onClick={() => { setNotice(''); setEditing({centre: r.centre_id, shift: r.shift_code, quarter: r.quarter, date: r.assessment_date}); }}>{t('attendance.edit')}</Button> : null},
+  ], [nameOf, writable, t]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('assessment.preparing')} rows={5} />;
   const canEnter = writable.length > 0 && Boolean(year);
@@ -183,11 +185,12 @@ export function Assessments({backend, context, service: injected, overview: inje
         state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
 
       <DataTable<RegisterRow> reference="4.9" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
-        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
+        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
       <p className="text-xs text-muted">{t('assessment.registerFootnote')}</p>
 
       {entering && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setEntering(false)} /> : null}
-      {deletingRegister ? <Dialog open onOpenChange={open => { if (!open && !deleteBusy) setDeletingRegister(null); }}><DialogContent role="alertdialog" aria-describedby="delete-assessment-register-help" onInteractOutside={event => event.preventDefault()}><div><DialogTitle>{t('assessment.deleteRegisterTitle')}</DialogTitle><DialogDescription id="delete-assessment-register-help">{t('assessment.deleteRegisterHelp', {count: deletingRegister.count, round: `F${deletingRegister.row.quarter}`, date: deletingRegister.row.assessment_date ?? t('common.unknown')})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.deleteReason')}<Input value={deleteReason} maxLength={300} disabled={deleteBusy} onChange={event => setDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{deleteError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={deleteBusy} onClick={() => setDeletingRegister(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={deleteBusy || !entryEnabled || !deleteReason.trim()} onClick={() => { setDeleteBusy(true); const d = deletingRegister; service.deleteRegister(d.request, d.row.centre_id, d.row.shift_code, d.definition, d.row.assessment_date, d.token, deleteReason).then(() => { setDeletingRegister(null); setDeleteBusy(false); void afterSave(t('assessment.deleteRegisterSuccess')); }).catch(error => { setDeleteError(messageOf(error)); setDeleteBusy(false); }); }}>{t(deleteBusy ? 'common.deleting' : 'common.delete')}</Button></div>{entryEnabled ? null : <p className="text-xs text-muted">{t('common.activationPending')}</p>}</DialogContent></Dialog> : null}
+      {editing && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={editing.centre} today={today} enabled={entryEnabled} edit={editing} onDelete={() => { const row = registerTable.rows.find(r => r.centre_id === editing.centre && r.shift_code === editing.shift && r.quarter === editing.quarter); if (row) { setEditing(null); void openRegisterDeletion(row); } }} onSaved={afterSave} onClose={() => setEditing(null)} /> : null}
+      {deletingRegister ? <Dialog open onOpenChange={open => { if (!open && !deleteBusy) setDeletingRegister(null); }}><DialogContent role="alertdialog" aria-describedby="delete-assessment-register-help" onInteractOutside={event => event.preventDefault()}><div><DialogTitle>{t('assessment.deleteRegisterTitle')}</DialogTitle><DialogDescription id="delete-assessment-register-help">{t('assessment.deleteRegisterHelp', {count: deletingRegister.targets.reduce((n, x) => n + x.count, 0), round: `F${deletingRegister.row.quarter}`, date: deletingRegister.targets.map(x => x.date ?? t('common.unknown')).join(', ')})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.deleteReason')}<Input value={deleteReason} maxLength={300} disabled={deleteBusy} onChange={event => setDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{deleteError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={deleteBusy} onClick={() => setDeletingRegister(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={deleteBusy || !entryEnabled || !deleteReason.trim()} onClick={() => { setDeleteBusy(true); const d = deletingRegister; setDeleteError(''); (async () => { for (const target of d.targets) await service.deleteRegister(target.request, d.row.centre_id, d.row.shift_code, d.definition, target.date, target.token, deleteReason); })().then(() => { setDeletingRegister(null); setDeleteBusy(false); void afterSave(t('assessment.deleteRegisterSuccess')); }).catch(error => { setDeleteError(messageOf(error)); setDeleteBusy(false); }); }}>{t(deleteBusy ? 'common.deleting' : 'common.delete')}</Button></div>{entryEnabled ? null : <p className="text-xs text-muted">{t('common.activationPending')}</p>}</DialogContent></Dialog> : null}
     </div>
   );
 }
