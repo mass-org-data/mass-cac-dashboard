@@ -10,7 +10,7 @@ import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-09-14'}));
 
-const ctx = (roles: string[]): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: true, centres: [{id: 'c1', label: 'Centre 01', roles, can_write: false}, {id: 'c2', label: 'Centre 02', roles, can_write: false}]}) as unknown as ProgrammeContext;
+const ctx = (roles: string[]): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: false}, {id: 'c2', label: 'Centre 02', can_write: false}]});
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}, {id: 'y0', starts_on: '2025-04-01', ends_before: '2026-04-01'}], assessment_periods: [], assessment_definitions: []};
 const att = (p: number, a: number, l = 0) => ({p, a, l, excluded: 0, percentage: p + a + l ? 100 * p / (p + a + l) : null});
 const month = (n: number): Report => ({children: 30, grades: {}, genders: {}, attendance: att(100 * n, 10 * n), quarters: [], centres: [{id: 'c1', children: 18, attendance: att(60 * n, 5 * n), quarters: []}, {id: 'c2', children: 12, attendance: att(40 * n, 5 * n), quarters: []}]});

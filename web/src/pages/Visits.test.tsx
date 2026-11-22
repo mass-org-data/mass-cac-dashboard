@@ -10,7 +10,7 @@ import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
-const ctx = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: true, centres: [{id: 'c1', label: 'Centre 01', roles, can_write: write}, {id: 'c2', label: 'Centre 02', roles, can_write: write}]}) as unknown as ProgrammeContext;
+const ctx = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: write}, {id: 'c2', label: 'Centre 02', can_write: write}]});
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}], assessment_periods: [], assessment_definitions: []};
 const sum = (id: string, m: number, e: number, rec = m + e): SummaryRow => ({centre_id: id, morning: m, evening: e, target_morning: 2, target_evening: 2, achieved: m >= 2 && e >= 2, recorded_count: rec});
 const officers: OfficerRow[] = [{centre_id: 'c1', officer_id: 'o1', label: 'Meera', morning: 2, evening: 2, recorded_count: 4}, {centre_id: 'c2', officer_id: 'o1', label: 'Meera', morning: 1, evening: 0, recorded_count: 1}];

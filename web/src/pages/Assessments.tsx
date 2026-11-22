@@ -42,7 +42,7 @@ function Select({label, value, options, onChange, allLabel}: {label: string; val
 interface Boot {refs: References; capabilities: Capabilities}
 interface CentreRow {centre_id: string; centre_label: string; score_n: number | string | null; score_mean: number | string | null}
 
-export function Assessments({backend, context, role, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService; tables?: TableService}) {
+export function Assessments({backend, context, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
   const service = useMemo(() => injected ?? createAssessmentsService(backend.rpc), [backend, injected]);
   const overview = useMemo(() => injectedOverview ?? sharedOverview(backend), [backend, injectedOverview]);
@@ -71,7 +71,7 @@ export function Assessments({backend, context, role, service: injected, overview
     return () => { live = false; };
   }, [backend, bootAttempt, t]);
 
-  const scope = useMemo(() => context.centres.filter(c => c.roles.includes(role)), [context, role]);
+  const scope = context.centres;
   const writable = useMemo(() => scope.filter(c => c.can_write), [scope]);
   const nameOf = useMemo(() => new Map(context.centres.map(c => [c.id, c.label])), [context]);
   const refs = boot.status === 'ready' ? boot.value.refs : null;

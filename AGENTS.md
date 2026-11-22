@@ -2,6 +2,25 @@
 
 This file is the reusable working context for coding agents. Read it before changing the repository. Treat dated deployment and PR details as a snapshot: fetch the remotes and inspect GitHub, Vercel, and Supabase before acting on them.
 
+## Current permission work (21 November 2026)
+
+Use this section for the current handoff. Dated status statements below and the earlier phase documents are historical. Fetch and verify the relevant remotes and hosted state before deployment-sensitive work.
+
+- Work on the existing `fix/permission-architecture` branch. The pushed ref and protected Vercel branch Preview include the React-only removal commit `4c9ef08` at `https://dev-mass-cac-dashboard.vercel.app/`, backed by Preview Supabase `nilzfsahxoxibvrwsqkd`. GitHub PR #26 squash-merged the earlier Phases 1–6 into `staging` at `2bd3e1d`. Phase 7, Phase 8 and interface removal have no PR. Production Vercel and `main` remain at `3be1a4e` against Production Supabase `pbkwpfdpdtelmvbkzgvx`.
+- Preview has the live Phases 1–6 database objects. The ledger has Phase 4 under provider version `20261119030757`, Phases 5–6 under their canonical versions, and Phase 7 under `20261121120000`. Phase 1–3 catalog objects were verified but their matching ledger entries are missing. Preserve that discrepancy for provenance review. Replaying installed migrations is unsafe.
+- The approved Phase 7 migration and activation seal are installed on Preview only. The Custom Access Token Hook is enabled. The restricted database login and the Preview Edge Function secrets `MASS_ADMIN_DATABASE_URL` and `MASS_ADMIN_INVITE_URL` are provisioned. `leadership-admin` v1 is Active and verified from the deployed React UI. The Auth Admin credential stays inside Supabase Edge Runtime.
+- Active Leadership can invite staff, link a verified manually provisioned Auth account, change other users’ roles, manage centre assignments and assignment history, and deactivate or reactivate other accounts. One Leadership actor is sufficient. Self-role change and self-deactivation are forbidden. The UI omits administration history, while immutable administration events remain in the backend.
+- The live synthetic Teacher lifecycle passed. An existing JWT, password sign-in, and refresh were denied on deactivation. The old JWT and untouched old refresh were denied after reactivation. Supabase returned HTTP 500 for that rejected refresh. Fresh sign-in and refresh worked. The original centre was restored through a new assignment, with the ended assignment and completed events retained.
+- Preview uses Resend SMTP with `onboarding@resend.dev`. The exact branch URL is allowlisted and its invite template routes to React password setup. The owner approved one invitation to the mailbox bound as `PREVIEW_INVITE_TEST_EMAIL`. Supabase and the Edge Function accepted it. The owner confirmed email receipt and that the link opened the password setup page. A read-only directory check confirmed the Teacher email and one centre assignment. The owner confirmed successful password setup and a fresh sign-in to the Teacher Overview at the assigned centre. The Phase 7 Preview invitation acceptance is complete. Keep mailbox addresses, invite URLs, tokens, and passwords out of chat and logs. Avoid a duplicate invite.
+- The latest Preview snapshot has four governed accounts and twelve active centre assignments. Both legacy/governed mismatches were explained by completed Phase 7 events, covering the extra Cluster Officer centre and the new governed-only Teacher invite and assignment. Assessment entry remains enabled. Attendance entry, visit entry and deletion, and student cascade deletion remain disabled.
+- The signed-in Vercel Preview checks passed for all roles, including Leadership-only directory access, hidden self-administration actions, and the token-free password setup screen from a synthetic URL. Portable SQL tests, native concurrency tests, and the React build passed. The broader Docker release and centre-events test suite failures reproduce at the pre-Phase-7 branch baseline.
+- Phase 7 Preview acceptance is complete. Reconciliation has zero unexplained drift. Preserve historic evidence and do not delete retained legacy authorization rows without a later explicit approval.
+- Phase 8 migrations `20261121180000_permission_legacy_retirement.sql`, `20261121183000_permission_context_compatibility.sql` and final `20261121190000_permission_context_retirement.sql` are installed on Preview only with canonical ledger entries. The final stored statement matches the reviewed file. All eighteen officer assignments are governed-linked; legacy rows remain retained; obsolete browser/operator privileges are revoked; staff Auth linkage and visit runtime use governed accounts; reconciliation remains at two explained mismatches and zero unexplained drift; gates are unchanged; Production is unchanged. Fresh final contexts passed for Teacher, Cluster Officer and Leadership with one authoritative role and no compatibility role arrays or operational-role flag. Anonymous context, Teacher foreign-centre reads and Teacher Leadership-directory access were denied. Preview public signup is disabled while invitation email and confirmation remain enabled. Details and rollback limits are in `docs/releases/2026-11-21/PERMISSION-PHASE-8-LEGACY-RETIREMENT.md`.
+- The separately approved legacy-interface removal is deployed and accepted on protected Preview at `4c9ef08`: React is the sole build output, the `/vanilla` redirect and retired entry point are removed, and shared `src/live/` modules used by React are retained. Release metadata identifies the exact commit and contains `legacyRemoved: true` with no legacy path; `/vanilla` and `/vanilla/` return 404. Fresh sessions for Leadership, Cluster Officer and Teacher passed Overview, role-correct administration visibility, About, absence of the retired link and sign-out with no page errors or failed application responses before sign-out. Temporary browser/session artifacts were removed. Record: `docs/releases/2026-11-22/LEGACY-INTERFACE-REMOVAL.md`.
+- Obtain separate approval for every Preview database or Supabase/Vercel control-plane mutation. Get explicit approval before opening a PR, merging, promoting, or acting on Production. Production release requires its own backup, rehearsal, dry run, sealing, postflight and release record. Leave operational feature gates at their reviewed values.
+
+Current release details are in `docs/releases/2026-11-21/PERMISSION-PHASE-7-LEADERSHIP-ADMINISTRATION.md`. Use the current section above for the latest invitation result.
+
 ## Project and services
 
 - Repository: `mass-org-data/mass-cac-dashboard`
@@ -154,7 +173,7 @@ Continue independent work while these decisions remain open. Do not invent progr
 - `src/live/api.js`, `reads.js`, `backend-capabilities.js`: Supabase API boundaries and feature capabilities.
 - `src/live/config.js`: approved Supabase project allow-list (production and preview). `scripts/runtime-config.mjs`: shared build-time config and the production/preview isolation guard.
 - `src/live/limiter.js`, `reviewed-aggregate.js`, `perf.js`: two-at-a-time report queue, aggregate view built from one reviewed report, opt-in timing (`?perf=1`).
-- `web/`: the new React interface (see the last section). `scripts/perf/overview-waterfall.mjs`: browser load measurement (`npm run perf:overview`).
+- `web/`: the sole React interface (see the last section). `scripts/perf/overview-react.mjs`: browser load measurement (`npm run perf:overview`).
 - `src/live.css`: live layout and responsive/accessibility styles.
 - `scripts/imports/render.py`: reviewed import SQL rendering.
 - `supabase/migrations/`: append-only reviewed schema and security migrations.
@@ -272,8 +291,8 @@ Cause: the Overview started about 10 all-centre `reviewed_chart_metrics` reports
 
 Production has `assessment_register_summary`, `attendance_register_summary_v4`, `student_profile_page_v2` that preview lacks and lacks the `centre_event_*` functions and two `user_scope_grants` indexes (`202611060025`). `supabase/compatibility/MIGRATIONS.sha256` covers only files up to 023. A gated production workflow (GitHub Environment approval, ledger, preflight/postflight, only unapplied migrations) is proposed but not implemented.
 
-### New interface (`web/`, the default at `/`; the original interface is kept at `/vanilla/`)
-Vite, React 19, TypeScript, Tailwind 4, shadcn/ui-style primitives, TanStack Table pinned to 8.x. `npm run build` writes the React interface to `dist/` and the original, unchanged, to `dist/vanilla/` (no flag; `/next` redirects to `/`). Navigation is a collapsible side menu (`web/src/app/SideMenu.tsx`: Leadership has no Student profiles, only Leadership has the Annual donor summary, numbers are fixed). Release note: `docs/releases/2026-11-14/NEW-INTERFACE-DEFAULT.md`. The look-freezing parity tests were deleted at the owner's request (the `/vanilla/` fallback is no longer pinned by a test). The header and side menu are fixed on screen; only `main` scrolls. Shared with the current app, not copied: config check, client, verified sign-in, read API, role rules, CSV escaping. Shared components every page must use: `DataTable` (search, click-to-sort ascending first, default ascending on the first column, sticky header, 10 rows per page, CSV of filtered and sorted rows, no column reorder or toggles), `Scorecard`, `ChartCard`, `AsyncState`; numbering follows the current 1.x style. Rules: no inline script or handlers (CSP), no external fonts, controls at least 44 px, unknown is a dash never zero, never a service key. Built so far (all owner-approved, one per approval, each verified in a real browser on preview and recorded in `docs/perf/PHASE-5-*-RESULT.md`): shell with sign-in and role switching, Overview, Attendance, Student profiles, Assessments, Visits, Morarji scholarship (read-only), Annual donor summary (Leadership only) and About. Activities and monthly meetings are not rebuilt (owner decision). Screens only save when the server's activation gate is on; the `profiles`, `morarji`, corrections, transfers and enrolments gates are hard-off in the database, so those actions stay in the standard application. `scripts/perf/attendance-live.mjs` is the real-browser check for all screens (flags `--register`, `--assessment`, `--holiday` add permanent synthetic records). Preview now also holds synthetic visits (183, with earlier-dated officer assignments) and one Morarji cohort (150 members); the preview Cluster Officer account links to nine officer identities, so its Visits view is correctly unavailable. Phase 6 cutover is done on the branch (not deployed). Parity tests that freeze the original look (`original-parity.test.mjs`, `tests/parity/visual.py`) stay until cutover, then are replaced by behaviour and number checks (owner decision).
+### React interface (`web/`, the sole interface at `/`)
+Vite, React 19, TypeScript, Tailwind 4, shadcn/ui-style primitives, TanStack Table pinned to 8.x. `npm run build` cleans `dist/` and writes only the React interface; it must not produce `dist/vanilla`. Navigation is a collapsible side menu (`web/src/app/SideMenu.tsx`: Leadership has no Student profiles, only Leadership has the Annual donor summary, numbers are fixed). The header and side menu are fixed on screen; only `main` scrolls. Shared `src/live/` modules supply config checks, client, verified sign-in, read APIs, role rules and CSV escaping. Shared components every page must use: `DataTable`, `Scorecard`, `ChartCard`, `AsyncState`. Rules: no inline script or handlers (CSP), no external fonts, controls at least 44 px, unknown is a dash never zero, never a service key. Activities and monthly meetings were not rebuilt (owner decision). Screens only save when the server's activation gate is on. `scripts/perf/attendance-live.mjs` is the real-browser check for all screens. Removal record: `docs/releases/2026-11-22/LEGACY-INTERFACE-REMOVAL.md`.
 
 ### Working rules for this effort
 Plan then build in owner-approved phases; one phase per approval. Commit small logical commits on the new branch; push only that branch. Verify claims with measurements and parity runs; say what was not measured. Heavy tools: Playwright Chromium is installed in `~/Library/Caches/ms-playwright`; run `npm run perf:overview -- --runs N --label X --build` for load numbers (uses the preview project and the Leadership test account).
@@ -316,7 +335,7 @@ Branch `feature/ui-cleanup-pagination-i18n` was created from `main` at `3be1a4e`
 - Manually test the protected Preview with Leadership, Cluster Officer and Teacher accounts: table pagination/search/sort, all-filtered-row CSV export, sign-in language toggle, signed-in toggle, saving a default language and retaining it after the next sign-in.
 - Have a fluent Kannada reviewer check `web/src/i18n/kn.ts` in context, including field terminology, error messages, dates and relative timestamps.
 - Student deletion remains out of this phase. The current direction is that Teachers must not delete student profiles and any future deletion workflow should be limited to Cluster Officers or higher roles after a separate permission/security design.
-- The deprecated vanilla interface is intentionally unchanged and should be removed in a later dedicated phase.
+- Historical note: the deprecated interface remained unchanged during this phase. Its separately approved removal is recorded in `docs/releases/2026-11-22/LEGACY-INTERFACE-REMOVAL.md`.
 
 ### Pending tasks for later (owner-requested, not started)
 - **Caching strategy.** Work out how to optimize caching for the application: whether to use Vercel's own caching (CDN caching headers for the static assets, anything at the edge), and whether to add a client-side store/cache inside the React app (for example TanStack Query or a small store) so screens reuse data instead of refetching (today only the Overview reports and student rosters have small in-memory caches). Measure first; keep the 30-second scope re-verification and never cache across users or roles.
@@ -327,11 +346,12 @@ Branch `feature/ui-cleanup-pagination-i18n` was created from `main` at `3be1a4e`
 
 ## Permission architecture Phases 1–6 (20 November 2026)
 
-This section supersedes older statements above that describe permissions as deferred, multi-role switching as current, or Leadership as permanently read-only. The implementation is on `fix/permission-architecture`; commits through `bd53aaa` are pushed. It has no PR and is not merged. The latest protected branch Preview is `https://mass-cac-dashboard-omse19t1y-mass-data-dashboard.vercel.app/` and Vercel reports it Ready. Production code, database, Auth and activation settings are unchanged.
+This section records the Phases 1–6 cutover on `fix/permission-architecture` and Preview Supabase. The current handoff at the top of this file supersedes the original branch, deployment, and next-phase status.
 
 Plan and release evidence:
 
 - `docs/PERMISSION-ARCHITECTURE-MIGRATION-PLAN.md`
+- `docs/PERMISSION-ARCHITECTURE-REMAINING-WORK.md` (colleague handoff, remaining Phases 7–8, acceptance and release boundaries)
 - `docs/releases/2026-11-20/PERMISSION-PHASE-6-FRONTEND-CUTOVER.md`
 
 ### Completed phases
@@ -352,7 +372,7 @@ Plan and release evidence:
 - Active/Inactive status controls authorization immediately. `starts_at` and `ends_at` are retained as history but do not grant or revoke access.
 - Database functions and RLS remain the security boundary. Hidden buttons are not treated as authorization.
 - Preview activation values were preserved during Phase 6: `assessment_entry=true`; `attendance_entry=false`, `visit_entry=false` and `student_deletion=false`. Do not enable them without separate owner approval.
-- The React interface at `/` is the only interface changed by Phase 6. The owner explicitly directed that `/vanilla/` remain unchanged because it will be removed in the next dedicated phase. Do not retrofit the permission UI into `/vanilla/`.
+- Historical Phase 6 boundary: only React at `/` changed then. The later separately approved removal deletes the retired interface instead of retrofitting permission UI into it.
 - Any future Preview database change still needs explicit owner approval and a reviewed migration. Production remains out of scope until a separately approved release.
 
 ### Validation snapshot
@@ -364,8 +384,8 @@ Plan and release evidence:
 - Preview postflight confirmed all Phase 1–6 migration behavior, closed anonymous/service access where required, zero reconciliation drift, Leadership-only export-sized reads and the attendance record identity needed for narrow deletion.
 - Production postflight confirmed the Phase 6 migration and its new function behavior are absent.
 
-### Next phases
+### Next phases from the Phase 6 handoff
 
-- Phase 7: protected Leadership user/role/assignment administration, including disabling the corresponding Supabase Auth account when a user becomes inactive. Do not expose or enable this before separate implementation approval.
-- Phase 8: retire the superseded grant model only after Preview acceptance, rollback planning and an approved recovery window.
-- Remove `/vanilla/` in the owner's next dedicated UI-removal phase; do not combine that removal with unrelated permission work unless requested.
+- Phase 7 introduced protected Leadership user, role, and assignment administration. The current handoff above records its deployment and acceptance status.
+- Phase 8 is complete on Preview; legacy authorization evidence remains retained and Production remains unchanged.
+- The separately approved `/vanilla/` removal is deployed and accepted on the protected branch Preview. Production remains unchanged.

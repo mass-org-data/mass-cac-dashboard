@@ -64,7 +64,7 @@ export function Overview({backend, context, role, service: injected, tables: inj
   const defaultMonth = year && year.starts_on <= today && today < year.ends_before ? today.slice(0, 7) : months[0] ?? '';
   const month = filters.month || defaultMonth;
 
-  const scope = useMemo(() => context.centres.filter(centre => centre.roles.includes(role)), [context, role]);
+  const scope = context.centres;
   const donors = boot.status === 'ready' ? boot.value.donors : EMPTY_DONORS;
   const donorNames = useMemo(() => [...new Set(scope.map(c => donors[c.id]).filter((d): d is string => Boolean(d)))].sort(), [scope, donors]);
   const selected = useMemo(() => scope.filter(c => (!filters.centre || c.id === filters.centre) && (!filters.donor || donors[c.id] === filters.donor)), [scope, filters.centre, filters.donor, donors]);

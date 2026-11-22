@@ -5,7 +5,8 @@ CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE ROLE mass_test_authenticator LOGIN NOINHERIT;
 GRANT anon,authenticated TO mass_test_authenticator;
 CREATE SCHEMA auth;
-CREATE TABLE auth.users(id uuid PRIMARY KEY);
+CREATE ROLE supabase_auth_admin NOLOGIN;
+CREATE TABLE auth.users(id uuid PRIMARY KEY,email text);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
  SELECT coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),
  nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid

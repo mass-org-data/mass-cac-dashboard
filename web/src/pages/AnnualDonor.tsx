@@ -64,7 +64,7 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
 
   const refs = boot.status === 'ready' ? boot.value.refs : null;
   const donors = boot.status === 'ready' ? boot.value.donors : EMPTY_DONORS;
-  const scope = useMemo(() => context.centres.filter(c => c.roles.includes('Leadership')), [context]);
+  const scope = context.centres;
   const years = useMemo(() => [...(refs?.academic_years ?? [])].sort((a, b) => b.starts_on.localeCompare(a.starts_on)), [refs]);
   const year = years.find(y => y.id === filters.year) ?? years.find(y => y.starts_on <= today && today < y.ends_before) ?? years[0];
   const donorNames = useMemo(() => [...new Set(scope.map(c => donors[c.id]).filter((d): d is string => Boolean(d)))].sort(), [scope, donors]);

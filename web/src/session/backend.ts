@@ -7,6 +7,7 @@ import {BackendError} from '../../../src/live/api.js';
 import type {Backend, ProgrammeContext} from './controller';
 import {createReadCache} from './readCache';
 import type {Language} from '../i18n/I18n';
+import {AdministrationError, type AdministrationCall} from '../admin/contracts';
 
 export interface RuntimeConfig {mode: string; url?: string; publishableKey?: string; project?: string; readApi?: string; directoryApi?: string}
 
@@ -23,6 +24,7 @@ export interface Capabilities {reviewedCharts: boolean; reviewedAttendanceSeries
 
 export interface LiveBackend extends Backend {
   rpc: Rpc;
+  administration?: AdministrationCall;
   readDirectory(signal?: AbortSignal): Promise<Array<{centre_id: string; donor_label?: string | null}>>;
   readReferences(signal?: AbortSignal): Promise<References>;
   readCapabilities(): Promise<Capabilities>;
@@ -83,6 +85,23 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
   const rpc: Rpc = readCache.rpc;
   return {
     rpc,
+    async administration<T>(body: Record<string, string | number>): Promise<T> {
+      const {data, error} = await client.functions.invoke<T>('leadership-admin', {body});
+      if (error) {
+        const response: unknown = 'context' in error ? error.context : null;
+        if (response instanceof Response) {
+          if (response.status === 401) {
+            memo.clear(); readCache.clear(); singletons.clear();
+            for (const listener of authorizationListeners) listener();
+          }
+          const failure = await response.json().catch(() => null);
+          if (typeof failure?.error === 'string') throw new AdministrationError(failure.error);
+        }
+        throw new AdministrationError('administration_unavailable');
+      }
+      if (data === null) throw new AdministrationError('administration_unavailable');
+      return data;
+    },
     shared<T>(key: string, create: () => T): T {
       if (!singletons.has(key)) singletons.set(key, create());
       return singletons.get(key) as T;

@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from 'vitest';
 import {createSessionController, type Backend, type ProgrammeContext, type Timers} from './controller';
 
-const context = (role = 'Leadership', centreCount = 1): ProgrammeContext => ({user_id: 'u1', role, roles: [role], capabilities: {read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership'}, operational_roles_enabled: false, centres: Array.from({length: centreCount}, (_, i) => ({id: `c${i}`, label: `Centre ${i}`, roles: [role]}))});
+const context = (role = 'Leadership', centreCount = 1): ProgrammeContext => ({user_id: 'u1', role, capabilities: {read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership'}, centres: Array.from({length: centreCount}, (_, i) => ({id: `c${i}`, label: `Centre ${i}`}))});
 
 function setup(overrides: Partial<Backend> = {}) {
   const callbacks: Array<() => void> = [];
@@ -44,8 +44,8 @@ describe('session controller', () => {
     expect(controller.getState()).toMatchObject({status: 'ready', defaultLanguage: 'en'});
   });
 
-  it('rejects ambiguous legacy multi-role context instead of choosing in the browser', async () => {
-    const {controller} = setup({readContext: vi.fn(async () => ({...context('Teacher'), role: undefined, roles: ['Teacher', 'Leadership']}))});
+  it('rejects a context without the authoritative server role', async () => {
+    const {controller} = setup({readContext: vi.fn(async () => ({...context('Teacher'), role: undefined} as unknown as ProgrammeContext))});
     await controller.start();
     expect(controller.getState().status).toBe('signed-out');
   });
@@ -59,7 +59,7 @@ describe('session controller', () => {
   });
 
   it('refuses accounts with no verified scope', async () => {
-    const {controller} = setup({readContext: vi.fn(async () => ({user_id: 'u1', centres: []}))});
+    const {controller} = setup({readContext: vi.fn(async () => ({user_id: 'u1', role: 'Teacher', centres: []}))});
     await controller.start();
     expect(controller.getState()).toMatchObject({status: 'signed-out'});
   });

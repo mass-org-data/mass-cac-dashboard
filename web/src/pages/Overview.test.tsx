@@ -10,8 +10,8 @@ import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
-const centres = Array.from({length: 12}, (_, i) => ({id: `c${i + 1}`, label: `Centre ${String(i + 1).padStart(2, '0')}`, roles: ['Leadership']}));
-const context: ProgrammeContext = {user_id: 'u1', centres};
+const centres = Array.from({length: 12}, (_, i) => ({id: `c${i + 1}`, label: `Centre ${String(i + 1).padStart(2, '0')}`}));
+const context: ProgrammeContext = {user_id: 'u1', role: 'Leadership', centres};
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}], assessment_periods: [1, 2].map(q => ({id: `p${q}`, academic_year_id: 'y1', quarter: q})), assessment_definitions: [{id: 'd1', period_id: 'p1'}, {id: 'd2', period_id: 'p2'}]};
 const report: Report = {
   children: 1470, grades: {1: 120, 2: 150}, genders: {Girl: 802, Boy: 668}, attendance: {p: 10, a: 1, l: 1, excluded: 0, percentage: 85.9},
@@ -19,7 +19,7 @@ const report: Report = {
   centres: centres.map((c, i) => ({id: c.id, children: 10 + i, attendance: {p: 1, a: 0, l: 0, excluded: 0, percentage: i === 3 ? null : 80 + i}, quarters: [{quarter: 2, n: i === 2 ? 0 : 5, mean: 15 + i}]})),
 };
 
-function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttendanceSeries: boolean}; service?: Partial<OverviewService>; role?: string; roles?: string[]} = {}) {
+function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttendanceSeries: boolean}; service?: Partial<OverviewService>; role?: string} = {}) {
   const rpc = vi.fn();
   const backend = {
     rpc,
@@ -34,7 +34,7 @@ function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttend
     clear: vi.fn(),
     ...options.service,
   } as OverviewService;
-  const ctx = options.roles ? {...context, centres: centres.map(c => ({...c, roles: options.roles!}))} : context;
+  const ctx = {...context, role: options.role ?? 'Leadership'};
   const tableRows = report.centres.map((row, i) => ({centre_id: row.id, centre_label: centres[i].label, children: row.children, percentage: row.attendance.percentage, score_n: row.quarters[0]?.n ?? null, score_mean: row.quarters[0]?.mean ?? null}));
   return {backend, service, ...render(<Overview backend={backend} context={ctx} role={options.role ?? 'Leadership'} service={service} tables={testTableService({reviewed_centres: tableRows})} />)};
 }
@@ -121,7 +121,7 @@ describe('Overview', () => {
   });
 
   it('hides the donor filter for non-Leadership roles and offers shift, grade and gender instead', async () => {
-    setup({role: 'Teacher', roles: ['Teacher']});
+    setup({role: 'Teacher'});
     await screen.findByRole('group', {name: 'Students enrolled'});
     expect(screen.queryByLabelText('Donor')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Shift')).toBeInTheDocument();
@@ -130,7 +130,7 @@ describe('Overview', () => {
   });
 
   it('labels the Cluster Officer card as assigned centres', async () => {
-    setup({role: 'Cluster Officer', roles: ['Cluster Officer']});
+    setup({role: 'Cluster Officer'});
     expect(await screen.findByRole('group', {name: 'Centres assigned to you'})).toHaveTextContent('12');
   });
 

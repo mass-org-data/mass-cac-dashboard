@@ -20,9 +20,19 @@ INSERT INTO mass_core.centre_staff_assignments(id,centre_id,staff_member_id,role
  ('57000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000001','56000000-0000-4000-8000-000000000003','Cluster Officer',NULL,'54000000-0000-4000-8000-000000000003',2),
  ('57000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000002','56000000-0000-4000-8000-000000000004','Teacher','Morning','54000000-0000-4000-8000-000000000004',2);
 -- Verified assignments are synthetic and installed ONLY in this isolated DB.
-INSERT INTO mass_core.officer_assignments(id,scope_grant_id,directory_assignment_id,starts_on,ends_before,shift_scope,verification_reference)
-SELECT '58000000-0000-4000-8000-000000000001',id,'57000000-0000-4000-8000-000000000003','2026-04-01','2027-04-01','Both shifts','Synthetic verified administrator reference'
-FROM mass_core.user_scope_grants WHERE user_id='00000000-0000-4000-8000-000000000003';
+DO $officer_fixture$
+BEGIN
+ IF EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='mass_core.officer_assignments'::regclass AND attname='governed_assignment_id' AND NOT attisdropped) THEN
+  INSERT INTO mass_core.officer_assignments(id,governed_assignment_id,directory_assignment_id,starts_on,ends_before,shift_scope,verification_reference)
+  SELECT '58000000-0000-4000-8000-000000000001',id,'57000000-0000-4000-8000-000000000003','2026-04-01','2027-04-01','Both shifts','Synthetic verified administrator reference'
+  FROM mass_core.user_centre_assignments WHERE user_id='00000000-0000-4000-8000-000000000003' AND centre_id='10000000-0000-4000-8000-000000000001' AND status='Active';
+ ELSE
+  INSERT INTO mass_core.officer_assignments(id,scope_grant_id,directory_assignment_id,starts_on,ends_before,shift_scope,verification_reference)
+  SELECT '58000000-0000-4000-8000-000000000001',id,'57000000-0000-4000-8000-000000000003','2026-04-01','2027-04-01','Both shifts','Synthetic verified administrator reference'
+  FROM mass_core.user_scope_grants WHERE user_id='00000000-0000-4000-8000-000000000003';
+ END IF;
+END;
+$officer_fixture$;
 RESET ROLE;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001"}',false);

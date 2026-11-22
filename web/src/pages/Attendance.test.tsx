@@ -12,7 +12,7 @@ import {testTableService} from '../test/tableService';
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
 const caps: RegisterCapabilities = {version: 6, enabled: true, session_entry: true, register_paging: true, present_distribution: true, holiday_code: true};
-const mk = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: true, centres: [{id: 'c1', label: 'Centre 01', roles, can_write: write}, {id: 'c2', label: 'Centre 02', roles, can_write: write}]});
+const mk = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: write}, {id: 'c2', label: 'Centre 02', can_write: write}]});
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}], assessment_periods: [], assessment_definitions: []};
 const row = (n: number): RegisterRow => ({centre_id: n % 2 ? 'c1' : 'c2', shift_code: 'Morning', attendance_date: `2026-11-${String(30 - n).padStart(2, '0')}`, present: 10 - (n % 3), total: 12, eligible: 12, recorded: 12, percentage: 80 + n, created_by: 'Teacher A', last_edited_by: 'Teacher A', last_edited_at: '2026-11-13 10:00'});
 const allRows = Array.from({length: 23}, (_, i) => row(i + 1));

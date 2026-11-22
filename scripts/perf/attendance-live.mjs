@@ -360,7 +360,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
     note(`About, ${role}: shows the verified role with its centre count`,new RegExp(role+' \\(active\\): '+expectedCentres+' centre').test(text),text.match(/Verified roles[^]*?(?=Reporting rules)/)?.[0]?.slice(0,160)??'');
     const nav=(await page.getByRole('navigation',{name:'Primary'}).getByRole('link').allInnerTexts()).map(t=>t.trim());
     const wanted={Leadership:['1. Overview','2. Attendance','4. Assessments','5. Visits','6. Morarji scholarship','7. Annual donor summary','8. About'],Teacher:['1. Overview','2. Attendance','3. Student profiles','4. Assessments','6. Morarji scholarship','8. About'],'Cluster Officer':['1. Overview','2. Attendance','3. Student profiles','4. Assessments','5. Visits','6. Morarji scholarship','8. About']}[role];
-    note(`Navigation, ${role}: the side menu lists this role's screens with the original numbering`,JSON.stringify(nav.slice(0,wanted.length))===JSON.stringify(wanted)&&/Activities and monthly meetings/.test(nav.at(-1)),nav.join(' | '));
+    note(`Navigation, ${role}: the side menu lists exactly this role's React screens`,JSON.stringify(nav)===JSON.stringify(wanted),nav.join(' | '));
     if(role==='Teacher'){
       await page.addScriptTag({url:'/__axe.js'});
       const v=await page.evaluate(async()=>(await window.axe.run(document)).violations.map(x=>x.id+': '+x.nodes.length));
@@ -374,7 +374,7 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   }
 }
 
-// Shell: side menu, logo, default route and the original interface at /vanilla/
+// Shell: side menu, logo and default route
 {
   const {context,page,problems,failed}=await session('Leadership');
   const logo=await page.locator('header img').boundingBox();
@@ -414,11 +414,6 @@ const openAttendance=async page=>{await page.goto(base+'#/attendance');await pag
   note('Shell: no horizontal page scroll at 375 px',await page.evaluate(()=>(document.documentElement.scrollWidth<=window.innerWidth+1&&(!document.querySelector('main')||document.querySelector('main').scrollWidth<=document.querySelector('main').clientWidth+1))));
   note('Shell: no failed RPC calls or console errors',failed.length===0&&problems.length===0,[...failed,...problems].join(' | '));
   await context.close();
-  const ctx2=await browser.newContext();const p2=await ctx2.newPage();
-  await p2.goto(origin+'/vanilla/');
-  await p2.waitForSelector('#email, input[type=email], h1',{timeout:60000});
-  note('Original interface: still served at /vanilla/ (its own title and sign-in)',(await p2.title())==='MASS · CAC Programme'&&await p2.locator('input[type=email], #email').count()>0,await p2.title());
-  await ctx2.close();
 }
 await browser.close();server.close();
 console.log(`\n${results.filter(r=>r.ok).length}/${results.length} checks passed`);

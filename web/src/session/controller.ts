@@ -1,14 +1,14 @@
 // Session and role controller. Framework-free so it can be tested without React.
 // It reuses the current application's modules: the approved-project config check, the
 // backend client, the sign-in verification, the read API and the role rules. The server
-// stays the authority: roles come from get_context, and the scope is re-verified every
+// stays the authority: the single role comes from get_context, and scope is re-verified every
 // 30 seconds and whenever the tab becomes visible, exactly as in the current interface.
 import type {Language} from '../i18n/I18n';
 import type {MessageKey} from '../i18n/en';
 
-export interface CentreScope {id: string; label: string; roles: string[]; can_write?: boolean}
+export interface CentreScope {id: string; label: string; can_write?: boolean}
 export interface ProgrammeCapabilities {read_operational?: boolean; write_operational?: boolean; read_profiles?: boolean; read_visits?: boolean; export?: boolean; manage_users?: boolean}
-export interface ProgrammeContext {user_id: string; role?: string; roles?: string[]; capabilities?: ProgrammeCapabilities; centres: CentreScope[]; operational_roles_enabled?: boolean}
+export interface ProgrammeContext {user_id: string; role: string; capabilities?: ProgrammeCapabilities; centres: CentreScope[]}
 
 export type SessionState =
   | {status: 'loading'}
@@ -72,7 +72,7 @@ export function createSessionController(backend: Backend, timers: Timers = defau
     if (identity.error || !identity.data.user || identity.data.user.id !== session.data.session.user?.id) { await endSession('session.ended'); return; }
     const [context, defaultLanguage] = await Promise.all([backend.readContext(), backend.readLanguage?.() ?? Promise.resolve<Language>('en')]);
     if (context.user_id !== identity.data.user.id || !context.centres?.length) { await endSession('session.noScope'); return; }
-    const role = typeof context.role === 'string' ? context.role : (context.roles?.length === 1 ? context.roles[0] : null);
+    const role = typeof context.role === 'string' ? context.role : null;
     if (!role) { await endSession('session.noRole'); return; }
     fingerprint = JSON.stringify(context);
     set({status: 'ready', userId: identity.data.user.id, email: identity.data.user.email ?? '', defaultLanguage, context, role});

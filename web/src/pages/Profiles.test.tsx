@@ -9,7 +9,7 @@ import {violations} from '../test/axe';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
-const ctx = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: true, centres: [{id: 'c1', label: 'Centre 01', roles, can_write: write}, {id: 'c2', label: 'Centre 02', roles, can_write: write}]}) as unknown as ProgrammeContext;
+const ctx = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: write}, {id: 'c2', label: 'Centre 02', can_write: write}]});
 const student = (n: number): StudentRow => ({enrolment: `e${n}`, child: `k${n}`, studentId: `S${String(n).padStart(3, '0')}`, name: n === 3 ? null : `Student ${n}`, centre: n % 2 ? 'c1' : 'c2', grade: String(1 + (n % 9)), shift: 'Evening', gender: n % 2 ? 'Girl' : null, enrolled: '2026-06-01', status: 'Active', board: null, version: 1});
 const all = Array.from({length: 23}, (_, i) => student(i + 1));
 const caps = {version: 6, profile_pages: true, profile_sort_v2: true};
