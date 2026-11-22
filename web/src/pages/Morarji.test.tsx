@@ -25,11 +25,11 @@ const members = [
   {membership_id: 'm3', cohort_id: 'k1', child_id: 'c', enrolment_id: 'e3', shift_code: 'Evening', applied: null, attended: null, passed: null, school_name: null, centre: 'c2'},
 ];
 
-function setup(options: {role?: string; report?: Report; memberships?: typeof members; fail?: boolean; noCohorts?: boolean} = {}) {
-  const service = {memberships: vi.fn(async () => options.memberships ?? members)} as unknown as MorarjiService;
+function setup(options: {role?: string; report?: Report; memberships?: typeof members; fail?: boolean; noCohorts?: boolean; writes?: Record<string, boolean>} = {}) {
+  const service = {memberships: vi.fn(async () => options.memberships ?? members), grade5: vi.fn(async () => [{enrolment: 'e9', studentId: 'S-9', name: 'Meena', shift: 'Evening'}]), outcomeVersion: vi.fn(async () => 2), addMember: vi.fn(async () => 'm9'), recordOutcome: vi.fn(async () => 'o1')} as unknown as MorarjiService;
   const profiles = {students: vi.fn(async (_c: string[], ids: string[]) => ids.map(id => ({enrolment: id, child: id, studentId: `S-${id}`, name: id === 'e2' ? null : `Student ${id}`, centre: 'c1', grade: '5', shift: 'Evening', gender: null, enrolled: '2026-06-01', status: 'Active', board: null, version: 1})))} as unknown as ProfilesService;
   const overview = {report: vi.fn(async () => { if (options.fail) throw new Error('statement timeout'); return options.report ?? withData; }), clear: vi.fn()} as unknown as OverviewService;
-  const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => (options.noCohorts ? {...refs, programme_cohorts: []} : refs)), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: {}}))} as unknown as LiveBackend;
+  const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => (options.noCohorts ? {...refs, programme_cohorts: []} : refs)), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: options.writes ?? {}}))} as unknown as LiveBackend;
   const role = options.role ?? 'Teacher';
   const active = options.memberships ?? members;
   const follow = active.map(m => ({id: m.membership_id, cohort: m.cohort_id, name: m.enrolment_id === 'e2' ? null : `Student ${m.enrolment_id}`, studentId: `S-${m.enrolment_id}`, centre: m.centre, applied: m.applied, attended: m.attended, result: m.passed === true ? 'Passed' : m.passed === false ? 'Not passed' : 'Pending', school: m.school_name}));
@@ -99,11 +99,34 @@ describe('Morarji page', () => {
     setup({fail: true});
     expect((await screen.findAllByText(/statement timeout/)).length).toBeGreaterThan(0);
   });
-  it('offers no editing and says why', async () => {
+  it('offers no editing to a Teacher', async () => {
     setup();
     await ready();
-    expect(screen.queryByRole('button', {name: /Add to training cohort|Update/})).not.toBeInTheDocument();
-    expect(screen.getByText(/This screen only reads/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: /Add Record/})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Edit'})).not.toBeInTheDocument();
+  });
+  it('adds a Grade 5 student to the selected cohort, then records the first outcome', async () => {
+    const user = userEvent.setup();
+    const {service} = setup({role: 'Cluster Officer', writes: {morarji: true}});
+    await ready();
+    await user.click(screen.getByRole('button', {name: 'Add Record'}));
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.selectOptions(await dialog.findByLabelText('Student'), 'e9');
+    await user.selectOptions(dialog.getByLabelText('Application'), 'yes');
+    await user.click(dialog.getByRole('button', {name: 'Add to cohort'}));
+    await waitFor(() => expect(service.addMember).toHaveBeenCalledWith('e9', 'k2'));
+    await waitFor(() => expect(service.recordOutcome).toHaveBeenCalledWith({member: 'm9', applied: true, attended: null, passed: null, school: '', expected: 0}));
+  });
+  it('saves a changed outcome with the version read from the server', async () => {
+    const user = userEvent.setup();
+    const {service} = setup({role: 'Leadership', writes: {morarji: true}});
+    await ready();
+    await user.click((await screen.findAllByRole('button', {name: 'Edit'}))[0]!);
+    const dialog = within(await screen.findByRole('dialog'));
+    await waitFor(() => expect(service.outcomeVersion).toHaveBeenCalled());
+    await user.selectOptions(dialog.getByLabelText('Took the exam'), 'no');
+    await user.click(dialog.getByRole('button', {name: 'Save outcome'}));
+    await waitFor(() => expect(service.recordOutcome).toHaveBeenCalledWith(expect.objectContaining({expected: 2, attended: false})));
   });
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();

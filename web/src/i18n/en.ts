@@ -507,6 +507,17 @@ export const en = {
   'morarji.examResult': 'Exam result',
   'morarji.school': 'School',
   'morarji.preparing': 'Preparing Morarji',
+  'morarji.addRecord': 'Add Record',
+  'morarji.addHelp': 'Add a Grade 5 student to the {cohort} cohort. Outcomes are optional and can be recorded later with Edit.',
+  'morarji.chooseStudent': 'Choose a student.',
+  'morarji.selectStudent': 'Select a student',
+  'morarji.noGrade5': 'No Grade 5 students are enrolled in this centre.',
+  'morarji.saveRecord': 'Add to cohort',
+  'morarji.added': 'Student added to the {cohort} cohort.',
+  'morarji.addedNoOutcome': 'The student was added to the cohort, but the outcome was not saved.',
+  'morarji.outcomeTitle': 'Record outcome',
+  'morarji.saveOutcome': 'Save outcome',
+  'morarji.outcomeSaved': 'Outcome saved.',
   'morarji.intro': 'Compare yearly entrance-exam results, then review the selected cohort{followup}. Passing does not imply selection, admission or scholarship receipt.',
   'morarji.followupSuffix': '’s follow-up',
   'morarji.filters': 'Morarji filters',
@@ -531,7 +542,6 @@ export const en = {
   'morarji.followup': 'Cohort follow-up',
   'morarji.noRecords': 'No cohort records for the selected year and centres.',
   'morarji.leadership': 'Leadership sees cohort totals only; individual follow-up stays with the centre staff.',
-  'morarji.footnote': 'This screen only reads. Adding a child to a training cohort and updating outcomes use their own approved workflow in the standard application (the database keeps that activation off). No training dates are inferred from cohort labels.',
 } as const;
 
 export type MessageKey = keyof typeof en;
