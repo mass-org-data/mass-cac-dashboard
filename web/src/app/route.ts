@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import type {MessageKey} from '../i18n/en';
 
 export type Route = 'overview' | 'attendance' | 'profiles' | 'assessments' | 'visits' | 'morarji' | 'donors' | 'about' | 'admin';
-export const ROUTES: Array<{id: Route; number: number; labelKey: MessageKey}> = [
+export const ROUTES: Array<{id: Route; /** Menu serial number; null for About, which closes the list without one. */ number: number | null; labelKey: MessageKey}> = [
   {id: 'overview', number: 1, labelKey: 'route.overview'},
   {id: 'attendance', number: 2, labelKey: 'route.attendance'},
   {id: 'profiles', number: 3, labelKey: 'route.profiles'},
@@ -10,8 +10,8 @@ export const ROUTES: Array<{id: Route; number: number; labelKey: MessageKey}> = 
   {id: 'visits', number: 5, labelKey: 'route.visits'},
   {id: 'morarji', number: 6, labelKey: 'route.morarji'},
   {id: 'donors', number: 7, labelKey: 'route.donors'},
-  {id: 'about', number: 8, labelKey: 'route.about'},
-  {id: 'admin', number: 9, labelKey: 'route.admin'},
+  {id: 'admin', number: 8, labelKey: 'route.admin'},
+  {id: 'about', number: null, labelKey: 'route.about'},
 ];
 
 const parse = (hash: string): Route => ROUTES.find(r => r.id === hash.replace(/^#\/?/, ''))?.id ?? 'overview';

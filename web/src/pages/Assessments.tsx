@@ -7,17 +7,18 @@ import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {Button} from '../components/ui/button';
 import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
 import {Input} from '../components/ui/input';
-import {EntryDialog} from '../assessments/EntryDialog';
+import {EntryDialog, type EditTarget} from '../assessments/EntryDialog';
 import {createAssessmentsService, type AssessmentsService, type RegisterRow} from '../assessments/service';
 import {type OverviewService, type Report} from '../data/overview';
 import {academicMonths, todayIst} from '../lib/dates';
-import {formatCount} from '../lib/format';
+import {formatCount, formatPercent} from '../lib/format';
 import {sharedOverview} from '../data/shared';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
+import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -27,20 +28,11 @@ const ROUNDS: Array<[string, string]> = [['1', 'F1'], ['2', 'F2'], ['3', 'F3'], 
 const PAIRS: Array<[string, string]> = [['1|2', 'F1 → F2'], ['2|3', 'F2 → F3'], ['3|4', 'F3 → F4'], ['1|4', 'F1 → F4']];
 const one = (value: number | null | undefined) => (value === null || value === undefined ? null : Number(value.toFixed(1)));
 
-function Select({label, value, options, onChange, allLabel}: {label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void; allLabel?: string}) {
-  return (
-    <label className="flex min-w-40 flex-col gap-1 text-xs font-semibold text-muted">
-      {label}
-      <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
-        {allLabel ? <option value="">{allLabel}</option> : null}
-        {options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}
-      </select>
-    </label>
-  );
-}
 
 interface Boot {refs: References; capabilities: Capabilities}
 interface CentreRow {centre_id: string; centre_label: string; score_n: number | string | null; score_mean: number | string | null}
+
+const INITIAL_FILTERS = {round: '2', pair: '1|2', centre: '', shift: '', grade: '', gender: ''};
 
 export function Assessments({backend, context, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
@@ -50,12 +42,13 @@ export function Assessments({backend, context, service: injected, overview: inje
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<Boot>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
-  const [filters, setFilters] = useState({round: '2', pair: '1|2', centre: '', shift: '', grade: '', gender: ''});
+  const [filters, setFilters] = useState<typeof INITIAL_FILTERS>(INITIAL_FILTERS);
   const [report, setReport] = useState<Slice<Report>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
   const [entering, setEntering] = useState(false);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const [notice, setNotice] = useState('');
-  const [deletingRegister, setDeletingRegister] = useState<{row: RegisterRow; definition: string; count: number; token: string; request: string} | null>(null);
+  const [deletingRegister, setDeletingRegister] = useState<{row: RegisterRow; definition: string; targets: Array<{date: string | null; count: number; token: string; request: string}>} | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -113,8 +106,12 @@ export function Assessments({backend, context, service: injected, overview: inje
     const definition = refs.assessment_definitions.find(d => d.period_id === period?.id)?.id;
     if (!definition) { setNotice(t('assessment.definitionMissing')); return; }
     setDeleteError(''); setDeleteReason('');
-    try { const preview = await service.previewRegisterDeletion(row.centre_id, row.shift_code, definition, row.assessment_date); setDeletingRegister({row, definition, count: preview.count, token: preview.token, request: crypto.randomUUID()}); }
-    catch (error) { setNotice(messageOf(error)); }
+    try {
+      // Registers are grouped by round, so every observed date inside this centre, shift and round is previewed and deleted together.
+      const dates = await service.registerDates(row.centre_id, row.shift_code, definition, year.starts_on, year.ends_before);
+      const targets = await Promise.all((dates.length ? dates : [row.assessment_date]).map(async date => { const preview = await service.previewRegisterDeletion(row.centre_id, row.shift_code, definition, date); return {date, count: preview.count, token: preview.token, request: crypto.randomUUID()}; }));
+      setDeletingRegister({row, definition, targets});
+    } catch (error) { setNotice(messageOf(error)); }
   }, [refs, year, service, t]);
   const centreColumns = useMemo<Column<CentreRow>[]>(() => [
     {id: 'centre', header: t('common.centre'), value: r => r.centre_label},
@@ -128,11 +125,8 @@ export function Assessments({backend, context, service: injected, overview: inje
     {id: 'round', header: t('assessment.round'), value: r => `F${r.quarter}`},
     {id: 'students', header: t('assessment.studentsScores'), value: r => Number(r.students), numeric: true},
     {id: 'average', header: t('assessment.averageScore'), value: r => (r.average_score === null ? null : Number(Number(r.average_score).toFixed(1))), numeric: true, cell: r => (r.average_score === null ? t('common.unknown') : Number(r.average_score).toFixed(1))},
-    {id: 'created', header: t('assessment.createdBy'), value: r => r.created_by ?? t('common.notRecorded')},
-    {id: 'edited', header: t('assessment.lastEditedBy'), value: r => r.last_edited_by ?? t('common.notRecorded')},
-    {id: 'at', header: t('assessment.lastEditedAt'), value: r => r.last_edited_at ?? t('common.notRecorded')},
-    {id: 'action', header: t('common.action'), sortable: false, value: () => t('common.delete'), cell: r => writable.some(c => c.id === r.centre_id) ? <Button variant="ghost" size="sm" className="text-bad" onClick={() => void openRegisterDeletion(r)}>{t('common.delete')}</Button> : null},
-  ], [nameOf, writable, openRegisterDeletion, t]);
+    {id: 'action', header: t('common.action'), sortable: false, value: () => t('attendance.edit'), cell: r => writable.some(c => c.id === r.centre_id) ? <Button variant="ghost" size="sm" onClick={() => { setNotice(''); setEditing({centre: r.centre_id, shift: r.shift_code, quarter: r.quarter, date: r.assessment_date}); }}>{t('attendance.edit')}</Button> : null},
+  ], [nameOf, writable, t]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('assessment.preparing')} rows={5} />;
   const canEnter = writable.length > 0 && Boolean(year);
@@ -148,24 +142,24 @@ export function Assessments({backend, context, service: injected, overview: inje
       </div>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
-      <div role="group" aria-label={t('assessment.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <Select label={t('assessment.examRound')} value={filters.round} options={ROUNDS} onChange={value => setFilters(f => ({...f, round: value}))} />
-        <Select label={t('assessment.compareRounds')} value={filters.pair} options={PAIRS} onChange={value => setFilters(f => ({...f, pair: value}))} />
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={t('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
-        <Select label={t('common.shift')} value={filters.shift} options={[['Morning', t('common.morning')], ['Evening', t('common.evening')]]} allLabel={t('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
-        <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={t('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
-        <Select label={t('common.gender')} value={filters.gender} options={[['Girl', t('common.girls')], ['Boy', t('common.boys')], ['Unknown', t('common.unknown')]]} allLabel={t('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
-      </div>
+      <FilterPanel label={t('assessment.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
+        <Select active={filters.round !== INITIAL_FILTERS.round} label={t('assessment.examRound')} value={filters.round} options={ROUNDS} onChange={value => setFilters(f => ({...f, round: value}))} />
+        <Select active={filters.pair !== INITIAL_FILTERS.pair} label={t('assessment.compareRounds')} value={filters.pair} options={PAIRS} onChange={value => setFilters(f => ({...f, pair: value}))} />
+        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
+        <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={english('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
+        <Select label={t('common.gender')} value={filters.gender} options={[['Girl', english('common.girls')], ['Boy', english('common.boys')], ['Unknown', english('common.unknown')]]} allLabel={english('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
+      </FilterPanel>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="4.1" label={t('assessment.recorded')} value={stats ? `${formatCount(q?.n ?? 0)} / ${formatCount(stats.children)}` : null} state={cardState(report)} message={reportMessage} />
+        <Scorecard reference="4.1" label={t('assessment.recorded')} value={stats && stats.children > 0 ? formatPercent(((q?.n ?? 0) / stats.children) * 100) : null} hint={stats ? t('assessment.recordedOf', {count: formatCount(q?.n ?? 0), total: formatCount(stats.children)}) : undefined} state={cardState(report)} message={reportMessage} />
         <Scorecard reference="4.2" label={t('assessment.averageStudent')} value={q?.mean != null ? q.mean.toFixed(1) : null} state={stats && q?.mean == null ? 'unavailable' : cardState(report)} message={stats && q?.mean == null ? t('assessment.noScoresRound') : reportMessage} />
-        <Scorecard reference="4.3" label={t('assessment.withoutScore')} value={stats ? formatCount(stats.children - (q?.n ?? 0)) : null} state={cardState(report)} message={reportMessage} />
+        <Scorecard reference="4.3" label={t('assessment.withoutScore')} value={stats && stats.children > 0 ? formatPercent(((stats.children - (q?.n ?? 0)) / stats.children) * 100) : null} hint={stats ? t('assessment.withoutOf', {count: formatCount(stats.children - (q?.n ?? 0)), total: formatCount(stats.children)}) : undefined} state={cardState(report)} message={reportMessage} />
         <Scorecard reference="4.4" label={t('assessment.improvement')} value={growth === null ? null : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`} state={stats && growth === null ? 'unavailable' : cardState(report)} message={stats && growth === null ? t('assessment.improvementNeeds') : reportMessage} />
       </div>
       <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('assessment.ruleLead')}</strong> {t('assessment.ruleBody')}</p>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <ChartCard reference="4.5" title={t('assessment.currentPerformance')} subtitle={t('assessment.records25', {round: round_label})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
           {bands.length ? <><ColumnChart axis={t('common.students')} description={t('assessment.bandDescription', {round: round_label})} items={bands} /><p className="mt-2 text-xs text-muted">{t('assessment.recordedN', {count: q?.n ?? 0, unbanded: q?.precision_review ?? 0})}</p></> : <p className="text-sm text-muted">{t('assessment.noScoresZero')}</p>}
         </ChartCard>
@@ -173,12 +167,7 @@ export function Assessments({backend, context, service: injected, overview: inje
           <ColumnChart axis={t('assessment.averageOutOf25')} description={t('assessment.progressDescription')} items={progress} />
           <p className="mt-2 text-xs text-muted">{t('assessment.progressCaution')}</p>
         </ChartCard>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <DataTable<CentreRow> reference="4.7" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
-          state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
-        <ChartCard reference="4.8" title={t('assessment.matched')} subtitle={t('assessment.matchedHelp', {from: fromQuarter, to: toQuarter})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
+        <ChartCard reference="4.7" title={t('assessment.matched')} subtitle={t('assessment.matchedHelp', {from: fromQuarter, to: toQuarter})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
           {change && change.n > 0 ? (
             <dl className="grid grid-cols-2 gap-2 text-sm">
               <dt className="text-muted">{t('assessment.matchedStudents')}</dt><dd className="font-semibold">{formatCount(change.n)}</dd>
@@ -192,12 +181,16 @@ export function Assessments({backend, context, service: injected, overview: inje
         </ChartCard>
       </div>
 
+      <DataTable<CentreRow> reference="4.8" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
+        state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
+
       <DataTable<RegisterRow> reference="4.9" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
-        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.assessment_date ?? 'unknown'}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
+        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
       <p className="text-xs text-muted">{t('assessment.registerFootnote')}</p>
 
       {entering && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setEntering(false)} /> : null}
-      {deletingRegister ? <Dialog open onOpenChange={open => { if (!open && !deleteBusy) setDeletingRegister(null); }}><DialogContent role="alertdialog" aria-describedby="delete-assessment-register-help" onInteractOutside={event => event.preventDefault()}><div><DialogTitle>{t('assessment.deleteRegisterTitle')}</DialogTitle><DialogDescription id="delete-assessment-register-help">{t('assessment.deleteRegisterHelp', {count: deletingRegister.count, round: `F${deletingRegister.row.quarter}`, date: deletingRegister.row.assessment_date ?? t('common.unknown')})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.deleteReason')}<Input value={deleteReason} maxLength={300} disabled={deleteBusy} onChange={event => setDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{deleteError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={deleteBusy} onClick={() => setDeletingRegister(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={deleteBusy || !entryEnabled || !deleteReason.trim()} onClick={() => { setDeleteBusy(true); const d = deletingRegister; service.deleteRegister(d.request, d.row.centre_id, d.row.shift_code, d.definition, d.row.assessment_date, d.token, deleteReason).then(() => { setDeletingRegister(null); setDeleteBusy(false); void afterSave(t('assessment.deleteRegisterSuccess')); }).catch(error => { setDeleteError(messageOf(error)); setDeleteBusy(false); }); }}>{t(deleteBusy ? 'common.deleting' : 'common.delete')}</Button></div>{entryEnabled ? null : <p className="text-xs text-muted">{t('common.activationPending')}</p>}</DialogContent></Dialog> : null}
+      {editing && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={editing.centre} today={today} enabled={entryEnabled} edit={editing} onDelete={() => { const row = registerTable.rows.find(r => r.centre_id === editing.centre && r.shift_code === editing.shift && r.quarter === editing.quarter); if (row) { setEditing(null); void openRegisterDeletion(row); } }} onSaved={afterSave} onClose={() => setEditing(null)} /> : null}
+      {deletingRegister ? <Dialog open onOpenChange={open => { if (!open && !deleteBusy) setDeletingRegister(null); }}><DialogContent role="alertdialog" aria-describedby="delete-assessment-register-help" onInteractOutside={event => event.preventDefault()}><div><DialogTitle>{t('assessment.deleteRegisterTitle')}</DialogTitle><DialogDescription id="delete-assessment-register-help">{t('assessment.deleteRegisterHelp', {count: deletingRegister.targets.reduce((n, x) => n + x.count, 0), round: `F${deletingRegister.row.quarter}`, date: deletingRegister.targets.map(x => x.date ?? t('common.unknown')).join(', ')})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.deleteReason')}<Input value={deleteReason} maxLength={300} disabled={deleteBusy} onChange={event => setDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{deleteError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={deleteBusy} onClick={() => setDeletingRegister(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={deleteBusy || !entryEnabled || !deleteReason.trim()} onClick={() => { setDeleteBusy(true); const d = deletingRegister; setDeleteError(''); (async () => { for (const target of d.targets) await service.deleteRegister(target.request, d.row.centre_id, d.row.shift_code, d.definition, target.date, target.token, deleteReason); })().then(() => { setDeletingRegister(null); setDeleteBusy(false); void afterSave(t('assessment.deleteRegisterSuccess')); }).catch(error => { setDeleteError(messageOf(error)); setDeleteBusy(false); }); }}>{t(deleteBusy ? 'common.deleting' : 'common.delete')}</Button></div>{entryEnabled ? null : <p className="text-xs text-muted">{t('common.activationPending')}</p>}</DialogContent></Dialog> : null}
     </div>
   );
 }

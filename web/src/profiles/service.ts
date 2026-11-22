@@ -8,7 +8,7 @@ import {CACHE_TTL_MS, memoise, type Rpc} from '../session/backend';
 import {isMissingFunction} from '../lib/batched';
 
 export interface ProfileCapabilities {version: number; profile_pages?: boolean; profile_sort_v2?: boolean; academic_history?: boolean}
-export type ProfileSort = 'name' | 'id' | 'centre' | 'grade' | 'gender' | 'shift' | 'newest';
+export type ProfileSort = 'name' | 'id' | 'centre' | 'grade' | 'gender' | 'shift' | 'newest' | 'default';
 export interface ProfileFilters {centres: string[]; query: string; idQuery: string; grade: string | null; shift: string | null; gender: string | null}
 export interface ProfilePageRequest {offset: number; sort: ProfileSort; reverse: boolean; limit?: number}
 export interface ProfileIds {ids: string[]; total: number; rows?: ReadStudent[]}
@@ -91,6 +91,8 @@ export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unkno
         ? rpc<unknown>('save_student_profile_year', {...base, p_enrolment: edit.enrolment, p_profile_expected: edit.revision, p_year: edit.year.id, p_status: edit.year.status, p_year_expected: edit.year.version})
         : rpc<unknown>('correct_profile', {...base, p_expected: edit.revision});
     },
+    /** Closes the open enrolment as Promoted on 1 April and opens the next-grade enrolment atomically (gate: enrolments). */
+    promote: (e: {enrolment: string; version: number; grade: string; start: string; shift: string | null}) => rpc<string>('promote_student', {p_enrolment: e.enrolment, p_expected: e.version, p_grade: e.grade, p_start: e.start, p_shift: e.shift, p_centre: null}),
     previewDeletion: (child: string) => rpc<StudentDeletionPreview>('preview_student_deletion', {p_child: child}),
     deleteStudent: (request: string, child: string, token: string, reason: string) => rpc<unknown>('delete_student_cascade', {p_request: request, p_child: child, p_token: token, p_reason: reason.trim()}),
   };

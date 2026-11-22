@@ -48,7 +48,7 @@ describe('Overview', () => {
     expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802 students');
     expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('45.4%');
     expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('668 students');
-    expect(screen.getByRole('group', {name: 'Centres in this selection'})).toHaveTextContent('12');
+    expect(screen.getByRole('group', {name: 'Centers'})).toHaveTextContent('12');
     expect(screen.getByRole('group', {name: 'Donors represented'})).toHaveTextContent('2');
     expect(screen.getByRole('group', {name: 'Students scoring above 20'})).toHaveTextContent('438');
     expect(screen.getByRole('group', {name: 'Students with good engagement'})).toHaveTextContent('—');
@@ -131,7 +131,7 @@ describe('Overview', () => {
 
   it('labels the Cluster Officer card as assigned centres', async () => {
     setup({role: 'Cluster Officer'});
-    expect(await screen.findByRole('group', {name: 'Centres assigned to you'})).toHaveTextContent('12');
+    expect(await screen.findByRole('group', {name: 'Centers'})).toHaveTextContent('12');
   });
 
   it('has no automatically detectable accessibility violations', async () => {

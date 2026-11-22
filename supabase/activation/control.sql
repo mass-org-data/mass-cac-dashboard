@@ -8,8 +8,8 @@ CREATE TABLE mass_activation.features(
  enabled boolean NOT NULL DEFAULT false,
  approval_reference text,
  CHECK(NOT enabled OR (approval_reference IS NOT NULL AND length(btrim(approval_reference)) BETWEEN 1 AND 160)),
- -- Current preservation boundary cannot be relaxed by simply flipping a flag.
- CHECK(NOT enabled OR feature NOT IN ('attendance_corrections','assessment_corrections','visit_corrections','transfers','profiles','enrolments','calendar','activities','morarji'))
+ -- Current preservation boundary cannot be relaxed by simply flipping a flag. profiles, morarji and enrolments were lifted from it by the owner on 22 November 2026.
+ CONSTRAINT features_preservation_boundary CHECK(NOT enabled OR feature NOT IN ('attendance_corrections','assessment_corrections','visit_corrections','transfers','calendar','activities'))
 );
 CREATE TABLE mass_activation.events(
  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,feature text NOT NULL,

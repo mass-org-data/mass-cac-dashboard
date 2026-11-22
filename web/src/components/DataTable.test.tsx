@@ -144,4 +144,30 @@ describe('DataTable', () => {
     const {container} = renderTable(make(25));
     expect(await violations(container)).toEqual([]);
   });
+
+  it('jumps straight to a typed page number, clamping out-of-range numbers', async () => {
+    const user = userEvent.setup();
+    renderTable(make(45));
+    const box = screen.getByRole('spinbutton', {name: 'Go to page'});
+    await user.clear(box); await user.type(box, '4{Enter}');
+    expect(screen.getByRole('status')).toHaveTextContent('Showing 31–40 of 45');
+    const next = screen.getByRole('spinbutton', {name: 'Go to page'});
+    await user.clear(next); await user.type(next, '99{Enter}');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Showing 41–45 of 45'));
+  });
+
+  it('shows the sort arrow after the header text on right-aligned columns too, and no server note', () => {
+    renderTable(make(12));
+    const header = screen.getByRole('columnheader', {name: /Students/});
+    const button = within(header).getByRole('button');
+    expect(button.childNodes[0]?.nodeType).toBe(Node.TEXT_NODE);  // text first, icon after
+    expect(button.className).not.toMatch(/flex-row-reverse/);
+    expect(screen.queryByText(/Sorted and paged by the server/)).not.toBeInTheDocument();
+  });
+
+  it('puts the export button in the title row, top right', () => {
+    renderTable(make(12));
+    const title = screen.getByRole('heading', {name: 'Centres'});
+    expect(title.parentElement).toContainElement(screen.getByRole('button', {name: /Export/}));
+  });
 });

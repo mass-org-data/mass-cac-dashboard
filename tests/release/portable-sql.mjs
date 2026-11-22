@@ -14,9 +14,11 @@ const phase7='20261121120000_leadership_user_administration.sql';
 const phase8='20261121180000_permission_legacy_retirement.sql';
 const phase8Compatibility='20261121183000_permission_context_compatibility.sql';
 const phase8ContextRetirement='20261121190000_permission_context_retirement.sql';
+// Replaces record_visit, which the Phase 8 file recreates, so a fresh replay applies it after Phase 8 (hosted databases already apply by timestamp).
+const visitConductedBy='20261122180000_visit_conducted_by.sql';
 try {
  await db.exec(read('tests/core/bootstrap.sql'));
- for(const name of fs.readdirSync(path.join(root,'supabase/migrations')).filter(n=>n.endsWith('.sql')&&![phase7,phase8,phase8Compatibility,phase8ContextRetirement].includes(n)).sort())await db.exec(read('supabase/migrations/'+name));
+ for(const name of fs.readdirSync(path.join(root,'supabase/migrations')).filter(n=>n.endsWith('.sql')&&![phase7,phase8,phase8Compatibility,phase8ContextRetirement,visitConductedBy].includes(n)).sort())await db.exec(read('supabase/migrations/'+name));
  await db.exec(read('supabase/proposals/202611030024_reviewed_chart_metrics.sql'));
  // The efficiency migration upgrades the installed function only, so a fresh database applies it again after the reviewed proposal.
  await db.exec(read('supabase/migrations/20261114130000_reviewed_chart_metrics_efficiency.sql'));
@@ -68,6 +70,17 @@ try {
  await db.query("WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('assessment_register',c.ids,jsonb_build_object('year',y.id),'','date',true,0,10),mass_api.dashboard_table_page('annual_centres',c.ids,jsonb_build_object('year',y.id,'today',least(y.ends_before-1,y.starts_on+180)),'','name',false,0,10),mass_api.attendance_register_page_v2(c.ids,y.starts_on,y.starts_on+30,NULL,NULL,NULL,0,10,'date',true,'') FROM y,c");
  await db.exec("SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000003\"}',false);");
  await db.query("WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('visit_centres',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','centre',false,0,10),mass_api.dashboard_table_page('visit_officers',c.ids,jsonb_build_object('from','2025-01-01','until','2025-02-01'),'','label',false,0,10),mass_api.dashboard_table_page('morarji_cohorts',c.ids,'{}','','cohort',false,0,10) FROM c");
+ // Regression: the follow-up page sorts by a column named result, which used to clash with the function's own variable (42702).
+ for(const sort of ['student','result','school'])await db.query(`WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('morarji_followup',c.ids,jsonb_build_object('cohort',(SELECT id FROM mass_core.programme_cohorts ORDER BY id LIMIT 1)),'','${sort}',false,0,10) FROM c`);
+ console.log('PASS morarji_followup table page sorts by result without an ambiguity error');
+ // Profile list: the composite default sort is accepted and returns the same population as the single-key sort.
+ {const both=(await db.query("WITH c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 3)s) SELECT mass_api.student_profile_page(c.ids,current_date,'','default',NULL,NULL,NULL,0,100,'')->>'total' a,mass_api.student_profile_page(c.ids,current_date,'','centre',NULL,NULL,NULL,0,100,'')->>'total' b FROM c")).rows[0];
+  if(both.a!==both.b)throw new Error('default profile sort must not change the population');
+  console.log('PASS profile default sort key is accepted');}
+ // Annual donor table: recorded_days column is present and sortable.
+ {const annual=(await db.query("WITH y AS(SELECT * FROM mass_core.academic_years ORDER BY starts_on LIMIT 1),c AS(SELECT array_agg(id) ids FROM(SELECT id FROM mass_core.centres WHERE mass_core.can_read(id) ORDER BY id LIMIT 2)s) SELECT mass_api.dashboard_table_page('annual_centres',c.ids,jsonb_build_object('year',y.id,'today',least(y.ends_before-1,y.starts_on+180)),'','days',true,0,10) page FROM y,c")).rows[0].page;
+  if(!Array.isArray(annual.rows)||annual.rows.some(r=>!('recorded_days' in r)))throw new Error('annual_centres rows must expose recorded_days');
+  console.log('PASS annual donor table exposes recorded_days and sorts by it');}
  await db.exec("SELECT set_config('request.jwt.claims','{\"sub\":\"00000000-0000-4000-8000-000000000001\"}',false);");
  const initialLanguage=(await db.query("SELECT mass_api.get_user_preferences()->>'default_language' language")).rows[0]?.language;
  const savedLanguage=(await db.query("SELECT mass_api.set_default_language('kn')->>'default_language' language")).rows[0]?.language;
@@ -95,4 +108,8 @@ try {
  {const source=(await db.query("SELECT prosrc FROM pg_proc WHERE oid='mass_api.get_context()'::regprocedure")).rows[0].prosrc;
   if(source.includes("'roles',jsonb_build_array(app_role)")||source.includes("'operational_roles_enabled',false"))throw new Error('final Phase 8 context must retire compatibility arrays');
   console.log('PASS final context retirement after the React cutover');}
+ await db.exec('BEGIN;'+read('supabase/migrations/'+visitConductedBy)+read('supabase/activation/seal.sql')+'COMMIT;');
+ {const r=(await db.query("SELECT (SELECT count(*) FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='record_visit') versions,(SELECT pronargs FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='record_visit') args,(SELECT prosrc LIKE '%MASS_ACTIVATION_GUARD_V1%' FROM pg_proc WHERE pronamespace='mass_api'::regnamespace AND proname='record_visit') guarded,(SELECT count(*) FROM information_schema.columns WHERE table_schema='mass_core' AND table_name='cluster_officer_visits' AND column_name='conducted_by') col,has_function_privilege('anon','mass_api.visit_conductors(uuid[])','execute') anon,has_function_privilege('authenticated','mass_api.visit_conductors(uuid[])','execute') auth")).rows[0];
+  if(Number(r.versions)!==1||Number(r.args)!==10||r.guarded!==true||Number(r.col)!==1||r.anon!==false||r.auth!==true)throw new Error('visit conducted-by migration shape is wrong: '+JSON.stringify(r));
+  console.log('PASS visit conducted-by column, single guarded record_visit and scoped conductor read');}
 } finally {await db.close();fs.rmSync(out,{recursive:true,force:true});}

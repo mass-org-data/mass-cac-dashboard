@@ -22,7 +22,7 @@ const rows: RegisterRow[] = [{centre_id: 'c1', shift_code: 'Evening', assessment
 function setup(options: {role?: string; writes?: Record<string, boolean>; reportFn?: OverviewService['report']; write?: boolean; reviewed?: boolean} = {}) {
   const service = {
     register: vi.fn(async () => rows),
-    roster: vi.fn(async () => [{enrolment: 'e1', child: 'k1', studentId: 'S001', name: 'Asha', grade: '4', shift: 'Evening'}, {enrolment: 'e2', child: 'k2', studentId: 'S002', name: null, grade: '5', shift: 'Evening'}]),
+    roster: vi.fn(async () => [{enrolment: 'e1', child: 'k1', studentId: 'S001', name: 'Asha', grade: '4', shift: 'Evening', gender: 'Girl'}, {enrolment: 'e2', child: 'k2', studentId: 'S002', name: null, grade: '5', shift: 'Evening', gender: null}]),
     saved: vi.fn(async () => new Map()), save: vi.fn(async () => 1),
   } as unknown as AssessmentsService;
   const overview = {report: options.reportFn ?? vi.fn(async () => report), shifts: vi.fn(), series: vi.fn(), clear: vi.fn()} as unknown as OverviewService;
@@ -36,9 +36,10 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; report
 describe('Assessments page', () => {
   it('shows the F2 scorecards, bands and comparison from the reviewed report', async () => {
     setup();
-    expect(await screen.findByText('32 / 40')).toBeInTheDocument();
+    expect(await screen.findByText('32 of 40 enrolled students have a score')).toBeInTheDocument();
     expect(screen.getAllByText('15.3').length).toBeGreaterThan(0);   // F2 mean 15.25
-    expect(screen.getAllByText('8').length).toBeGreaterThan(0);       // 40 - 32 without a score
+    expect(screen.getByText('8 of 40 enrolled students have no score')).toBeInTheDocument();       // 40 - 32 without a score, shown as 20.0% with the count underneath
+    expect(screen.getByRole('group', {name: 'Students with exam scores recorded'})).toHaveTextContent('80.0%');
     expect(screen.getByText('+25.0%')).toBeInTheDocument();          // (15 - 12) / 12
     expect(screen.getByText(/Recorded n=32; fractional marks unbanded=1/)).toBeInTheDocument();
     expect(screen.getByText('Matched students')).toBeInTheDocument();
@@ -47,13 +48,13 @@ describe('Assessments page', () => {
   it('requests the report for the chosen compare pair and asks again when the round changes', async () => {
     const user = userEvent.setup();
     const {overview} = setup();
-    await screen.findByText('32 / 40');
+    await screen.findByText('32 of 40 enrolled students have a score');
     const first = vi.mocked(overview.report).mock.calls[0]!;
     expect(first[1]).toEqual(expect.objectContaining({yearId: 'y1', fromQuarter: 1, toQuarter: 2}));
     await user.selectOptions(screen.getByLabelText('Compare rounds'), '2|3');
     await waitFor(() => expect(vi.mocked(overview.report).mock.calls.at(-1)![1]).toEqual(expect.objectContaining({fromQuarter: 2, toQuarter: 3})));
     await user.selectOptions(screen.getByLabelText('Exam round'), '1');
-    expect(await screen.findByText('30 / 40')).toBeInTheDocument();
+    expect(await screen.findByText('30 of 40 enrolled students have a score')).toBeInTheDocument();
   });
   it('treats a missing score as unknown, never zero', async () => {
     setup({reportFn: vi.fn(async () => ({...report, quarters: [{quarter: 1, n: 0, mean: null}], changes: {n: 0, meanChange: null, earlierMean: null, laterMean: null, improved: 0, unchanged: 0, declined: 0}})) as never});
@@ -65,7 +66,9 @@ describe('Assessments page', () => {
     const table = await screen.findByRole('table', {name: 'Assessment register'});
     await waitFor(() => expect(within(table).getAllByRole('row').length).toBe(3));
     expect(within(table).getByText('Unknown', {selector: 'span'})).toBeInTheDocument();
-    expect(within(table).getAllByText('Source import / not recorded').length).toBeGreaterThan(0);
+    expect(within(table).queryByText('Source import / not recorded')).not.toBeInTheDocument();
+    expect(within(table).getAllByRole('button', {name: 'Edit'}).length).toBeGreaterThan(0);
+    expect(within(table).queryByRole('button', {name: 'Delete'})).not.toBeInTheDocument();
   });
   it('shows an error with retry when the report fails, without hiding the register', async () => {
     setup({reportFn: vi.fn(async () => { throw new Error('statement timeout'); }) as never});
@@ -78,16 +81,17 @@ describe('Assessments page', () => {
   });
   it('gives Leadership inherited assessment entry', async () => {
     setup({role: 'Leadership'});
-    await screen.findByText('32 / 40');
+    await screen.findByText('32 of 40 enrolled students have a score');
     expect(screen.getByRole('button', {name: 'Enter marks'})).toBeInTheDocument();
     expect(screen.getByText(/Review one combined CAC test/)).toBeInTheDocument();
   });
   it('opens entry for review with saving off until the gate is on', async () => {
     const user = userEvent.setup();
     const {service} = setup();
-    await screen.findByText('32 / 40');
+    await screen.findByText('32 of 40 enrolled students have a score');
     await user.click(screen.getByRole('button', {name: 'Enter marks'}));
     expect(await screen.findByText(/This date is in round F3/)).toBeInTheDocument();
+    await user.selectOptions(within(await screen.findByRole('dialog')).getByLabelText('Shift'), 'Evening');
     await user.click(screen.getByRole('button', {name: 'Continue'}));
     expect(await screen.findByRole('table', {name: 'Students to score'})).toBeInTheDocument();
     expect(screen.getByRole('button', {name: 'Save assessment'})).toBeDisabled();
@@ -96,8 +100,9 @@ describe('Assessments page', () => {
   it('saves entered marks in one batch with the derived definition and the observed date', async () => {
     const user = userEvent.setup();
     const {service} = setup({writes: {assessment_entry: true}});
-    await screen.findByText('32 / 40');
+    await screen.findByText('32 of 40 enrolled students have a score');
     await user.click(screen.getByRole('button', {name: 'Enter marks'}));
+    await user.selectOptions(within(await screen.findByRole('dialog')).getByLabelText('Shift'), 'Evening');
     await user.click(await screen.findByRole('button', {name: 'Continue'}));
     await screen.findByRole('table', {name: 'Students to score'});
     await user.type(screen.getByLabelText('Marks for Asha'), '30');
@@ -109,9 +114,21 @@ describe('Assessments page', () => {
     await waitFor(() => expect(service.save).toHaveBeenCalledWith([{enrolment: 'e1', definition: 'd3', date: '2026-11-14', score: 19, expected: 0}]));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
+  it('edits a saved register: marks come filled in and a changed mark is saved as a correction with its version', async () => {
+    const user = userEvent.setup();
+    const {service} = setup({writes: {assessment_entry: true}});
+    (service.saved as ReturnType<typeof vi.fn>).mockResolvedValue(new Map([['e1', {id: 'r1', enrolment: 'e1', score: 10, date: '2026-10-05', version: 3}]]));
+    const table = await screen.findByRole('table', {name: 'Assessment register'});
+    await user.click((await within(table).findAllByRole('button', {name: 'Edit'}))[0]!);
+    const marks = await screen.findByLabelText('Marks for Asha');
+    expect(marks).toHaveValue(10);
+    await user.clear(marks); await user.type(marks, '14');
+    await user.click(screen.getByRole('button', {name: 'Save assessment'}));
+    await waitFor(() => expect(service.save).toHaveBeenCalledWith([{enrolment: 'e1', definition: 'd2', date: '2026-10-05', score: 14, expected: 3}]));
+  });
   it('has no automatic accessibility violations', async () => {
     const {container} = setup();
-    await screen.findByText('32 / 40');
+    await screen.findByText('32 of 40 enrolled students have a score');
     expect(await violations(container)).toEqual([]);
   });
 });

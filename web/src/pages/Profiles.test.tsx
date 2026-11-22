@@ -7,6 +7,7 @@ import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
 
+vi.mock('../profiles/StudentCharts', () => ({StudentCharts: () => null}));
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
 const ctx = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: write}, {id: 'c2', label: 'Centre 02', can_write: write}]});
@@ -36,11 +37,11 @@ describe('Student profiles page', () => {
     const t = await table();
     await waitFor(() => expect(bodyRows(t)).toHaveLength(10));
     expect(vi.mocked(service.page).mock.calls[0]![0]).toEqual(expect.objectContaining({centres: ['c1', 'c2'], query: '', grade: null}));
-    expect(vi.mocked(service.page).mock.calls[0]![1]).toEqual({offset: 0, sort: 'name', reverse: false});
+    expect(vi.mocked(service.page).mock.calls[0]![1]).toEqual({offset: 0, sort: 'default', reverse: false});
     expect(within(t).getByText('Name not recorded')).toBeInTheDocument();
     expect(within(t).getAllByText('Unknown').length).toBeGreaterThan(0);
     await user.click(within(screen.getByRole('region', {name: /Student profiles/})).getByRole('button', {name: 'Next page'}));
-    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![1]).toEqual({offset: 10, sort: 'name', reverse: false}));
+    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![1]).toEqual({offset: 10, sort: 'default', reverse: false}));
   });
   it('sorts on the server: ascending first, then descending, and returns to the first page', async () => {
     const user = userEvent.setup();
@@ -56,7 +57,7 @@ describe('Student profiles page', () => {
     const user = userEvent.setup();
     const {service} = setup();
     await table();
-    await user.type(screen.getByLabelText('Search name, ID or centre'), 'asha');
+    await user.type(screen.getByLabelText('Search by Center Name or Student Name'), 'asha');
     await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![0]).toEqual(expect.objectContaining({query: 'asha'})), {timeout: 3000});
     await user.selectOptions(screen.getByLabelText('Grade'), '4');
     await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![0]).toEqual(expect.objectContaining({grade: '4'})));
@@ -76,7 +77,7 @@ describe('Student profiles page', () => {
     const {service} = setup();
     await table();
     vi.mocked(service.page).mockRejectedValueOnce(new Error('statement timeout'));
-    await user.type(screen.getByLabelText('Student ID'), 'S0');
+    await user.type(screen.getByLabelText('Search by Center Name or Student Name'), 'S0');
     expect(await screen.findByText(/statement timeout/, undefined, {timeout: 3000})).toBeInTheDocument();
   });
   it('opens Add student; saving is switched off until activation, then registers once with a request id', async () => {

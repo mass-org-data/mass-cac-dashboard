@@ -7,36 +7,25 @@ import {Scorecard, type ScorecardState} from '../components/Scorecard';
 import {type OverviewService, type Report} from '../data/overview';
 import {academicMonths, monthShort, todayIst} from '../lib/dates';
 import {formatCount, formatPercent} from '../lib/format';
-import {combineMonthlyAttendance} from '../../../src/live/leadership-report.js';
 import {sharedOverview} from '../data/shared';
 import type {LiveBackend, References} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
+import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
 const asState = <T,>(slice: Slice<T>): LoadState => slice.status;
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status;
-type Combined = {p: number; a: number; l: number; loaded: number; percentage: number | null};
-const combine = combineMonthlyAttendance as (values: Array<{attendance?: {p: number; a: number; l: number}} | null | undefined>) => Combined;
 
 interface Loaded {months: string[]; reports: Array<Report | null>; failed: number}
-interface Line {id: string; name: string; donor: string; students: number | null; p: number | null; a: number | null; l: number | null; percentage: number | null; loaded: number}
+interface Line {id: string; name: string; donor: string; students: number | null; p: number | null; a: number | null; l: number | null; percentage: number | null; loaded: number; recorded_days?: number | null}
 const EMPTY_DONORS: Record<string, string | null> = {};
 
-function Select({label, value, options, onChange, allLabel}: {label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void; allLabel?: string}) {
-  return (
-    <label className="flex min-w-40 flex-col gap-1 text-xs font-semibold text-muted">
-      {label}
-      <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
-        {allLabel ? <option value="">{allLabel}</option> : null}
-        {options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}
-      </select>
-    </label>
-  );
-}
+
+const INITIAL_FILTERS = {year: '', donor: ''};
 
 export function AnnualDonor({backend, context, role, overview: injected, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; overview?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
@@ -45,7 +34,7 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<{refs: References; donors: Record<string, string | null>}>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
-  const [filters, setFilters] = useState({year: '', donor: ''});
+  const [filters, setFilters] = useState<typeof INITIAL_FILTERS>(INITIAL_FILTERS);
   const [data, setData] = useState<Slice<Loaded>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
   const leadership = role === 'Leadership';
@@ -99,22 +88,31 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
   }, [overview, key, refreshKey, boot.status]);
 
   const loaded = data.status === 'ready' ? data.value : null;
-  const annual = loaded ? combine(loaded.reports) : null;
   const reportingReport = loaded ? [...loaded.reports].reverse().find(r => r !== null) ?? null : null;
   const points = loaded ? loaded.months.map((month, i) => ({label: monthShort(month), value: loaded.reports[i]?.attendance.percentage == null ? null : Number(loaded.reports[i]!.attendance.percentage)})) : [];
   const columns = useMemo<Column<Line>[]>(() => [
     {id: 'name', header: t('common.centre'), value: r => r.name},
-    {id: 'donor', header: t('donor.currentAssociation'), value: r => r.donor},
-    {id: 'students', header: t('donor.studentsDate'), value: r => r.students, numeric: true},
-    {id: 'p', header: t('donor.annualPresent'), value: r => r.p, numeric: true},
-    {id: 'a', header: t('donor.annualAbsent'), value: r => r.a, numeric: true},
-    {id: 'l', header: t('donor.annualLeave'), value: r => r.l, numeric: true},
-    {id: 'percentage', header: t('donor.annualAttendance'), value: r => (r.percentage === null ? null : Number(r.percentage.toFixed(1))), numeric: true, cell: r => (r.percentage === null ? t('common.unknown') : formatPercent(r.percentage))},
-    {id: 'loaded', header: t('donor.loadedMonths'), value: r => r.loaded, numeric: true},
+    {id: 'students', header: t('donor.studentsEnrolledColumn'), value: r => r.students, numeric: true},
+    {id: 'days', header: t('donor.recordedDaysColumn'), value: r => r.recorded_days ?? null, numeric: true},
+    {id: 'percentage', header: t('donor.overallAttendance'), value: r => (r.percentage === null ? null : Number(r.percentage.toFixed(1))), numeric: true, cell: r => (r.percentage === null ? t('common.unknown') : formatPercent(r.percentage))},
   ], [t]);
   const tableContext = useMemo(() => ({year: year?.id ?? '', today}), [year?.id, today]);
   const loadCentres = useCallback((request: TableRequest) => year?.id ? tables.page<Line>('annual_centres', centreIds, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, centreIds, tableContext, year?.id]);
   const centreTable = useServerTable({key: JSON.stringify([year?.id, centreIds]), load: loadCentres, initialSort: 'name', refreshKey});
+  // Chart 7.3: each mapped centre's annual attendance rate (its own P, A and L summed first), then the plain mean of those rates.
+  // Centres with no recorded attendance are left out of the mean, never counted as zero.
+  const [centreMean, setCentreMean] = useState<{state: 'loading' | 'ready' | 'error' | 'unavailable'; value: number | null; count: number; message?: string}>({state: 'loading', value: null, count: 0});
+  useEffect(() => {
+    if (!leadership || !year?.id || boot.status !== 'ready' || !centreIds.length) return;
+    let live = true;
+    setCentreMean({state: 'loading', value: null, count: 0});
+    tables.page<Line>('annual_centres', centreIds, tableContext, {offset: 0, limit: 500, sort: 'name', reverse: false, query: ''}).then(found => {
+      if (!live) return;
+      const rates = found.rows.map(r => (r.percentage === null || r.percentage === undefined ? null : Number(r.percentage))).filter((v): v is number => v !== null && Number.isFinite(v));
+      setCentreMean(rates.length ? {state: 'ready', value: rates.reduce((a, b) => a + b, 0) / rates.length, count: rates.length} : {state: 'unavailable', value: null, count: 0});
+    }).catch(error => { if (live) setCentreMean({state: 'error', value: null, count: 0, message: messageOf(error)}); });
+    return () => { live = false; };
+  }, [tables, centreIds, tableContext, year?.id, leadership, boot.status, refreshKey]);
 
   if (!leadership) return <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">{t('donor.leadershipOnly')}</p>;
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('donor.preparing')} rows={5} />;
@@ -123,31 +121,27 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">{t('donor.intro')}</p>
-      <div role="group" aria-label={t('donor.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <Select label={t('donor.academicYear')} value={year?.id ?? ''} options={years.map(y => [y.id, `${y.starts_on.slice(0, 4)}–${y.ends_before.slice(0, 4)}`])} onChange={value => setFilters(f => ({...f, year: value}))} />
-        <Select label={t('overview.donor')} value={filters.donor} options={donorNames.map(d => [d, d])} allLabel={t('donor.allDonors')} onChange={value => setFilters(f => ({...f, donor: value}))} />
-      </div>
+      <FilterPanel label={t('donor.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
+        <Select active={filters.year !== ''} label={t('donor.academicYear')} value={year?.id ?? ''} options={years.map(y => [y.id, `${y.starts_on.slice(0, 4)}–${y.ends_before.slice(0, 4)}`])} onChange={value => setFilters(f => ({...f, year: value}))} />
+        <Select label={t('overview.donor')} value={filters.donor} options={donorNames.map(d => [d, d])} allLabel={english('donor.allDonors')} onChange={value => setFilters(f => ({...f, donor: value}))} />
+      </FilterPanel>
 
       <section aria-label={t('donor.reportCover')} className="rounded-lg border border-line bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">MASS · {t('app.centres')}</p>
         <h2 className="text-xl font-bold">{donorLabel}</h2>
-        <p className="text-sm text-muted">{t('donor.coverMeta', {year: year ? t('donor.yearRange', {from: year.starts_on, until: year.ends_before}) : t('donor.selectedYear'), count: selected.length})}</p>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Scorecard reference="7.1" label={t('donor.selectionCentres')} value={formatCount(selected.length)} />
         <Scorecard reference="7.2" label={t('donor.studentsEnrolled')} value={reportingReport ? formatCount(reportingReport.children) : null} state={data.status === 'ready' && !reportingReport ? 'unavailable' : cardState(data)} message={msg} />
-        <Scorecard reference="7.3" label={t('donor.recordedAttendance')} value={annual ? formatPercent(annual.percentage) : null} state={data.status === 'ready' && annual?.percentage === null ? 'unavailable' : cardState(data)} message={msg ?? t('donor.noAttendance')} />
-        <Scorecard reference="7.4" label={t('donor.recordedMonths')} value={annual ? formatCount(annual.loaded) : null} state={cardState(data)} message={msg} />
+        <Scorecard reference="7.3" label={t('donor.averageAcrossCentres')} value={centreMean.value === null ? null : formatPercent(centreMean.value)} hint={centreMean.count > 0 ? t('donor.averageAcrossCentresHint', {count: centreMean.count}) : undefined} state={centreMean.state} message={centreMean.state === 'error' ? centreMean.message : t('donor.noAttendance')} />
       </div>
       {loaded && loaded.failed > 0 ? <p role="alert" className="rounded-md bg-warn-soft p-3 text-sm text-warn">{t('donor.partial', {failed: loaded.failed, total: loaded.months.length})} <button type="button" className="font-semibold underline" onClick={() => setRefreshKey(k => k + 1)}>{t('common.retry')}</button></p> : null}
 
-      <ChartCard reference="7.5" title={t('donor.attendanceTime')} subtitle={t('donor.attendanceHelp')} state={asState(data)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)}>
+      <ChartCard reference="7.4" title={t('donor.attendanceTime')} subtitle={t('donor.attendanceHelp')} state={asState(data)} errorMessage={msg} onRetry={() => setRefreshKey(k => k + 1)}>
         <LineChart points={points} description={t('donor.attendanceDescription')} />
       </ChartCard>
 
-      <DataTable<Line> reference="7.6" caption={t('donor.centreComparison')} columns={columns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}`}
+      <DataTable<Line> reference="7.5" searchLabel={t('donor.searchCentre')} caption={t('donor.centreComparison')} columns={columns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}`}
         state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} server={centreTable.server} />
       <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('donor.exportLead')}</strong> {t('donor.exportBody')}</p>
       <p className="text-xs text-muted">{t('donor.footnote')}</p>

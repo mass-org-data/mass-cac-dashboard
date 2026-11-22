@@ -1,10 +1,11 @@
-import {useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/ui/button';
 import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
 import {Input} from '../components/ui/input';
 import {assignmentFor, emptyVisit, newId, validateVisit, type VisitForm} from './editor';
-import type {Assignment, VisitsService} from './service';
+import type {Assignment, Conductor, VisitsService} from './service';
 import {useI18n} from '../i18n/I18n';
+import {english} from '../components/FilterPanel';
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'The request could not be completed.');
 const selectClass = 'min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink';
@@ -16,10 +17,16 @@ export function VisitDialog({service, assignments, centres, initialCentre, initi
   const {t} = useI18n();
   const [form, setForm] = useState<VisitForm>(() => emptyVisit(initialCentre, initialShift, today));
   const [error, setError] = useState('');
+  const [conductors, setConductors] = useState<Conductor[] | null>(null);
+  const [conductedBy, setConductedBy] = useState('');
   const [status, setStatus] = useState<'ready' | 'saving' | 'committed'>('ready');
   const id = useRef(newId());
   const set = (field: keyof VisitForm, value: string) => setForm(f => ({...f, [field]: value}));
   const busy = status !== 'ready';
+  useEffect(() => { let live = true; service.conductors(centres.map(c => c.id)).then(rows => { if (live) setConductors(rows); }).catch(() => { if (live) setConductors(null); }); return () => { live = false; }; }, [service, centres]);
+  // Every Leadership user, plus the Cluster Officer assigned to the chosen centre.
+  const choices = useMemo(() => (conductors ?? []).filter(c => c.centre_id === null || c.centre_id === form.centre), [conductors, form.centre]);
+  useEffect(() => { if (conductedBy && !choices.some(c => c.user_id === conductedBy)) setConductedBy(''); }, [choices, conductedBy]);
 
   const submit = async () => {
     if (busy) return;
@@ -27,7 +34,7 @@ export function VisitDialog({service, assignments, centres, initialCentre, initi
     if (problem) { setError(problem); return; }
     setError(''); setStatus('saving');
     const assignment = assignmentFor(assignments, form.centre, form.date)[0]!;
-    try { await service.record({id: id.current, assignment: assignment.id, shift: form.shift, date: form.date, status: form.status, feedback: form.feedback, nextAction: form.nextAction}); }
+    try { await service.record({id: id.current, assignment: assignment.id, shift: form.shift, date: form.date, status: form.status, feedback: form.feedback, nextAction: form.nextAction, conductedBy: conductedBy || null}); }
     catch (e) { setError(messageOf(e)); setStatus('ready'); return; }
     setStatus('committed');
     try { await onSaved('Visit saved. The visit list has been refreshed.'); }
@@ -47,9 +54,14 @@ export function VisitDialog({service, assignments, centres, initialCentre, initi
             <select value={form.centre} disabled={busy || centres.length === 1} onChange={event => set('centre', event.target.value)} className={selectClass}>{centres.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
           </label>
           <label className={labelClass}>{t('common.shift')}
-            <select value={form.shift} disabled={busy} onChange={event => set('shift', event.target.value)} className={selectClass}><option value="Morning">{t('common.morning')}</option><option value="Evening">{t('common.evening')}</option></select>
+            <select value={form.shift} disabled={busy} onChange={event => set('shift', event.target.value)} className={selectClass}><option value="Morning">{english('common.morning')}</option><option value="Evening">{english('common.evening')}</option></select>
           </label>
           <label className={labelClass}>{t('visit.date')}<Input type="date" value={form.date} disabled={busy} onChange={event => set('date', event.target.value)} /></label>
+          {conductors !== null ? (
+            <label className={labelClass}>{t('visit.conductedBy')}
+              <select value={conductedBy} disabled={busy} onChange={event => setConductedBy(event.target.value)} className={selectClass}><option value="">{t('visit.conductedByMe')}</option>{choices.map(c => <option key={`${c.user_id}|${c.centre_id}`} value={c.user_id}>{c.label} ({c.role_code === 'Leadership' ? t('visit.roleLeadership') : t('visit.roleClusterOfficer')})</option>)}</select>
+            </label>
+          ) : null}
           <label className={labelClass}>{t('visit.status')}
             <select value={form.status} disabled={busy} onChange={event => set('status', event.target.value)} className={selectClass}><option value="Planned">{t('visit.planned')}</option><option value="Completed">{t('visit.completed')}</option></select>
           </label>

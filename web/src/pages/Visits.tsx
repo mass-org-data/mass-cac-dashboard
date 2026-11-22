@@ -6,7 +6,7 @@ import {Button} from '../components/ui/button';
 import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
 import {Input} from '../components/ui/input';
 import {VisitDialog} from '../visits/VisitDialog';
-import {createVisitsService, monthWindow, type Assignment, type OfficerRow, type SummaryRow, type VisitRow, type VisitsService} from '../visits/service';
+import {createVisitsService, monthWindow, type Assignment, type Conductor, type OfficerRow, type SummaryRow, type VisitRow, type VisitsService} from '../visits/service';
 import {academicMonths, monthLabel, todayIst} from '../lib/dates';
 import {formatCount} from '../lib/format';
 import type {Capabilities, LiveBackend, References} from '../session/backend';
@@ -14,27 +14,19 @@ import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
+import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status;
 const num = (value: number | string) => Number(value);
 
-function Select({label, value, options, onChange, allLabel}: {label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void; allLabel?: string}) {
-  return (
-    <label className="flex min-w-40 flex-col gap-1 text-xs font-semibold text-muted">
-      {label}
-      <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
-        {allLabel ? <option value="">{allLabel}</option> : null}
-        {options.map(([optionValue, text]) => <option key={optionValue} value={optionValue}>{text}</option>)}
-      </select>
-    </label>
-  );
-}
 
-interface Boot {refs: References; capabilities: Capabilities; assignments: Assignment[]}
+interface Boot {refs: References; capabilities: Capabilities; assignments: Assignment[]; conductors: Conductor[]}
 interface Data {summary: SummaryRow[]; officers: OfficerRow[]}
 interface OfficerLine {id: string; label: string; completed: number; target: number; records: number}
+
+const INITIAL_FILTERS = {month: '', centre: '', shift: '', officer: ''};
 
 export function Visits({backend, context, role, service: injected, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: VisitsService; tables?: TableService}) {
   const {t} = useI18n();
@@ -43,7 +35,7 @@ export function Visits({backend, context, role, service: injected, tables: injec
   const today = useMemo(() => todayIst(), []);
   const [boot, setBoot] = useState<Slice<Boot>>({status: 'loading'});
   const [bootAttempt, setBootAttempt] = useState(0);
-  const [filters, setFilters] = useState({month: '', centre: '', shift: '', officer: ''});
+  const [filters, setFilters] = useState<typeof INITIAL_FILTERS>(INITIAL_FILTERS);
   const [data, setData] = useState<Slice<Data>>({status: 'loading'});
   const [refreshKey, setRefreshKey] = useState(0);
   const [recording, setRecording] = useState(false);
@@ -56,8 +48,8 @@ export function Visits({backend, context, role, service: injected, tables: injec
   useEffect(() => {
     let live = true;
     setBoot({status: 'loading'});
-    Promise.all([backend.readReferences(), backend.readCapabilities(), role !== 'Teacher' ? service.assignments() : Promise.resolve([] as Assignment[])])
-      .then(([refs, capabilities, assignments]) => { if (live) setBoot({status: 'ready', value: {refs, capabilities, assignments}}); })
+    Promise.all([backend.readReferences(), backend.readCapabilities(), role !== 'Teacher' ? service.assignments() : Promise.resolve([] as Assignment[]), role !== 'Teacher' ? service.conductors(context.centres.filter(c => c.can_write).map(c => c.id)).catch(() => null) : Promise.resolve(null)])
+      .then(([refs, capabilities, assignments, conductors]) => { if (live) setBoot({status: 'ready', value: {refs, capabilities, assignments, conductors: conductors ?? []}}); })
       .catch(error => { if (live) setBoot({status: 'error', message: messageOf(error)}); });
     return () => { live = false; };
   }, [backend, service, role, bootAttempt]);
@@ -70,12 +62,13 @@ export function Visits({backend, context, role, service: injected, tables: injec
   const months = useMemo(() => (year ? academicMonths(year.starts_on) : []), [year]);
   const month = filters.month || (year && year.starts_on <= today && today < year.ends_before ? today.slice(0, 7) : months[0] ?? '');
   const selected = useMemo(() => scope.filter(c => !filters.centre || c.id === filters.centre), [scope, filters.centre]);
-  // A Cluster Officer sees their own coverage: one verified staff identity is required for officer-specific targets.
+  // A Cluster Officer sees coverage of their own centres. With exactly one verified staff identity the officer filter also
+  // applies; with several (one account, many directory records) coverage is by centre and no officer filter is sent.
   const officerIds = boot.status === 'ready' ? [...new Set(boot.value.assignments.map(a => a.officer_id))] : [];
-  const ownOfficer = role === 'Cluster Officer' ? (officerIds.length === 1 ? officerIds[0]! : null) : null;
+  const ownOfficer = role === 'Cluster Officer' && officerIds.length === 1 ? officerIds[0]! : null;
   const officer = role === 'Cluster Officer' ? ownOfficer : (filters.officer || null);
   const key = JSON.stringify([month, selected.map(c => c.id), officer]);
-  const officerBlocked = role === 'Cluster Officer' && boot.status === 'ready' && ownOfficer === null;
+  const officerBlocked = role === 'Cluster Officer' && boot.status === 'ready' && officerIds.length === 0;
 
   useEffect(() => {
     if (boot.status !== 'ready' || !month || officerBlocked) return;
@@ -128,18 +121,20 @@ export function Visits({backend, context, role, service: injected, tables: injec
     {id: 'evening', header: t('visit.eveningCompleted'), value: r => (num(r.recorded_count) ? num(r.evening) : null), numeric: true},
     {id: 'status', header: t('visit.standard'), value: r => (num(r.recorded_count) ? t(r.achieved ? 'visit.targetAchieved' : 'visit.targetMissed') : t('visit.noVerified'))},
   ], [nameOf, t]);
+  const conductorName = useMemo(() => new Map((boot.status === 'ready' ? boot.value.conductors : []).map(c => [c.user_id, c.label])), [boot]);
   const logColumns = useMemo<Column<VisitRow>[]>(() => [
     {id: 'date', header: t('common.date'), value: r => r.visit_date},
     {id: 'centre', header: t('common.centre'), value: r => nameOf.get(r.centre_id) ?? r.centre_id},
     {id: 'shift', header: t('common.shift'), value: r => r.shift_code},
     {id: 'status', header: t('common.status'), value: r => r.status},
     {id: 'feedback', header: t('visit.feedbackShort'), value: r => r.feedback},
+    {id: 'conductor', header: t('visit.conductedBy'), sortable: false, value: r => conductorName.get(r.conducted_by ?? '') ?? t('common.unknown')},
     {id: 'next', header: t('visit.nextAction'), value: r => r.next_action},
     {id: 'action', header: t('common.action'), sortable: false, value: () => t('common.delete'), cell: r => <Button variant="ghost" size="sm" className="text-bad" onClick={() => { setDeleting({...r, request: crypto.randomUUID()}); setDeleteReason(''); setDeleteError(''); }}>{t('common.delete')}</Button>},
-  ], [nameOf, t]);
+  ], [nameOf, conductorName, t]);
 
   if (boot.status !== 'ready') return <AsyncState state={boot.status === 'error' ? 'error' : 'loading'} errorMessage={boot.status === 'error' ? boot.message : undefined} onRetry={() => setBootAttempt(n => n + 1)} loadingLabel={t('visit.preparing')} rows={5} />;
-  if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{boot.value.assignments.length === 0 ? t('visit.noAssignment') : t('visit.multipleIdentities', {count: officerIds.length})}</p>;
+  if (officerBlocked) return <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t('visit.noAssignment')}</p>;
   const canRecord = role !== 'Teacher' && boot.value.assignments.length > 0 && writable.length > 0;
   const entryEnabled = boot.value.capabilities.writes?.visit_entry === true;
   const msg = data.status === 'error' ? data.message : undefined;
@@ -153,12 +148,12 @@ export function Visits({backend, context, role, service: injected, tables: injec
       </div>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
-      <div role="group" aria-label={t('visit.filters')} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-3">
-        <Select label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={t('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
-        <Select label={t('common.shift')} value={filters.shift} options={[['Morning', t('common.morning')], ['Evening', t('common.evening')]]} allLabel={t('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
-        {role !== 'Cluster Officer' && officerChoices.length > 0 ? <Select label={t('visit.officer')} value={filters.officer} options={officerChoices.map(([id, label]) => [id, label])} allLabel={t('visit.allOfficers')} onChange={value => setFilters(f => ({...f, officer: value}))} /> : null}
-      </div>
+      <FilterPanel label={t('visit.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
+        <Select active={filters.month !== ''} label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
+        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
+        {role !== 'Cluster Officer' && officerChoices.length > 0 ? <Select label={t('visit.officer')} value={filters.officer} options={officerChoices.map(([id, label]) => [id, label])} allLabel={english('visit.allOfficers')} onChange={value => setFilters(f => ({...f, officer: value}))} /> : null}
+      </FilterPanel>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Scorecard reference="5.1" label={t('visit.visitsCompleted')} value={data.status === 'ready' ? (actual === null ? null : formatCount(actual)) : null} state={data.status === 'ready' && actual === null ? 'unavailable' : cardState(data)} message={msg ?? t('visit.noneMonth')} />

@@ -55,4 +55,12 @@ describe('visits service', () => {
     await createVisitsService(rpc as never, direct).record({id: 'v', assignment: 'a', shift: 'Evening', date: '2026-11-14', status: 'Completed', feedback: 'ok', nextAction: 'x'});
     expect(rpc).toHaveBeenCalledWith('record_visit', {p_id: 'v', p_assignment: 'a', p_shift: 'Evening', p_date: '2026-11-14', p_status: 'Completed', p_feedback: 'ok', p_next_action: 'x', p_expected: 0, p_reason: null});
   });
+  it('sends the conductor only when one is chosen, and reports a database without the function as null', async () => {
+    const rpc = vi.fn(async () => 1);
+    await createVisitsService(rpc as never, direct).record({id: 'v', assignment: 'a', shift: 'Evening', date: '2026-11-14', status: 'Planned', feedback: '', nextAction: '', conductedBy: 'u1'});
+    expect(rpc).toHaveBeenCalledWith('record_visit', expect.objectContaining({p_conducted_by: 'u1'}));
+    const missing = vi.fn(async () => { throw Object.assign(new Error('missing'), {status: 404, code: 'PGRST202'}); });
+    expect(await createVisitsService(missing as never, direct).conductors(['c1'])).toBeNull();
+    expect(await createVisitsService(rpc as never, direct).conductors([])).toEqual([]);
+  });
 });
