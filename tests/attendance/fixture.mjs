@@ -4,7 +4,7 @@ import {runSqlScript} from '../sql-statements.mjs';
 export const centre='10000000-0000-4000-8000-000000000001';
 export const user=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 export async function fixture({metadata=true,centreEvents=true,review=true}={}) {
- let pendingMetadata='',pendingFeedback='',pendingCentreEvents='',pendingReview='',pendingPermissionRead='',pendingPermissionWrite='',pendingDestructive='',pendingAdministration='',pendingLegacyRetirement='';
+ let pendingMetadata='',pendingFeedback='',pendingCentreEvents='',pendingReview='',pendingPermissionRead='',pendingPermissionWrite='',pendingDestructive='',pendingAdministration='',pendingLegacyRetirement='';const pendingLate=[];
  const db=new PGlite();await db.waitReady;
  const read=name=>fs.readFileSync(new URL('../../'+name,import.meta.url),'utf8');
  await db.exec(read('tests/core/bootstrap.sql'));
@@ -18,6 +18,7 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
   if(file.includes('permission_destructive_workflows')){pendingDestructive=read('supabase/migrations/'+file);continue;}
   if(file.includes('leadership_user_administration')){pendingAdministration=read('supabase/migrations/'+file);continue;}
   if(file.includes('permission_legacy_retirement')){pendingLegacyRetirement=read('supabase/migrations/'+file);continue;}
+  if(file.includes('enrolment_promoted_status')||file.includes('visit_conducted_by')){pendingLate.push(read('supabase/migrations/'+file));continue;}
   const sql=read('supabase/migrations/'+file);
   if(file.includes('attendance_register_workflow')){
    const before=(await db.query("SELECT md5(pg_get_functiondef('mass_core.guard_record()'::regprocedure)) hash")).rows[0].hash;
@@ -42,6 +43,7 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
  if(pendingDestructive&&destructiveReady){await db.exec(pendingDestructive);await db.exec('BEGIN;'+read('supabase/activation/seal.sql')+'COMMIT;');}
  if(pendingAdministration)await db.exec(pendingAdministration);
  if(pendingLegacyRetirement)await db.exec(pendingLegacyRetirement);
+ if(pendingLegacyRetirement&&(await db.query("SELECT to_regclass('mass_core.student_academic_profiles') IS NOT NULL p")).rows[0].p)for(const late of pendingLate)await db.exec(late+'\nBEGIN;'+read('supabase/activation/seal.sql')+'COMMIT;');
  await db.exec("SET ROLE mass_core_owner; UPDATE mass_activation.features SET enabled=true,approval_reference='isolated register test' WHERE feature IN ('attendance_entry','assessment_entry','reviewed_reads'); UPDATE mass_core.attendance_register_control SET enabled=true,approval_reference='isolated approved register test'; RESET ROLE;");
  async function rpc(name,args={},actor=user(1),role='authenticated') {
   if(!/^[a-z_][a-z0-9_]*$/.test(name)||Object.keys(args).some(k=>!/^p_[a-z_]+$/.test(k)))throw Error('Invalid test RPC');
