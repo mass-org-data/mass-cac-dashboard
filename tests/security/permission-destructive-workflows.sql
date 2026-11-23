@@ -63,6 +63,18 @@ DROP TABLE mass_core.synthetic_unreviewed_student_dependency;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004"}',true);
 
+-- Monthly source history participates in the same reviewed cascade and token.
+RESET ROLE;
+INSERT INTO mass_foundation.import_batches(id,mapping_version,extractor_version) VALUES('81000000-0000-4000-8000-000000000001','synthetic-monthly','synthetic');
+INSERT INTO mass_foundation.source_files(id,sha256,storage_ref) VALUES('81000000-0000-4000-8000-000000000002',repeat('a',64),'81000000-0000-4000-8000-000000000003');
+INSERT INTO mass_foundation.source_sheets(id,file_id,ordinal,classification,header_version) VALUES('81000000-0000-4000-8000-000000000004','81000000-0000-4000-8000-000000000002',1,'input',1);
+INSERT INTO mass_foundation.source_rows(id,sheet_id,first_batch_id,row_number,content_hash) VALUES('81000000-0000-4000-8000-000000000005','81000000-0000-4000-8000-000000000004','81000000-0000-4000-8000-000000000001',5,repeat('b',64));
+INSERT INTO mass_import.monthly_activity_history(source_row_id,source_sha256,payload_hmac,reporting_month,child_id,enrolment_id,centre_id,shift_code,grade_label,cultural_1,cultural_2,sports_1,sports_2)
+SELECT '81000000-0000-4000-8000-000000000005',repeat('a',64),repeat('c',64),(date_trunc('month',e.starts_on)+interval '1 month')::date,e.child_id,e.id,e.centre_id,e.shift_code,e.grade_label,true,false,NULL,false
+FROM mass_core.enrolments e WHERE e.child_id=(SELECT child_id FROM core_test.ids WHERE label='A') AND (e.ends_before IS NULL OR e.ends_before>=(date_trunc('month',e.starts_on)+interval '2 months')::date) ORDER BY e.starts_on LIMIT 1;
+SELECT core_test.assert_true((SELECT count(*)=1 FROM mass_import.monthly_activity_history),'synthetic monthly history inserted');
+SET ROLE authenticated;
+SELECT core_test.assert_true((mass_api.preview_student_deletion((SELECT child_id FROM core_test.ids WHERE label='A'))->'counts'->>'monthly_activity_history')::int=1,'monthly history is included in deletion confirmation');
 INSERT INTO core_test.phase5 SELECT 'student_token',mass_api.preview_student_deletion((SELECT child_id FROM core_test.ids WHERE label='A'))->>'token';
 SELECT core_test.expect_error($q$SELECT mass_api.delete_student_cascade('71000000-0000-4000-8000-000000000007',(SELECT child_id FROM core_test.ids WHERE label='A'),'stale-token','Reviewed student removal')$q$,'PT409','stale student token prevents deletion');
 SELECT core_test.assert_true(EXISTS(SELECT 1 FROM mass_core.children WHERE id=(SELECT child_id FROM core_test.ids WHERE label='A')),'stale token leaves the complete graph intact');
@@ -70,6 +82,9 @@ INSERT INTO core_test.phase5 SELECT 'activity_count',count(*)::text FROM mass_co
 INSERT INTO core_test.phase5 SELECT 'cohort_count',count(*)::text FROM mass_core.programme_cohorts;
 SELECT mass_api.delete_student_cascade('71000000-0000-4000-8000-000000000008',(SELECT child_id FROM core_test.ids WHERE label='A'),(SELECT value FROM core_test.phase5 WHERE key='student_token'),'Reviewed student removal');
 SELECT mass_api.delete_student_cascade('71000000-0000-4000-8000-000000000008',(SELECT child_id FROM core_test.ids WHERE label='A'),(SELECT value FROM core_test.phase5 WHERE key='student_token'),'Reviewed student removal');
+RESET ROLE;
+SELECT core_test.assert_true(NOT EXISTS(SELECT 1 FROM mass_import.monthly_activity_history),'reviewed student cascade removes monthly history');
+SET ROLE authenticated;
 SELECT core_test.assert_true(NOT EXISTS(SELECT 1 FROM mass_core.children WHERE id=(SELECT child_id FROM core_test.ids WHERE label='A')),'Leadership cascade deletes the student atomically and retry is idempotent');
 SELECT core_test.assert_true((SELECT count(*)=(SELECT value::bigint FROM core_test.phase5 WHERE key='activity_count') FROM mass_core.activity_events) AND (SELECT count(*)=(SELECT value::bigint FROM core_test.phase5 WHERE key='cohort_count') FROM mass_core.programme_cohorts),'shared activities and cohorts survive student deletion');
 SET LOCAL ROLE mass_core_owner;
