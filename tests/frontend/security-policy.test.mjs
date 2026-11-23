@@ -83,7 +83,9 @@ test('the preview policy only adds the Vercel toolbar hosts and keeps every othe
  }
 });
 
-test('application source contains no inline event-handler attributes',async()=>{
- const sources=await Promise.all(['src/index.html','src/entry.js','src/app.js','src/live/original-review.js'].map(path=>readFile(path,'utf8')));
- assert.equal(sources.some(source=>/\son[a-z]+\s*=/i.test(source)),false);
+test('deployed React source contains no inline event-handler attributes',async()=>{
+ const html=await readFile('web/index.html','utf8');
+ assert.equal(/\son[a-z]+\s*=/i.test(html),false);
+ const sources=await Promise.all(['web/src/main.tsx','web/src/app/App.tsx','web/src/app/SideMenu.tsx'].map(path=>readFile(path,'utf8')));
+ assert.equal(sources.some(source=>/dangerouslySetInnerHTML/.test(source)),false);
 });

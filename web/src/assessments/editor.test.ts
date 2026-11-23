@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {buildScores, mapRound, validateStart} from './editor';
+import {buildScores, initialEntries, mapRound, validateStart} from './editor';
 import type {RosterStudent, SavedResult} from './service';
 import type {References} from '../session/backend';
 
@@ -9,7 +9,7 @@ const refs: References = {
   assessment_periods: [1, 2, 3, 4].map(q => ({id: `p${q}`, academic_year_id: 'y', quarter: q})),
   assessment_definitions: [1, 2, 3, 4].map(q => ({id: `d${q}`, period_id: `p${q}`, max_score: 25})),
 };
-const roster: RosterStudent[] = [{enrolment: 'e1', child: 'c1', studentId: 'S1', name: 'Asha', grade: '4', shift: 'Evening'}, {enrolment: 'e2', child: 'c2', studentId: 'S2', name: null, grade: '4', shift: 'Evening'}, {enrolment: 'e3', child: 'c3', studentId: 'S3', name: 'Ravi', grade: '5', shift: 'Evening'}];
+const roster: RosterStudent[] = [{enrolment: 'e1', child: 'c1', studentId: 'S1', name: 'Asha', grade: '4', shift: 'Evening', gender: null}, {enrolment: 'e2', child: 'c2', studentId: 'S2', name: null, grade: '4', shift: 'Evening', gender: null}, {enrolment: 'e3', child: 'c3', studentId: 'S3', name: 'Ravi', grade: '5', shift: 'Evening', gender: null}];
 
 describe('round mapping', () => {
   it('maps observed dates to F1–F4 across the April–March year', () => {
@@ -45,13 +45,25 @@ describe('score rules', () => {
     expect(() => buildScores(roster, {e1: 'abc'}, none, '2026-11-14', 'd3')).toThrow('Marks must be 0–25.');
     expect(() => buildScores(roster, {}, none, '2026-11-14', 'd3')).toThrow('No changed marks.');
   });
-  it('never rewrites a result that is already saved', () => {
+  it('corrects a saved mark with its own date and version, skips unchanged marks, and never clears or zeroes', () => {
     const saved = new Map<string, SavedResult>([['e1', {enrolment: 'e1', score: 10, date: '2026-10-01', version: 2}]]);
-    expect(() => buildScores(roster, {e1: '20'}, saved, '2026-11-14', 'd3')).toThrow('No changed marks.');
-    expect(buildScores(roster, {e1: '20', e3: '7'}, saved, '2026-11-14', 'd3').map(r => r.enrolment)).toEqual(['e3']);
+    expect(() => buildScores(roster, {e1: '10'}, saved, '2026-11-14', 'd3')).toThrow('No changed marks.');
+    expect(() => buildScores(roster, {e1: ''}, saved, '2026-11-14', 'd3')).toThrow('No changed marks.');
+    expect(buildScores(roster, {e1: '20', e3: '7'}, saved, '2026-11-14', 'd3')).toEqual([
+      {enrolment: 'e1', definition: 'd3', date: '2026-10-01', score: 20, expected: 2},
+      {enrolment: 'e3', definition: 'd3', date: '2026-11-14', score: 7, expected: 0},
+    ]);
+  });
+  it('keeps an unknown historical date unknown on correction', () => {
+    const saved = new Map<string, SavedResult>([['e1', {enrolment: 'e1', score: 10, date: null, version: 1}]]);
+    expect(buildScores(roster, {e1: '12'}, saved, '2026-11-14', 'd3')[0]).toMatchObject({date: null, expected: 1});
+  });
+  it('opens a saved register with its marks filled in', () => {
+    const saved = new Map<string, SavedResult>([['e1', {enrolment: 'e1', score: 10, date: null, version: 1}]]);
+    expect(initialEntries(roster, saved)).toEqual({e1: '10'});
   });
   it('limits one atomic save to 500 scores', () => {
-    const many = Array.from({length: 501}, (_, i) => ({enrolment: `x${i}`, child: `k${i}`, studentId: `S${i}`, name: 'N', grade: '4', shift: 'Evening'}));
+    const many = Array.from({length: 501}, (_, i) => ({enrolment: `x${i}`, child: `k${i}`, studentId: `S${i}`, name: 'N', grade: '4', shift: 'Evening', gender: null}));
     expect(() => buildScores(many, Object.fromEntries(many.map(s => [s.enrolment, '5'])), none, '2026-11-14', 'd3')).toThrow('at most 500');
   });
 });

@@ -4,7 +4,7 @@ import {About} from './About';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
 
-const ctx = (centres: Array<{id: string; roles: string[]}>): ProgrammeContext => ({user_id: 'u', operational_roles_enabled: true, centres: centres.map(c => ({...c, label: c.id, can_write: false}))}) as unknown as ProgrammeContext;
+const ctx = (centres: Array<{id: string; roles: string[]}>): ProgrammeContext => ({user_id: 'u', role: centres[0]?.roles[0] ?? 'Teacher', centres: centres.map(c => ({id: c.id, label: c.id, can_write: false}))});
 
 describe('About page', () => {
   it('states the approved reporting rules and the unknown-is-not-zero rule', () => {
@@ -14,22 +14,20 @@ describe('About page', () => {
     expect(screen.getByText(/maximum of 25 marks/)).toBeInTheDocument();
     expect(screen.getByText(/never as zero/)).toBeInTheDocument();
   });
-  it('lists only the roles the server verified, with centre counts and the active role', () => {
+  it('lists the one server role with its effective centre count', () => {
     render(<About context={ctx([{id: 'c1', roles: ['Leadership', 'Cluster Officer']}, {id: 'c2', roles: ['Leadership', 'Cluster Officer']}, {id: 'c3', roles: ['Leadership']}])} role="Leadership" />);
     const list = screen.getByRole('list', {name: 'Verified roles'});
     const items = within(list).getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent('Leadership (active): 3 centres, read-only reporting');
-    expect(items[1]).toHaveTextContent('Cluster Officer: 2 centres');
-    expect(within(list).queryByText(/Teacher/)).not.toBeInTheDocument();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('Leadership (active): 3 centres');
   });
   it('uses the singular for one centre', () => {
     render(<About context={ctx([{id: 'c1', roles: ['Teacher']}])} role="Teacher" />);
     expect(screen.getByRole('listitem')).toHaveTextContent('Teacher (active): 1 centre');
   });
-  it('explains exports and has no automatic accessibility violations', async () => {
+  it('explains that operational-role exports are Leadership-only and has no automatic accessibility violations', async () => {
     const {container} = render(<About context={ctx([{id: 'c1', roles: ['Teacher']}])} role="Teacher" />);
-    expect(screen.getByText(/Every table has its own Export CSV button/)).toBeInTheDocument();
+    expect(screen.getByText(/CSV export is available only to Leadership/)).toBeInTheDocument();
     expect(await violations(container)).toEqual([]);
   });
 });

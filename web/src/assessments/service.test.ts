@@ -13,10 +13,10 @@ describe('assessments service', () => {
   });
   it('reads the roster on the observed date and only the saved results of the chosen definition', async () => {
     const rpc = vi.fn(async (name: string) => name === 'read_students'
-      ? [{child_id: 'k1', student_id: 'S1', enrolment_id: 'e1', grade_label: '4', shift_code: 'Evening', full_name: 'Asha'}]
+      ? [{child_id: 'k1', student_id: 'S1', enrolment_id: 'e1', grade_label: '4', shift_code: 'Evening', full_name: 'Asha', gender_code: 'Girl'}]
       : [{enrolment_id: 'e1', definition_id: 'd3', assessed_on: '2026-11-01', score: '18', row_version: 2}, {enrolment_id: 'e1', definition_id: 'd1', assessed_on: '2026-05-01', score: '9', row_version: 1}]);
     const service = createAssessmentsService(rpc as never);
-    expect((await service.roster('c1', '2026-11-14'))[0]).toEqual({enrolment: 'e1', child: 'k1', studentId: 'S1', name: 'Asha', grade: '4', shift: 'Evening'});
+    expect((await service.roster('c1', '2026-11-14'))[0]).toEqual({enrolment: 'e1', child: 'k1', studentId: 'S1', name: 'Asha', grade: '4', shift: 'Evening', gender: 'Girl'});
     expect(rpc).toHaveBeenCalledWith('read_students', {p_centre: 'c1', p_on: '2026-11-14', p_limit: 100, p_offset: 0});
     const saved = await service.saved('c1', 'd3', '2026-04-01', '2027-04-01');
     expect([...saved.keys()]).toEqual(['e1']);

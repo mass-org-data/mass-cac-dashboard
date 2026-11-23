@@ -25,7 +25,7 @@ try{
  ok(await rpc('record_centre_event',args)===1);ok(await rpc('record_centre_event',args)===1,'initial replay idempotent');
  await fails('23505',()=>rpc('record_centre_event',{...args,p_id:randomUUID()}));
  await fails('23514',()=>rpc('record_centre_event',{...args,p_id:randomUUID(),p_date:'2099-05-14'}));
- await fails('42501',()=>rpc('record_centre_event',args,user(4)));
+ await fails('42501',()=>rpc('record_centre_event',args,user(2)));   // a Teacher assigned only to the other centre (Leadership now inherits operational writes)
  await fails('42501',()=>rpc('record_centre_event',{...args,p_centre:'10000000-0000-4000-8000-000000000002'},user(1)));
  for(const role of ['anon','service_role'])await fails('42501',()=>rpc('record_centre_event',args,user(1),role));
  const register=await rpc('read_attendance_register_v3',{p_centre:centre,p_shift:'Morning',p_date:'2026-05-14'});

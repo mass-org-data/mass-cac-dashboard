@@ -36,7 +36,7 @@ SET ROLE authenticated;
 DO $$DECLARE actor record;c record;expected text;BEGIN
  FOR actor IN SELECT * FROM (VALUES(1,'Teacher'),(3,'Cluster Officer'),(4,'Leadership'),(7,'Expired'),(5,'Unassigned'),(2,'Other centre'))a(n,label) LOOP
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',('00000000-0000-4000-8000-'||lpad(actor.n::text,12,'0')))::text,false);
-  expected:=CASE WHEN actor.n IN(1,3) THEN '00000' ELSE '42501' END;
+  expected:=CASE WHEN actor.n IN(1,3,4) THEN '00000' ELSE '42501' END;
   FOR c IN SELECT * FROM core_test.definer_cases LOOP
    PERFORM core_test.probe(c.own_sql,expected,c.name||' / '||actor.label);
    IF actor.n IN(1,3) THEN PERFORM core_test.probe(c.foreign_sql,'42501',c.name||' / '||actor.label||' foreign scope');END IF;
@@ -54,16 +54,17 @@ SELECT core_test.probe(own_sql,'42501',name||' / service-role forged subject') F
 RESET ROLE;
 SELECT core_test.assert_true((SELECT children=(SELECT count(*) FROM mass_core.children) AND audit=(SELECT count(*) FROM mass_foundation.audit_events) FROM core_test.security_baseline),'security probes preserve all successful synthetic writes/audit via rollback');
 SELECT core_test.assert_true((SELECT count(*)=9 AND bool_and(p.prosecdef AND p.proconfig=ARRAY['search_path=pg_catalog'] AND pg_get_userbyid(p.proowner)='mass_core_owner' AND has_function_privilege('authenticated',p.oid,'EXECUTE') AND NOT has_function_privilege('anon',p.oid,'EXECUTE') AND NOT has_function_privilege('service_role',p.oid,'EXECUTE')) FROM core_test.definer_cases c JOIN pg_proc p ON p.proname=c.name JOIN pg_namespace n ON n.oid=p.pronamespace AND n.nspname='mass_api'),'all nine advisor functions retain reviewed definer owner/search path/effective ACL');
--- New profile correction must not turn centre write authority into profile access.
+-- Profile correction follows governed centre authority. Teacher/CO foreign
+-- scope remains denied; Leadership inherits correction authority globally.
 SET ROLE authenticated;
 DO $$BEGIN
  IF to_regprocedure('mass_api.correct_profile(uuid,bigint,text,text,boolean)') IS NOT NULL THEN
   PERFORM set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000003"}',false);
-  PERFORM core_test.probe($q$SELECT mass_api.correct_profile((SELECT child_id FROM core_test.ids WHERE label='A'),1,'Synthetic prohibited correction',NULL,NULL)$q$,'42501','correct_profile / CO without profile capability');
+  PERFORM core_test.probe($q$SELECT mass_api.correct_profile((SELECT child_id FROM core_test.ids WHERE label='A'),1,'Synthetic CO correction',NULL,NULL)$q$,'00000','correct_profile / CO governed scope');
   PERFORM set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001"}',false);
   PERFORM core_test.probe($q$SELECT mass_api.correct_profile((SELECT child_id FROM core_test.ids WHERE label='B'),1,'Synthetic foreign correction',NULL,NULL)$q$,'42501','correct_profile / foreign child');
   PERFORM set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004"}',false);
-  PERFORM core_test.probe($q$SELECT mass_api.correct_profile((SELECT child_id FROM core_test.ids WHERE label='A'),1,'Synthetic Leadership correction',NULL,NULL)$q$,'42501','correct_profile / Leadership');
+  PERFORM core_test.probe($q$SELECT mass_api.correct_profile((SELECT child_id FROM core_test.ids WHERE label='A'),1,'Synthetic Leadership correction',NULL,NULL)$q$,'00000','correct_profile / Leadership global scope');
  END IF;
 END;$$;
 RESET ROLE;

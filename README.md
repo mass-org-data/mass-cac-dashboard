@@ -1,8 +1,8 @@
 # MASS CAC Dashboard — frontend and local database
 
-> **Current direction — 3 November 2026:** Live mode is sign-in-first. The earlier no-login entry decision is superseded. Password recovery is implemented locally; hosted email/redirect configuration and release gates remain pending. See the [current integration handoff](docs/completion/2026-11-03/HANDOFF.md). Final calculation decisions and staff assignments are awaiting the files being prepared by MASS.
+> **Current direction — 22 November 2026:** The Vite/React application is the sole deployed interface. Permission Phases 1–8 and Leadership administration are installed on Preview only; Production is unchanged. See `AGENTS.md` and the dated permission release records for the verified hosted state and release gates.
 
-This package preserves the current frontend implementation, design, logo, styling, chart references and interactions. The application is vanilla JavaScript with HTML and CSS, **not React**; there are no React components or React dependencies to omit. No framework migration has been performed.
+The current application is a Vite/React/TypeScript frontend in `web/`, backed by shared browser-safe integration modules in `src/live/`. The retired vanilla entry point and `/vanilla/` deployment route are no longer built.
 
 The repository contains **19 SQL migrations implementing 27 relations**, isolated synthetic tests, and generated schema/security documentation. Migrations 001–017 are preserved unchanged. Additive migrations 018–019 provide the explicitly authorized private student/history import path, permanent readable student IDs, and period-only assessments. See the [current import handoff](docs/STUDENT-HISTORICAL-IMPORT-HANDOFF.md) for live execution evidence, counts, held records and recovery limits. The manager-approved frontend from `migration/frontend @ 0b57ea1` and production Vercel application are unchanged by this database release. Existing integration contracts remain in the [Phase 4 handoff](docs/PHASE-4-INTEGRATION-HANDOFF.md) and [workflow mapping](docs/PHASE-4-FRONTEND-API-MAPPING.csv). No hosted change or Vercel release is performed by the local commands below.
 
@@ -12,13 +12,12 @@ The repository contains **19 SQL migrations implementing 27 relations**, isolate
 
 ## Frontend modes and configuration
 
-Use Node 24.x (the SDK requires Node 22+). `npm ci` installs the official Supabase JS SDK and build-time esbuild dependency. Browser configuration is injected at build time from environment variables; `.env.example` is a reference, not an automatically loaded dotenv file.
+Use Node 24.x (the SDK requires Node 22+). `npm ci` installs the Vite/React toolchain and official Supabase JS SDK. Browser configuration is injected at build time from environment variables; `.env.example` is a reference, not an automatically loaded dotenv file.
 
 - `MASS_APP_MODE=live` (default): authenticated workspace, no sample fallback. Set `MASS_SUPABASE_URL=https://pbkwpfdpdtelmvbkzgvx.supabase.co` and `MASS_SUPABASE_PUBLISHABLE_KEY` outside Git. Only publishable keys are accepted; secret/service-role/legacy JWT keys are rejected.
 - `MASS_READ_API=baseline` (default): uses the existing 11 RPC baseline for read-only lists/attendance totals; live editing is gated because no scope/history discovery is available.
 - `MASS_READ_API=frontend-reads-v1`: full supported core flows, only after finalized migration 016 is separately authorized for hosted execution, applied and verified. It uses server-derived roles/centres, private-field RLS, real revisions and bounded reads. Removal/undo and other unsupported contracts remain disabled.
 - `MASS_DIRECTORY_API=directory-v1`: separately opt in only after 017 is applied and verified, with live + frontend-reads-v1. Defaults to off; adds donor filtering/drilldown and scoped staff/shift directory, never financial reporting.
-- `MASS_APP_MODE=demo npm run build`: original manager-approved sample app and its browser-local removal/undo/reset behavior. It never initializes Supabase or uploads local records.
 
 An unconfigured live build shows a configuration screen without network calls or demo data. No real key is committed. No programme records are persisted to browser storage. Auth session material intentionally uses a project-scoped `localStorage` key so staff remain signed in across browser restarts; sign-out clears that key. Use explicit sign-out on shared devices.
 
@@ -31,7 +30,7 @@ npm run test:browser
 npm run test:directory
 ```
 
-The API tests use synthetic PostgreSQL/PostgREST/JWT fixtures in an internal Docker network; browser tests require Python Playwright and Chromium and intercept all Auth/REST requests. Managed Supabase Auth remains a separate validation gate. Original 001–017 migration bytes/hashes are unchanged; the manifest appends 018–019. Never replay those already-applied migrations or run an unattended hosted migration push. Current hosted evidence is in the import handoff.
+The API tests use synthetic PostgreSQL/PostgREST/JWT fixtures in an internal Docker network. `test:browser` is an isolated protected-API compatibility harness; it is not the removed legacy UI. Managed Supabase Auth remains a separate validation gate. Never replay already-applied migrations or run an unattended hosted migration push. Current hosted evidence is in the dated release records.
 
 ## Database development and tests
 
@@ -89,7 +88,7 @@ The included `vercel.json` specifies no framework, the build command, output dir
 
 Only after separately authorizing a preview deployment and inspecting existing settings, push a non-production frontend branch such as `migration/frontend` and validate its preview. During database-only publication phases that prohibit Vercel deployment, a verified skip rule must cover the branch and PR before pushing; branch naming alone does not suppress deployments. Check all three role views, filters, charts, forms, browser-local persistence, downloads, mobile navigation, and browser errors. Vercel preview availability and production settings have not been verified from this environment; see [migration findings](docs/MIGRATION.md).
 
-Use Node.js 24.x for a consistent runtime; Node 22+ is required by the official SDK. The app remains static vanilla JavaScript, bundled with esbuild. Live mode needs the public configuration above; demo mode needs no backend/key. `PORT` or `--port` changes the local development-server port only. Do not push this new feature branch until Vercel suppression or a later Preview is separately approved: the existing skip rule for `feature/source-data-discovery` does not automatically cover `feature/supabase-frontend`.
+Use Node.js 24.x for a consistent runtime; Node 22+ is required by the official SDK. The static React application is built with Vite. Live mode needs the public configuration above. `PORT` or `--port` changes the local development-server port only.
 
 ## Run locally
 
@@ -100,19 +99,14 @@ npm run build
 npm run dev
 ```
 
-With no live configuration, the default build displays the configuration gate. To inspect the preserved sample UI, build with `MASS_APP_MODE=demo npm run build`. Open `http://localhost:3000`. Set `PORT` if a different port is required. The local server serves the built `dist/` directory. Serve over HTTP rather than double-clicking index.html: browser ES modules require HTTP.
+With no live configuration, the build displays the configuration gate. Open `http://localhost:3000`. Set `PORT` if a different port is required. The local server serves the built `dist/` directory. Serve over HTTP rather than double-clicking index.html: browser ES modules require HTTP.
 
 ## Files
 
-- `src/index.html`: HTML entry point.
-- `src/entry.js`: validated live/demo entry point.
-- `src/live/`: Auth/session handling, scoped API adapters and authenticated workspace.
-- `src/app.js`: original rendering, navigation and dialogs shared by explicit demo mode and authenticated integration; browser-local programme persistence is confined to demo mode.
-- `src/data.js`: fictional sample data, programme helpers and bands.
-- `src/dropout.js`: derived CAC dropout classification.
-- `src/style.css`: full responsive styles and print styles.
-- `src/mass-logo.jpg`: locally bundled MASS logo. Other bundled JPEGs are preview assets.
-- `scripts/build.mjs`: bundles the selected frontend and validated public environment configuration into `dist/`.
+- `web/index.html`, `web/src/`: the sole React application entry point and UI.
+- `web/public/`: static images and self-hosted fonts.
+- `src/live/`: shared Auth/session handling, scoped API adapters and pure integration helpers used by React and isolated compatibility tests.
+- `scripts/build.mjs`: validates public environment configuration and builds the React application into `dist/`.
 - `scripts/serve.mjs`: dependency-free local static server.
 - `vercel.json`, `package.json`, `package-lock.json`: deployment/build configuration.
 - `docs/PROJECT-NOTES-HISTORY.md`: original accumulated project notes; older entries can describe superseded versions. Source files are authoritative for current behaviour.
@@ -122,9 +116,7 @@ The Git checkout excludes generated `dist/`. Deployed builds do not publish a so
 
 ## Data and integration boundaries
 
-Explicit **demo mode** uses fictional sample records from `src/data.js` and browser-local edits (`mass-cac-companion-v1`). Its role selector and fixed operating date remain unchanged. It never initializes Supabase or uploads sample rows. Records from other websites/origins are not transferred.
-
-**Live mode** uses verified Supabase Auth identity and server-enforced scope. Programme data stays in memory; Auth session persistence uses the configured localStorage key and is cleared on sign-out. The live role display is read-only; no sample fallback, imported browser snapshots or private-schema API exposure is used. The integrated original interface requires the additive020–023 release after the already deployed001–019 baseline; its capability check fails closed until that release is installed. Real Auth/provider behavior, staff scope provisioning and production activation remain release gates documented in the handoff.
+The application uses verified Supabase Auth identity and server-enforced scope. Programme data stays in memory; Auth session persistence uses the configured localStorage key and is cleared on sign-out. The role display is read-only; there is no sample fallback, imported browser snapshot or private-schema API exposure.
 
 ## Validation
 
@@ -150,7 +142,7 @@ python tests/release/test_history_headers.py
 
 The database runner requires Docker and uses pinned images, ephemeral tmpfs and internal networking. Browser tests require Python Playwright and `/usr/bin/chromium`. Signed fixture identities stand in for managed Auth only inside the test bundle; they are never bundled into the application. No production connection string is accepted. Existing tests retain their historical migration baselines; `tests/students/run-current-core.sh` tests the current schema. Production backup, verified officer links, hosted Auth and deployed Preview UAT remain separately documented gates.
 
-The supported `npm run test:browser` runs the original-interface suite against an ephemeral local database. The legacy mock workspace browser file is retained as historical reference. Application source is distributed through the access-controlled GitHub repository rather than from the deployed dashboard.
+The supported `npm run test:browser` runs an isolated protected-API compatibility suite against an ephemeral local database. It does not build or publish the retired interface. Application source is distributed through the access-controlled GitHub repository rather than from the deployed dashboard.
 
 ## Revised final-release access and activation
 

@@ -13,11 +13,11 @@ export interface RegisterRow {
   created_by?: string | null; last_edited_by?: string | null; last_edited_at?: string | null;
 }
 export interface RegisterPage {rows: RegisterRow[]; total: number}
-export type SortKey = 'centre' | 'shift' | 'date' | 'present' | 'percentage';
-export interface PageRequest {offset: number; sort: SortKey; reverse: boolean}
+export type SortKey = 'centre' | 'shift' | 'date' | 'present' | 'percentage' | 'last_edited_at';
+export interface PageRequest {offset: number; sort: SortKey; reverse: boolean; limit?: number; query?: string}
 export interface Distribution {days: Array<{days: number; students: number}>; recorded_students?: number}
 export interface RosterStudent {id: string; name: string | null; grade: string; student_id?: string}
-export interface RegisterRead {roster: RosterStudent[]; marks: Array<{enrolment: string; code: string; version?: number}>; token: string; marks_token?: string; recorded: number; notes?: string}
+export interface RegisterRead {roster: RosterStudent[]; marks: Array<{id?: string; enrolment: string; code: string; version?: number}>; token: string; marks_token?: string; recorded: number; notes?: string}
 
 export const PAGE_SIZE = 10;
 /** The new interface supports the current register API (version 3 or later with paging and classroom sessions). */
@@ -27,6 +27,7 @@ const monthEnd = (month: string) => { const d = new Date(`${month}-01T12:00:00Z`
 const scope = (f: Filters) => ({p_centres: f.centres, p_from: `${f.month}-01`, p_until: monthEnd(f.month), p_shift: f.shift, p_grade: f.grade, p_gender: f.gender});
 
 export function createAttendanceService(rpc: Rpc) {
+  let v2 = true;
   return {
     async capabilities(): Promise<RegisterCapabilities> {
       try { return await rpc<RegisterCapabilities>('get_attendance_register_capabilities'); }
@@ -38,7 +39,18 @@ export function createAttendanceService(rpc: Rpc) {
     },
     async page(filters: Filters, page: PageRequest): Promise<RegisterPage> {
       if (!filters.centres.length) return {rows: [], total: 0};
-      const value = await rpc<RegisterPage | RegisterRow[]>('attendance_register_page', {...scope(filters), p_offset: page.offset, p_sort: page.sort, p_reverse: page.reverse});
+      if (v2) {
+        try {
+          return await rpc<RegisterPage>('attendance_register_page_v2', {...scope(filters), p_offset: page.offset, p_limit: page.limit ?? PAGE_SIZE, p_sort: page.sort, p_reverse: page.reverse, p_query: page.query ?? ''});
+        } catch (error) {
+          const e = error as {status?: number; code?: string};
+          if (!(e.status === 404 && e.code === 'PGRST202')) throw error;
+          v2 = false;
+        }
+      }
+      const sort = page.sort === 'last_edited_at' ? 'date' : page.sort;
+      const legacyReverse = sort === 'date' ? !page.reverse : page.reverse;
+      const value = await rpc<RegisterPage | RegisterRow[]>('attendance_register_page', {...scope(filters), p_offset: page.offset, p_sort: sort, p_reverse: legacyReverse});
       return Array.isArray(value) ? {rows: value, total: value.length} : value;
     },
     async distribution(filters: Filters): Promise<Distribution> {
@@ -49,6 +61,7 @@ export function createAttendanceService(rpc: Rpc) {
     saveClassroom: (args: Record<string, unknown>) => rpc<unknown>('save_classroom_register', args),
     saveHoliday: (args: Record<string, unknown>) => rpc<unknown>('save_centre_holiday', args),
     deleteRegister: (args: Record<string, unknown>) => rpc<unknown>('delete_attendance_register_v3', args),
+    deleteRecord: (request: string, record: string, expected: number, reason: string) => rpc<unknown>('delete_attendance_record', {p_request: request, p_record: record, p_expected: expected, p_reason: reason.trim()}),
   };
 }
 export type AttendanceService = ReturnType<typeof createAttendanceService>;

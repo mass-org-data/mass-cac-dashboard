@@ -6,6 +6,8 @@ import {discoverCapabilities} from '../../../src/live/backend-capabilities.js';
 import {BackendError} from '../../../src/live/api.js';
 import type {Backend, ProgrammeContext} from './controller';
 import {createReadCache} from './readCache';
+import type {Language} from '../i18n/I18n';
+import {AdministrationError, type AdministrationCall} from '../admin/contracts';
 
 export interface RuntimeConfig {mode: string; url?: string; publishableKey?: string; project?: string; readApi?: string; directoryApi?: string}
 
@@ -22,6 +24,7 @@ export interface Capabilities {reviewedCharts: boolean; reviewedAttendanceSeries
 
 export interface LiveBackend extends Backend {
   rpc: Rpc;
+  administration?: AdministrationCall;
   readDirectory(signal?: AbortSignal): Promise<Array<{centre_id: string; donor_label?: string | null}>>;
   readReferences(signal?: AbortSignal): Promise<References>;
   readCapabilities(): Promise<Capabilities>;
@@ -54,6 +57,7 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
   const directory = createDirectoryApi(client);
   const memo = new Map<string, {at: number; value: Promise<unknown>}>();
   const singletons = new Map<string, unknown>();
+  const authorizationListeners = new Set<() => void>();
   // Same error contract as the current application: BackendError carries rpc name, status and code.
   const call: Rpc = async (name, args = {}, signal) => {
     let result;
@@ -61,7 +65,14 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
       const query = client.schema('mass_api').rpc(name, args);
       result = await (signal ? query.abortSignal(signal) : query);
     } catch { throw new BackendError({message: 'network'}, 0, false, name); }
-    if (result.error) throw new BackendError(result.error, result.status, false, name);
+    if (result.error) {
+      const error = new BackendError(result.error, result.status, false, name);
+      if (result.status === 401 || result.status === 403) {
+        memo.clear(); singletons.clear();
+        for (const listener of authorizationListeners) listener();
+      }
+      throw error;
+    }
     return result.data;
   };
   // Argument-free startup probes are asked once and shared by every screen (an abort signal is never passed for them).
@@ -74,11 +85,29 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
   const rpc: Rpc = readCache.rpc;
   return {
     rpc,
+    async administration<T>(body: Record<string, string | number>): Promise<T> {
+      const {data, error} = await client.functions.invoke<T>('leadership-admin', {body});
+      if (error) {
+        const response: unknown = 'context' in error ? error.context : null;
+        if (response instanceof Response) {
+          if (response.status === 401) {
+            memo.clear(); readCache.clear(); singletons.clear();
+            for (const listener of authorizationListeners) listener();
+          }
+          const failure = await response.json().catch(() => null);
+          if (typeof failure?.error === 'string') throw new AdministrationError(failure.error);
+        }
+        throw new AdministrationError('administration_unavailable');
+      }
+      if (data === null) throw new AdministrationError('administration_unavailable');
+      return data;
+    },
     shared<T>(key: string, create: () => T): T {
       if (!singletons.has(key)) singletons.set(key, create());
       return singletons.get(key) as T;
     },
     reset() { memo.clear(); readCache.clear(); singletons.clear(); },
+    onAuthorizationFailure(callback) { authorizationListeners.add(callback); return () => authorizationListeners.delete(callback); },
     getSession: () => client.auth.getSession(),
     getUser: () => client.auth.getUser(),
     async signIn(email, password) { memo.clear(); readCache.clear(); singletons.clear(); await signInVerified(client, email, password, () => clearStoredSession(config)); },
@@ -87,6 +116,20 @@ export function createLiveBackend(config: RuntimeConfig): LiveBackend {
       try { await client.auth.signOut({scope: 'local'}); } finally { clearStoredSession(config); }
     },
     readContext: signal => reads.context(signal) as Promise<ProgrammeContext>,
+    async readLanguage() {
+      try {
+        const value = await rpc<{default_language?: string}>('get_user_preferences');
+        return value?.default_language === 'kn' ? 'kn' : 'en';
+      } catch (error) {
+        // During a staged deployment the interface can precede the additive preference migration.
+        if (error instanceof BackendError && (error.status === 404 || error.code === 'PGRST202')) return 'en';
+        throw error;
+      }
+    },
+    async setLanguage(language: Language) {
+      const value = await rpc<{default_language?: string}>('set_default_language', {p_language: language});
+      return value?.default_language === 'kn' ? 'kn' : 'en';
+    },
     readDirectory: () => memoise(memo, 'directory', () => (directory.centres as (options?: {signal?: AbortSignal}) => Promise<Array<{centre_id: string; donor_label?: string | null}>>)({})),
     readReferences: () => memoise(memo, 'references', () => reads.references() as Promise<References>),
     readCapabilities: () => memoise(memo, 'capabilities', async () => {

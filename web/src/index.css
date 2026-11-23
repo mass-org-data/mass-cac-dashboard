@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Noto Sans Kannada";
+  src: url("/fonts/NotoSansKannada-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* MASS tokens, taken from the current stylesheet (src/style.css) so both interfaces share one look. */
 @theme {
   --color-brand: #398593;
@@ -20,5 +28,8 @@
 }
 
 html { font-size: 16px; }
+/* Only the page area scrolls (inside the app shell); the document itself never scrolls past the end of the content. */
+html, body { overscroll-behavior: none; }
 body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); }
+html[lang="kn"] body { font-family: "Noto Sans Kannada", var(--font-sans); }
 :focus-visible { outline: 3px solid var(--color-brand); outline-offset: 2px; }

@@ -1,4 +1,4 @@
-import {render, screen, within} from '@testing-library/react';
+import {fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {describe, expect, it, vi, beforeEach} from 'vitest';
 import {DataTable, PAGE_SIZE, type Column} from './DataTable';
@@ -107,6 +107,19 @@ describe('DataTable', () => {
     expect(spy.mock.calls[0][1].split('\r\n')).toHaveLength(24);
   });
 
+  it('delegates search and exports every filtered server row, not only the visible page', async () => {
+    const user = userEvent.setup();
+    const spy = vi.spyOn(csv, 'downloadCsv').mockImplementation(() => undefined);
+    const onQueryChange = vi.fn();
+    const exportRows = vi.fn(async () => make(23));
+    renderTable(make(10), {server: {total: 23, pageIndex: 0, onPageChange: vi.fn(), sort: {id: 'centre', desc: false}, onSortChange: vi.fn(), query: '', onQueryChange, exportRows}});
+    fireEvent.change(screen.getByRole('searchbox', {name: 'Search this table'}), {target: {value: 'donor b'}});
+    expect(onQueryChange).toHaveBeenLastCalledWith('donor b');
+    await user.click(screen.getByRole('button', {name: /Export CSV/}));
+    await waitFor(() => expect(exportRows).toHaveBeenCalledOnce());
+    expect(spy.mock.calls[0][1].split('\r\n')).toHaveLength(24);
+  });
+
   it('offers no column reordering or column visibility controls', () => {
     renderTable(make(12));
     expect(screen.queryByRole('button', {name: /columns?|reorder|show|hide|toggle|drag/i})).not.toBeInTheDocument();
@@ -130,5 +143,31 @@ describe('DataTable', () => {
   it('has no automatically detectable accessibility violations', async () => {
     const {container} = renderTable(make(25));
     expect(await violations(container)).toEqual([]);
+  });
+
+  it('jumps straight to a typed page number, clamping out-of-range numbers', async () => {
+    const user = userEvent.setup();
+    renderTable(make(45));
+    const box = screen.getByRole('spinbutton', {name: 'Go to page'});
+    await user.clear(box); await user.type(box, '4{Enter}');
+    expect(screen.getByRole('status')).toHaveTextContent('Showing 31–40 of 45');
+    const next = screen.getByRole('spinbutton', {name: 'Go to page'});
+    await user.clear(next); await user.type(next, '99{Enter}');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Showing 41–45 of 45'));
+  });
+
+  it('shows the sort arrow after the header text on right-aligned columns too, and no server note', () => {
+    renderTable(make(12));
+    const header = screen.getByRole('columnheader', {name: /Students/});
+    const button = within(header).getByRole('button');
+    expect(button.childNodes[0]?.nodeType).toBe(Node.TEXT_NODE);  // text first, icon after
+    expect(button.className).not.toMatch(/flex-row-reverse/);
+    expect(screen.queryByText(/Sorted and paged by the server/)).not.toBeInTheDocument();
+  });
+
+  it('puts the export button in the title row, top right', () => {
+    renderTable(make(12));
+    const title = screen.getByRole('heading', {name: 'Centres'});
+    expect(title.parentElement).toContainElement(screen.getByRole('button', {name: /Export/}));
   });
 });

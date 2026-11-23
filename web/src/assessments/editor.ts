@@ -17,6 +17,14 @@ export function mapRound(date: string, year: Year, refs: References): Mapped {
   return {label: mapped.label, quarter: mapped.quarter, definitionId: mapped.definition.id};
 }
 
+/** The approved 25-mark definition of a round, used when a saved register is opened for editing (its date may be unknown). */
+export function definitionForQuarter(quarter: number, year: Year, refs: References): Mapped {
+  const period = refs.assessment_periods.find(p => p.academic_year_id === year.id && Number(p.quarter) === quarter);
+  const definition = period && refs.assessment_definitions.find(d => d.period_id === period.id && Number(d.max_score) === 25);
+  if (!definition) throw new Error(`F${quarter} has no approved 25-mark assessment definition.`);
+  return {label: `F${quarter}`, quarter, definitionId: definition.id};
+}
+
 export function validateStart(centre: string, date: string, today: string, allowed: string[]): string | null {
   if (!allowed.includes(centre)) return 'Choose a centre in your verified write scope.';
   if (!date) return 'Choose the observed assessment date.';
@@ -26,16 +34,30 @@ export function validateStart(centre: string, date: string, today: string, allow
 
 export type Entered = Record<string, string>;
 
-/** Builds the changed rows, or throws the first rule broken (wording matches the current interface). */
+/** The marks shown for each student when a register opens: the saved score, or blank. */
+export function initialEntries(roster: RosterStudent[], saved: Map<string, SavedResult>): Entered {
+  const entered: Entered = {};
+  for (const student of roster) { const old = saved.get(student.enrolment); if (old) entered[student.enrolment] = String(old.score); }
+  return entered;
+}
+
+/**
+ * Builds the changed rows, or throws the first rule broken. New marks use the register date. A changed saved mark is a
+ * correction: it keeps its original observed date (which may be unknown) and sends its version token. Blank never means zero
+ * and never clears a saved mark.
+ */
 export function buildScores(roster: RosterStudent[], entered: Entered, saved: Map<string, SavedResult>, date: string, definition: string): ScoreRow[] {
   const rows: ScoreRow[] = [];
   for (const student of roster) {
-    if (saved.has(student.enrolment)) continue; // existing results keep their original date and value
     const text = (entered[student.enrolment] ?? '').trim();
     if (text === '') continue;
     const score = Number(text);
     if (!Number.isFinite(score) || score < 0 || score > MAX_SCORE) throw new Error('Marks must be 0–25.');
-    rows.push({enrolment: student.enrolment, definition, date, score, expected: 0});
+    const old = saved.get(student.enrolment);
+    if (old) {
+      if (old.score === score) continue;
+      rows.push({enrolment: student.enrolment, definition, date: old.date, score, expected: old.version});
+    } else rows.push({enrolment: student.enrolment, definition, date, score, expected: 0});
   }
   if (!rows.length) throw new Error('No changed marks.');
   if (rows.length > MAX_ROWS) throw new Error('Narrow the selection to at most 500 changed scores.');

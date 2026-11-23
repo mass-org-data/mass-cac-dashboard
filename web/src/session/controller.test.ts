@@ -1,17 +1,19 @@
 import {describe, expect, it, vi} from 'vitest';
 import {createSessionController, type Backend, type ProgrammeContext, type Timers} from './controller';
 
-const context = (roles: string[][] = [['Leadership']]): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: false, centres: roles.map((r, i) => ({id: `c${i}`, label: `Centre ${i}`, roles: r}))});
+const context = (role = 'Leadership', centreCount = 1): ProgrammeContext => ({user_id: 'u1', role, capabilities: {read_profiles: true, read_visits: role !== 'Teacher', export: role === 'Leadership'}, centres: Array.from({length: centreCount}, (_, i) => ({id: `c${i}`, label: `Centre ${i}`}))});
 
 function setup(overrides: Partial<Backend> = {}) {
   const callbacks: Array<() => void> = [];
   const timers: Timers = {setInterval: cb => { callbacks.push(cb); return callbacks.length; }, clearInterval: () => undefined};
   const backend: Backend = {
     getSession: vi.fn(async () => ({data: {session: {user: {id: 'u1'}}}, error: null})),
-    getUser: vi.fn(async () => ({data: {user: {id: 'u1'}}, error: null})),
+    getUser: vi.fn(async () => ({data: {user: {id: 'u1', email: 'teacher@example.test'}}, error: null})),
     signIn: vi.fn(async () => undefined),
     signOut: vi.fn(async () => undefined),
     readContext: vi.fn(async () => context()),
+    readLanguage: vi.fn(async () => 'en' as const),
+    setLanguage: vi.fn(async language => language),
     ...overrides,
   };
   return {backend, controller: createSessionController(backend, timers), tick: () => callbacks.forEach(cb => cb())};
@@ -25,20 +27,27 @@ describe('session controller', () => {
     expect(backend.readContext).not.toHaveBeenCalled();
   });
 
-  it('becomes ready with server roles only and defaults to Leadership when authorised', async () => {
-    const {controller} = setup({readContext: vi.fn(async () => context([['Teacher'], ['Leadership', 'Cluster Officer']]))});
+  it('becomes ready with the one authoritative server role', async () => {
+    const {controller} = setup({readContext: vi.fn(async () => context('Cluster Officer', 2))});
     await controller.start();
     const state = controller.getState();
     expect(state.status).toBe('ready');
-    if (state.status === 'ready') { expect(state.roles).toEqual(['Leadership', 'Cluster Officer', 'Teacher']); expect(state.activeRole).toBe('Leadership'); }
+    if (state.status === 'ready') expect(state.role).toBe('Cluster Officer');
   });
 
-  it('only allows selecting a role the server returned', async () => {
-    const {controller} = setup({readContext: vi.fn(async () => context([['Teacher']]))});
+  it('loads the verified email and saved language, then persists a new default', async () => {
+    const {backend, controller} = setup({readLanguage: vi.fn(async () => 'kn' as const)});
     await controller.start();
-    expect(controller.selectRole('Leadership')).toBe(false);
-    expect(controller.selectRole('Teacher')).toBe(true);
-    expect(controller.selectRole('Admin')).toBe(false);
+    expect(controller.getState()).toMatchObject({status: 'ready', email: 'teacher@example.test', defaultLanguage: 'kn'});
+    await expect(controller.setDefaultLanguage('en')).resolves.toBe(true);
+    expect(backend.setLanguage).toHaveBeenCalledWith('en');
+    expect(controller.getState()).toMatchObject({status: 'ready', defaultLanguage: 'en'});
+  });
+
+  it('rejects a context without the authoritative server role', async () => {
+    const {controller} = setup({readContext: vi.fn(async () => ({...context('Teacher'), role: undefined} as unknown as ProgrammeContext))});
+    await controller.start();
+    expect(controller.getState().status).toBe('signed-out');
   });
 
   it('rejects a session whose verified user differs from the session user', async () => {
@@ -50,14 +59,14 @@ describe('session controller', () => {
   });
 
   it('refuses accounts with no verified scope', async () => {
-    const {controller} = setup({readContext: vi.fn(async () => ({user_id: 'u1', centres: []}))});
+    const {controller} = setup({readContext: vi.fn(async () => ({user_id: 'u1', role: 'Teacher', centres: []}))});
     await controller.start();
     expect(controller.getState()).toMatchObject({status: 'signed-out'});
   });
 
   it('ends the session when the authorised scope changes during re-verification', async () => {
     let call = 0;
-    const {backend, controller, tick} = setup({readContext: vi.fn(async () => (call++ === 0 ? context() : context([['Leadership'], ['Leadership']])))});
+    const {backend, controller, tick} = setup({readContext: vi.fn(async () => (call++ === 0 ? context() : context('Leadership', 2)))});
     await controller.start();
     tick();
     await vi.waitFor(() => expect(controller.getState().status).toBe('signed-out'));

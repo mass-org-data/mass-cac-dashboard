@@ -7,11 +7,12 @@ import type {OverviewService, Report} from '../data/overview';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
 const caps: RegisterCapabilities = {version: 6, enabled: true, session_entry: true, register_paging: true, present_distribution: true, holiday_code: true};
-const mk = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', operational_roles_enabled: true, centres: [{id: 'c1', label: 'Centre 01', roles, can_write: write}, {id: 'c2', label: 'Centre 02', roles, can_write: write}]});
+const mk = (roles: string[], write = true): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: write}, {id: 'c2', label: 'Centre 02', can_write: write}]});
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}], assessment_periods: [], assessment_definitions: []};
 const row = (n: number): RegisterRow => ({centre_id: n % 2 ? 'c1' : 'c2', shift_code: 'Morning', attendance_date: `2026-11-${String(30 - n).padStart(2, '0')}`, present: 10 - (n % 3), total: 12, eligible: 12, recorded: 12, percentage: 80 + n, created_by: 'Teacher A', last_edited_by: 'Teacher A', last_edited_at: '2026-11-13 10:00'});
 const allRows = Array.from({length: 23}, (_, i) => row(i + 1));
@@ -28,7 +29,8 @@ function setup(options: {caps?: RegisterCapabilities; context?: ProgrammeContext
   const overview = {report: vi.fn(async () => report), shifts: vi.fn(), series: vi.fn(async () => ({'2026-07': 86, '2026-11': 90})), clear: vi.fn()} as unknown as OverviewService;
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true}))} as unknown as LiveBackend;
   const role = options.role ?? 'Teacher';
-  const view = render(<Attendance backend={backend} context={options.context ?? mk([role])} role={role} service={service} overview={overview} />);
+  const centreRows = report.centres.map((r, i) => ({centre_id: r.id, centre_label: `Centre 0${i + 1}`, children: r.children, present: r.attendance.p, percentage: r.attendance.percentage, score_mean: null}));
+  const view = render(<Attendance backend={backend} context={options.context ?? mk([role])} role={role} service={service} overview={overview} tables={testTableService({reviewed_centres: centreRows})} />);
   return {service, overview, ...view};
 }
 const register = async () => screen.findByRole('table', {name: 'Attendance register'});
@@ -40,11 +42,11 @@ describe('Attendance page', () => {
     const {service} = setup();
     const table = await register();
     await waitFor(() => expect(bodyRows(table)).toHaveLength(10));
-    expect(vi.mocked(service.page).mock.calls[0]).toEqual([expect.objectContaining({month: '2026-11', centres: ['c1', 'c2']}), {offset: 0, sort: 'date', reverse: false}]);
+    expect(vi.mocked(service.page).mock.calls[0]).toEqual([expect.objectContaining({month: '2026-11', centres: ['c1', 'c2']}), {offset: 0, sort: 'date', reverse: true}]);
     expect(within(bodyRows(table)[0]).getAllByRole('cell')[2]).toHaveTextContent('2026-11-29');
     expect(screen.getAllByRole('status').some(el => /Showing 1–10 of 23/.test(el.textContent ?? ''))).toBe(true);
     await user.click(within(screen.getByRole('region', {name: /Attendance register/})).getByRole('button', {name: 'Next page'}));
-    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![1]).toEqual({offset: 10, sort: 'date', reverse: false}));
+    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![1]).toEqual({offset: 10, sort: 'date', reverse: true}));
     await waitFor(() => expect(bodyRows(table)).toHaveLength(10));
     await user.click(within(screen.getByRole('region', {name: /Attendance register/})).getByRole('button', {name: 'Next page'}));
     await waitFor(() => expect(bodyRows(table)).toHaveLength(3));
@@ -62,12 +64,18 @@ describe('Attendance page', () => {
     expect(within(table).getByRole('columnheader', {name: /Centre/})).toHaveAttribute('aria-sort', 'descending');
   });
 
-  it('shows holiday rows as recorded holidays and the audit columns', async () => {
+  it('shows holiday rows, hides audit identities and formats the last edit time', async () => {
     setup({page: async () => ({rows: [{...row(1), session_type: 'Holiday', total: null, present: 0, percentage: null}, row(2)], total: 2})});
     const table = await register();
     await waitFor(() => expect(bodyRows(table)).toHaveLength(2));
     expect(within(bodyRows(table)[0]).getByText('Recorded holiday', {selector: 'td'})).toBeInTheDocument();
-    expect(within(bodyRows(table)[1]).getAllByRole('cell')[5]).toHaveTextContent('Teacher A');
+    expect(within(table).queryByRole('columnheader', {name: 'Created by'})).not.toBeInTheDocument();
+    expect(within(table).queryByRole('columnheader', {name: 'Last edited by'})).not.toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', {name: /Last edited at/})).toBeInTheDocument();
+    const edited = within(bodyRows(table)[1]).getAllByRole('cell')[5].querySelector('time');
+    expect(edited).toHaveAttribute('dateTime', '2026-11-13 10:00');
+    expect(edited).toHaveAttribute('title', expect.stringMatching(/2026/));
+    expect(edited).toHaveTextContent(/ago/);
     expect(within(table).getAllByText('Excluded').length).toBe(1);
   });
 
@@ -80,19 +88,17 @@ describe('Attendance page', () => {
     expect(await screen.findByRole('dialog', {name: 'Add attendance'})).toBeInTheDocument();
     expect(service.readRegister).toHaveBeenLastCalledWith('c1', 'Morning', '2026-11-14');
     await user.click(screen.getByRole('button', {name: 'Cancel'}));
-    await user.click(within(table).getAllByRole('button', {name: /^Edit attendance:/})[0]);
+    await user.click(within(table).getAllByRole('button', {name: /^Edit:/})[0]);
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(service.readRegister).toHaveBeenLastCalledWith('c1', 'Morning', '2026-11-29');
   });
 
-  it('is read only for Leadership: no add button, no edit buttons', async () => {
-    setup({role: 'Leadership', context: mk(['Leadership'], false)});
+  it('gives Leadership inherited attendance entry across its writable scope', async () => {
+    setup({role: 'Leadership', context: mk(['Leadership'], true)});
     const table = await register();
     await waitFor(() => expect(bodyRows(table)).toHaveLength(10));
-    expect(screen.queryByRole('button', {name: 'Add Attendance'})).not.toBeInTheDocument();
-    expect(screen.getByText('Leadership views attendance only.')).toBeInTheDocument();
-    expect(within(table).queryByRole('button', {name: /Edit attendance/})).not.toBeInTheDocument();
-    expect(within(table).getAllByText('View only').length).toBe(10);
+    expect(screen.getByRole('button', {name: 'Add Attendance'})).toBeInTheDocument();
+    expect(within(table).getAllByRole('button', {name: /^Edit:/})).toHaveLength(10);
   });
 
   it('hides entry and explains why when the register is not enabled for entry', async () => {
@@ -110,8 +116,7 @@ describe('Attendance page', () => {
   it('shows the scorecards, the attendance bands and the centre table from the same reports', async () => {
     setup();
     await waitFor(() => expect(screen.getByRole('group', {name: 'Student attendance rate'})).toHaveTextContent('90.0%'));
-    expect(screen.getByRole('group', {name: 'Present student-days'})).toHaveTextContent('900');
-    expect(screen.getByRole('group', {name: 'Students with low attendance'})).toHaveTextContent('—');
+    expect(screen.getByRole('group', {name: 'Students with low attendance'})).toHaveTextContent('Students with low attendance2Fewer than 10');
     const bands = await screen.findByRole('img', {name: /Students by days present.*Below 15 2, 15 days 4, 16–20 6, 21 or more 3/});
     expect(bands).toBeInTheDocument();
     const centreTable = await screen.findByRole('table', {name: 'Attendance by centre'});
@@ -127,7 +132,7 @@ describe('Attendance page', () => {
     await user.click(within(screen.getByRole('region', {name: /Attendance register/})).getByRole('button', {name: 'Next page'}));
     await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)![1].offset).toBe(10));
     await user.selectOptions(screen.getByLabelText('Shift'), 'Evening');
-    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)).toEqual([expect.objectContaining({shift: 'Evening'}), {offset: 0, sort: 'date', reverse: false}]));
+    await waitFor(() => expect(vi.mocked(service.page).mock.calls.at(-1)).toEqual([expect.objectContaining({shift: 'Evening'}), {offset: 0, sort: 'date', reverse: true}]));
   });
 
   it('shows a retryable error when the register cannot be read', async () => {

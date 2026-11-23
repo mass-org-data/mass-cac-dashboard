@@ -6,11 +6,12 @@ import {createOverviewService, type OverviewService, type Report} from '../data/
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {violations} from '../test/axe';
+import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-11-14'}));
 
-const centres = Array.from({length: 12}, (_, i) => ({id: `c${i + 1}`, label: `Centre ${String(i + 1).padStart(2, '0')}`, roles: ['Leadership']}));
-const context: ProgrammeContext = {user_id: 'u1', centres};
+const centres = Array.from({length: 12}, (_, i) => ({id: `c${i + 1}`, label: `Centre ${String(i + 1).padStart(2, '0')}`}));
+const context: ProgrammeContext = {user_id: 'u1', role: 'Leadership', centres};
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}], assessment_periods: [1, 2].map(q => ({id: `p${q}`, academic_year_id: 'y1', quarter: q})), assessment_definitions: [{id: 'd1', period_id: 'p1'}, {id: 'd2', period_id: 'p2'}]};
 const report: Report = {
   children: 1470, grades: {1: 120, 2: 150}, genders: {Girl: 802, Boy: 668}, attendance: {p: 10, a: 1, l: 1, excluded: 0, percentage: 85.9},
@@ -18,7 +19,7 @@ const report: Report = {
   centres: centres.map((c, i) => ({id: c.id, children: 10 + i, attendance: {p: 1, a: 0, l: 0, excluded: 0, percentage: i === 3 ? null : 80 + i}, quarters: [{quarter: 2, n: i === 2 ? 0 : 5, mean: 15 + i}]})),
 };
 
-function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttendanceSeries: boolean}; service?: Partial<OverviewService>; role?: string; roles?: string[]} = {}) {
+function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttendanceSeries: boolean}; service?: Partial<OverviewService>; role?: string} = {}) {
   const rpc = vi.fn();
   const backend = {
     rpc,
@@ -33,8 +34,9 @@ function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttend
     clear: vi.fn(),
     ...options.service,
   } as OverviewService;
-  const ctx = options.roles ? {...context, centres: centres.map(c => ({...c, roles: options.roles!}))} : context;
-  return {backend, service, ...render(<Overview backend={backend} context={ctx} role={options.role ?? 'Leadership'} service={service} />)};
+  const ctx = {...context, role: options.role ?? 'Leadership'};
+  const tableRows = report.centres.map((row, i) => ({centre_id: row.id, centre_label: centres[i].label, children: row.children, percentage: row.attendance.percentage, score_n: row.quarters[0]?.n ?? null, score_mean: row.quarters[0]?.mean ?? null}));
+  return {backend, service, ...render(<Overview backend={backend} context={ctx} role={options.role ?? 'Leadership'} service={service} tables={testTableService({reviewed_centres: tableRows})} />)};
 }
 
 describe('Overview', () => {
@@ -42,9 +44,11 @@ describe('Overview', () => {
     setup();
     await screen.findByRole('group', {name: 'Students enrolled'});
     await waitFor(() => expect(screen.getByRole('group', {name: 'Students enrolled'})).toHaveTextContent('1,470'));
-    expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802');
-    expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('668');
-    expect(screen.getByRole('group', {name: 'Centres in this selection'})).toHaveTextContent('12');
+    expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%');
+    expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802 students');
+    expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('45.4%');
+    expect(screen.getByRole('group', {name: 'Boys'})).toHaveTextContent('668 students');
+    expect(screen.getByRole('group', {name: 'Centers'})).toHaveTextContent('12');
     expect(screen.getByRole('group', {name: 'Donors represented'})).toHaveTextContent('2');
     expect(screen.getByRole('group', {name: 'Students scoring above 20'})).toHaveTextContent('438');
     expect(screen.getByRole('group', {name: 'Students with good engagement'})).toHaveTextContent('—');
@@ -60,6 +64,8 @@ describe('Overview', () => {
     expect(line.getAttribute('aria-label')).toContain('Aug: 85.0%');
     expect(line.getAttribute('aria-label')).toContain('Nov: unknown');
     expect(line.getAttribute('aria-label')).toContain('Apr: unknown');
+    expect(within(line).getByText('86.0%')).toBeInTheDocument();
+    expect(within(line).getByText('85.0%')).toBeInTheDocument();
   });
 
   it('lists centres in the shared table: ten per page, alphabetical, unknown shown as Unknown', async () => {
@@ -106,7 +112,7 @@ describe('Overview', () => {
     expect(screen.getAllByText(/Unable to reach the service/).length).toBeGreaterThan(0);
     fail = false;
     await user.click(screen.getAllByRole('button', {name: 'Retry'})[0]);
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));
   });
 
   it('explains when the backend lacks the reviewed reports', async () => {
@@ -115,7 +121,7 @@ describe('Overview', () => {
   });
 
   it('hides the donor filter for non-Leadership roles and offers shift, grade and gender instead', async () => {
-    setup({role: 'Teacher', roles: ['Teacher']});
+    setup({role: 'Teacher'});
     await screen.findByRole('group', {name: 'Students enrolled'});
     expect(screen.queryByLabelText('Donor')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Shift')).toBeInTheDocument();
@@ -124,13 +130,13 @@ describe('Overview', () => {
   });
 
   it('labels the Cluster Officer card as assigned centres', async () => {
-    setup({role: 'Cluster Officer', roles: ['Cluster Officer']});
-    expect(await screen.findByRole('group', {name: 'Centres assigned to you'})).toHaveTextContent('12');
+    setup({role: 'Cluster Officer'});
+    expect(await screen.findByRole('group', {name: 'Centers'})).toHaveTextContent('12');
   });
 
   it('has no automatically detectable accessibility violations', async () => {
     const {container} = setup({service: {report: vi.fn(async () => report)}});
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));
     await screen.findByRole('img', {name: /Attendance by month/});
     expect(await violations(container)).toEqual([]);
   });
@@ -139,7 +145,7 @@ describe('Overview', () => {
     const rpc = vi.fn(async (name: string) => name === 'reviewed_attendance_series' ? [] : name === 'reviewed_shift_counts' ? {Morning: 300, Evening: 502} : report);
     const backend = {rpc, readReferences: async () => refs, readCapabilities: async () => ({reviewedCharts: true, reviewedAttendanceSeries: true}), readDirectory: async () => []} as unknown as LiveBackend;
     render(<Overview backend={backend} context={context} role="Leadership" service={createOverviewService(rpc as never)} />);
-    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('802'));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));
     await screen.findByRole('img', {name: /Students by shift/});
     expect(rpc.mock.calls.map(c => c[0])).not.toContain('programme_aggregate');
     expect(rpc.mock.calls.filter(c => c[0] === 'reviewed_chart_metrics')).toHaveLength(1);
