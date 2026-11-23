@@ -13,3 +13,14 @@ The schema supports the older Production authorization helpers as well as the go
 Apply only this reviewed additive migration where explicitly authorized; do not replay unrelated pending migrations or activate operational features. Data import authorization is separate from a frontend release. The current dashboard has not been changed to consume this new history RPC. A future reporting change must label monthly source evidence and avoid double-counting it alongside dated participation.
 
 Validation: `npm run test:monthly-activity`, `npm run test:sql:portable`, lint and syntax checks. Install the pinned `requirements-dev.txt` dependency for the XLSX tests. Live source files, SQL payloads, matching exceptions, HMAC keys and execution findings stay outside Git and CI artifacts.
+
+## Hosted migration identity
+
+The management API allocates its own ledger timestamp. Match these installed names and their reviewed definitions before any later release; never replay an already installed schema just because its local filename timestamp differs.
+
+| Local SQL version | Provider ledger version | Name |
+| --- | --- | --- |
+| `20261123052939` | `20261123054628` | `monthly_activity_history` |
+| `20261123054854` | `20261123054928` | `monthly_activity_history_indexes` |
+
+These are additive import-support migrations, separate from the pending frontend/permission release. Later permission installations must use the updated seal so the monthly-history deletion adapter is reconciled after the new workflow is defined.
