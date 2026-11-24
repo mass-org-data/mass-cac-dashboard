@@ -18,6 +18,9 @@ export async function fixture({metadata=true,centreEvents=true,review=true}={}) 
   if(file.includes('permission_destructive_workflows')){pendingDestructive=read('supabase/migrations/'+file);continue;}
   if(file.includes('leadership_user_administration')){pendingAdministration=read('supabase/migrations/'+file);continue;}
   if(file.includes('permission_legacy_retirement')){pendingLegacyRetirement=read('supabase/migrations/'+file);continue;}
+  // The complete release harness applies the round-3 migration. These focused
+  // legacy register fixtures intentionally stop at their historical API layer.
+  if(file.includes('vercel_feedback_sessions_profiles_reporting'))continue;
   if(file.includes('enrolment_promoted_status')||file.includes('visit_conducted_by')){pendingLate.push(read('supabase/migrations/'+file));continue;}
   const sql=read('supabase/migrations/'+file);
   if(file.includes('attendance_register_workflow')){
