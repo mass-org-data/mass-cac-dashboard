@@ -18,21 +18,20 @@ import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
-import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
+import {CentreFilter, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
 const asState = <T,>(slice: Slice<T>): LoadState => slice.status;
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status;
 const ROUNDS: Array<[string, string]> = [['1', 'F1'], ['2', 'F2'], ['3', 'F3'], ['4', 'F4']];
-const PAIRS: Array<[string, string]> = [['1|2', 'F1 → F2'], ['2|3', 'F2 → F3'], ['3|4', 'F3 → F4'], ['1|4', 'F1 → F4']];
 const one = (value: number | null | undefined) => (value === null || value === undefined ? null : Number(value.toFixed(1)));
 
 
 interface Boot {refs: References; capabilities: Capabilities}
 interface CentreRow {centre_id: string; centre_label: string; score_n: number | string | null; score_mean: number | string | null}
 
-const INITIAL_FILTERS = {round: '2', pair: '1|2', centre: '', shift: '', grade: '', gender: ''};
+const INITIAL_FILTERS = {round: '2', centre: '', shift: '', grade: '', gender: ''};
 
 export function Assessments({backend, context, service: injected, overview: injectedOverview, tables: injectedTables}: {backend: LiveBackend; context: ProgrammeContext; role: string; service?: AssessmentsService; overview?: OverviewService; tables?: TableService}) {
   const {t} = useI18n();
@@ -71,7 +70,7 @@ export function Assessments({backend, context, service: injected, overview: inje
   const year = refs ? (refs.academic_years.find(y => y.starts_on <= today && today < y.ends_before) ?? [...refs.academic_years].sort((a, b) => b.starts_on.localeCompare(a.starts_on))[0]) : undefined;
   const months = useMemo(() => (year ? academicMonths(year.starts_on) : []), [year]);
   const selected = useMemo(() => scope.filter(c => !filters.centre || c.id === filters.centre), [scope, filters.centre]);
-  const [fromQuarter, toQuarter] = filters.pair.split('|').map(Number) as [number, number];
+  const [fromQuarter, toQuarter] = [1, 2] as const;
   const selection = {month: today.slice(0, 7), centres: selected.map(c => c.id), shift: filters.shift || null, grade: filters.grade || null, gender: filters.gender || null};
   const key = JSON.stringify([selection, fromQuarter, toQuarter]);
 
@@ -91,10 +90,7 @@ export function Assessments({backend, context, service: injected, overview: inje
   const round = Number(filters.round);
   const stats = report.status === 'ready' ? report.value : null;
   const q = stats?.quarters.find(item => item.quarter === round);
-  const change = stats?.changes ?? null;
-  const growth = change && change.earlierMean !== null && change.laterMean !== null && change.earlierMean > 0 ? (change.laterMean - change.earlierMean) / change.earlierMean * 100 : null;
   const bands = q?.n ? [['0–8', q.low], ['9–15', q.developing], ['16–20', q.good], ['21–25', q.strong]].map(([label, value]) => ({label: String(label), value: Number(value ?? 0)})) : [];
-  const progress = [1, 2, 3, 4].map(r => ({label: `F${r}`, value: one(stats?.quarters.find(item => item.quarter === r)?.mean)}));
   const tableContext = useMemo(() => year ? {on: today, from: `${today.slice(0, 7)}-01`, until: (() => { const d = new Date(`${today.slice(0, 7)}-01T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), year: year.id, grade: selection.grade, shift: selection.shift, gender: selection.gender, earlier: fromQuarter, later: toQuarter, quarter: round} : null, [year, today, key, round]);
   const loadCentres = useCallback((request: TableRequest) => tableContext ? tables.page<CentreRow>('reviewed_centres', selection.centres, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, key, tableContext]);
   const centreTable = useServerTable<CentreRow>({key: JSON.stringify([key, round]), load: loadCentres, initialSort: 'centre', refreshKey});
@@ -144,47 +140,29 @@ export function Assessments({backend, context, service: injected, overview: inje
 
       <FilterPanel label={t('assessment.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
         <Select active={filters.round !== INITIAL_FILTERS.round} label={t('assessment.examRound')} value={filters.round} options={ROUNDS} onChange={value => setFilters(f => ({...f, round: value}))} />
-        <Select active={filters.pair !== INITIAL_FILTERS.pair} label={t('assessment.compareRounds')} value={filters.pair} options={PAIRS} onChange={value => setFilters(f => ({...f, pair: value}))} />
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        {scope.length > 1 ? <CentreFilter label={t('common.centre')} value={filters.centre} options={scope} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
         <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
         <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={english('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
         <Select label={t('common.gender')} value={filters.gender} options={[['Girl', english('common.girls')], ['Boy', english('common.boys')], ['Unknown', english('common.unknown')]]} allLabel={english('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
       </FilterPanel>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Scorecard reference="4.1" label={t('assessment.recorded')} value={stats && stats.children > 0 ? formatPercent(((q?.n ?? 0) / stats.children) * 100) : null} hint={stats ? t('assessment.recordedOf', {count: formatCount(q?.n ?? 0), total: formatCount(stats.children)}) : undefined} state={cardState(report)} message={reportMessage} />
         <Scorecard reference="4.2" label={t('assessment.averageStudent')} value={q?.mean != null ? q.mean.toFixed(1) : null} state={stats && q?.mean == null ? 'unavailable' : cardState(report)} message={stats && q?.mean == null ? t('assessment.noScoresRound') : reportMessage} />
         <Scorecard reference="4.3" label={t('assessment.withoutScore')} value={stats && stats.children > 0 ? formatPercent(((stats.children - (q?.n ?? 0)) / stats.children) * 100) : null} hint={stats ? t('assessment.withoutOf', {count: formatCount(stats.children - (q?.n ?? 0)), total: formatCount(stats.children)}) : undefined} state={cardState(report)} message={reportMessage} />
-        <Scorecard reference="4.4" label={t('assessment.improvement')} value={growth === null ? null : `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`} state={stats && growth === null ? 'unavailable' : cardState(report)} message={stats && growth === null ? t('assessment.improvementNeeds') : reportMessage} />
       </div>
       <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('assessment.ruleLead')}</strong> {t('assessment.ruleBody')}</p>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard reference="4.5" title={t('assessment.currentPerformance')} subtitle={t('assessment.records25', {round: round_label})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
+      <div className="grid gap-4">
+        <ChartCard reference="4.4" title={t('assessment.currentPerformance')} subtitle={t('assessment.records25', {round: round_label})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
           {bands.length ? <><ColumnChart axis={t('common.students')} description={t('assessment.bandDescription', {round: round_label})} items={bands} /><p className="mt-2 text-xs text-muted">{t('assessment.recordedN', {count: q?.n ?? 0, unbanded: q?.precision_review ?? 0})}</p></> : <p className="text-sm text-muted">{t('assessment.noScoresZero')}</p>}
-        </ChartCard>
-        <ChartCard reference="4.6" title={t('assessment.progress')} subtitle={t('assessment.progressHelp')} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
-          <ColumnChart axis={t('assessment.averageOutOf25')} description={t('assessment.progressDescription')} items={progress} />
-          <p className="mt-2 text-xs text-muted">{t('assessment.progressCaution')}</p>
-        </ChartCard>
-        <ChartCard reference="4.7" title={t('assessment.matched')} subtitle={t('assessment.matchedHelp', {from: fromQuarter, to: toQuarter})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)}>
-          {change && change.n > 0 ? (
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-muted">{t('assessment.matchedStudents')}</dt><dd className="font-semibold">{formatCount(change.n)}</dd>
-              <dt className="text-muted">{t('assessment.improved')}</dt><dd className="font-semibold">{formatCount(change.improved)}</dd>
-              <dt className="text-muted">{t('assessment.unchanged')}</dt><dd className="font-semibold">{formatCount(change.unchanged)}</dd>
-              <dt className="text-muted">{t('assessment.declined')}</dt><dd className="font-semibold">{formatCount(change.declined)}</dd>
-              <dt className="text-muted">{t('assessment.averageChange')}</dt><dd className="font-semibold">{change.meanChange === null ? t('common.unknown') : `${change.meanChange > 0 ? '+' : ''}${change.meanChange.toFixed(1)}`}</dd>
-              <dt className="text-muted">{t('assessment.averageEarlierLater')}</dt><dd className="font-semibold">{change.earlierMean === null || change.laterMean === null ? t('common.unknown') : `${change.earlierMean.toFixed(1)} → ${change.laterMean.toFixed(1)}`}</dd>
-            </dl>
-          ) : <p className="text-sm text-muted">{t('assessment.noMatched')}</p>}
         </ChartCard>
       </div>
 
-      <DataTable<CentreRow> reference="4.8" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
+      <DataTable<CentreRow> reference="4.5" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
         state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
 
-      <DataTable<RegisterRow> reference="4.9" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
+      <DataTable<RegisterRow> reference="4.6" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
         getRowId={r => `${r.centre_id}|${r.shift_code}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
       <p className="text-xs text-muted">{t('assessment.registerFootnote')}</p>
 

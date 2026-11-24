@@ -218,7 +218,7 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
   return (
     <section aria-labelledby={`${captionId}-title`} className="rounded-lg border border-line bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 id={`${captionId}-title`} className="text-sm font-semibold text-ink">{reference ? <span className="mr-1 text-xs font-bold text-brand-dark">{reference}</span> : null}{caption}</h2>
+        <h2 id={`${captionId}-title`} className="text-sm font-semibold text-muted">{reference ? <><span className="text-sm font-bold text-brand-dark">{reference}</span>{' '}</> : null}{caption}</h2>
         {exportName && state === 'ready' && data.length > 0 ? <Button variant="outline" size="sm" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{t(exporting ? 'table.exporting' : 'table.export')}</Button> : null}
       </div>
       <AsyncState state={state === 'ready' && data.length === 0 ? 'empty' : state} errorMessage={errorMessage} emptyMessage={emptyMessage ?? t('table.noRecords')} onRetry={onRetry}>{body}</AsyncState>

@@ -9,7 +9,16 @@ import {CACHE_TTL_MS, memoise, type Rpc} from '../session/backend';
 import {chunk, isMissingFunction} from '../lib/batched';
 
 export interface Selection {month: string; centres: string[]; shift: string | null; grade: string | null; gender: string | null}
-export interface Environment {yearId: string; today: string; fromQuarter: number; toQuarter: number; months: string[]; hasSeries: boolean}
+export interface Environment {
+  yearId: string;
+  today: string;
+  fromQuarter: number;
+  toQuarter: number;
+  months: string[];
+  hasSeries: boolean;
+  /** Optional report window. Overview uses the whole academic year; operational pages retain their selected month. */
+  period?: {on: string; from: string; until: string};
+}
 
 export interface QuarterStat {quarter: number; n: number; mean: number | null; above20?: number; low?: number; developing?: number; good?: number; strong?: number; precision_review?: number}
 export interface MorarjiCohort {cohort: string; cohortId: string; academicYear: string | null; members: number; passed: number | null; knownPassed: number; applied: number | null; attended: number | null}
@@ -58,10 +67,11 @@ export function createOverviewService(rpc: Rpc, limit: (job: () => Promise<unkno
   const queued = <T>(job: () => Promise<T>) => limit(job as () => Promise<unknown>) as Promise<T>;
 
   function report(selection: Selection, env: Environment): Promise<Report> {
-    const {from, until} = monthWindow(selection.month);
+    const {from, until} = env.period ?? monthWindow(selection.month);
+    const on = env.period?.on ?? reportingDay(selection.month, env.today);
     const key = JSON.stringify(['report', env.yearId, env.today, env.fromQuarter, env.toQuarter, selection]);
     return remember(key, () => queued(() => rpc<Report>('reviewed_chart_metrics', {
-      p_centres: selection.centres, p_on: reportingDay(selection.month, env.today), p_from: from, p_until: until, p_year: env.yearId,
+      p_centres: selection.centres, p_on: on, p_from: from, p_until: until, p_year: env.yearId,
       p_grade: selection.grade, p_shift: selection.shift, p_gender: selection.gender, p_earlier: env.fromQuarter, p_later: env.toQuarter,
     })));
   }
@@ -70,7 +80,7 @@ export function createOverviewService(rpc: Rpc, limit: (job: () => Promise<unkno
   let shiftCountsAvailable = true;
   async function shifts(selection: Selection, env: Environment): Promise<ShiftCounts> {
     if (shiftCountsAvailable && selection.centres.length) {
-      const day = reportingDay(selection.month, env.today);
+      const day = env.period?.on ?? reportingDay(selection.month, env.today);
       const key = JSON.stringify(['shift-counts', env.today, day, selection.centres]);
       try {
         const counts = await remember(key, () => queued(() => rpc<{Morning: number | string; Evening: number | string}>('reviewed_shift_counts', {p_centres: selection.centres, p_on: day})));

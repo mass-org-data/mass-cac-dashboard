@@ -8,6 +8,7 @@ import type {AssessmentsService, RosterStudent, SavedResult} from './service';
 import type {References} from '../session/backend';
 import {useI18n} from '../i18n/I18n';
 import {english} from '../components/FilterPanel';
+import {CentreCombobox} from '../components/CentreCombobox';
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'The request could not be completed.');
 type Year = References['academic_years'][number];
@@ -81,9 +82,7 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
         {step === 'start' ? (
           <>
             <div className="grid gap-3 sm:grid-cols-3">
-              <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('assessment.centreVillage')}
-                <select value={centre} disabled={centres.length === 1} onChange={event => setCentre(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">{centres.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select>
-              </label>
+              <CentreCombobox label={t('assessment.centreVillage')} value={centre} options={centres} disabled={centres.length === 1} onChange={setCentre} />
               <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('common.shift')}
                 <select value={shift} onChange={event => setShift(event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink"><option value="Morning">{english('common.morning')}</option><option value="Evening">{english('common.evening')}</option></select>
               </label>

@@ -4,6 +4,7 @@ import {Button} from './ui/button';
 import {cn} from '../lib/utils';
 import {useI18n} from '../i18n/I18n';
 import {en, type MessageKey} from '../i18n/en';
+import {CentreCombobox, type CentreOption} from './CentreCombobox';
 
 /** Dropdown option text is always English, even when the interface language is Kannada, so a value reads the same everywhere. */
 export const english = (key: MessageKey): string => en[key];
@@ -35,4 +36,9 @@ export function FilterSelect({label, value, options, onChange, allLabel, active:
       </select>
     </label>
   );
+}
+
+/** Searchable centre filter. Centre ids remain the controlled values. */
+export function CentreFilter({label, value, options, onChange, allLabel}: {label: string; value: string; options: CentreOption[]; onChange: (value: string) => void; allLabel: string}) {
+  return <CentreCombobox label={label} value={value} options={options} onChange={onChange} allLabel={allLabel} active={value !== ''} />;
 }

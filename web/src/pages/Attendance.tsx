@@ -19,7 +19,7 @@ import {createTableService, type TableRequest, type TableService} from '../table
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
 import type {MessageKey} from '../i18n/en';
-import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
+import {CentreFilter, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -131,7 +131,7 @@ export function Attendance({backend, context, service: injected, overview: injec
     {id: 'action', header: t('attendance.edit'), sortable: false, value: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday') : writable.some(c => c.id === r.centre_id) && canWrite ? t('attendance.edit') : t('attendance.viewOnly'),
       cell: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday')
         : writable.some(c => c.id === r.centre_id) && canWrite
-          ? <Button variant="ghost" size="sm" aria-label={t('attendance.editLabel', {centre: nameOf.get(r.centre_id) ?? r.centre_id, shift: r.shift_code, date: r.attendance_date})} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>{t('attendance.edit')}</Button>
+          ? <Button variant="ghost" size="sm" className="-ml-3" aria-label={t('attendance.editLabel', {centre: nameOf.get(r.centre_id) ?? r.centre_id, shift: r.shift_code, date: r.attendance_date})} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>{t('attendance.edit')}</Button>
           : <span className="text-xs text-muted">{t('attendance.viewOnly')}</span>},
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [nameOf, writable, canWrite, t]);
@@ -173,7 +173,7 @@ export function Attendance({backend, context, service: injected, overview: injec
 
       <FilterPanel label={t('attendance.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
         <Select active={filters.month !== ''} label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        {scope.length > 1 ? <CentreFilter label={t('common.centre')} value={filters.centre} options={scope} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
         <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
         <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={english('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
         <Select label={t('common.gender')} value={filters.gender} options={[['Girl', english('common.girls')], ['Boy', english('common.boys')], ['Unknown', english('common.unknown')]]} allLabel={english('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />

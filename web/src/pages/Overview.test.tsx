@@ -18,9 +18,10 @@ const report: Report = {
   quarters: [{quarter: 2, n: 1000, mean: 16.2, above20: 438}],
   centres: centres.map((c, i) => ({id: c.id, children: 10 + i, attendance: {p: 1, a: 0, l: 0, excluded: 0, percentage: i === 3 ? null : 80 + i}, quarters: [{quarter: 2, n: i === 2 ? 0 : 5, mean: 15 + i}]})),
 };
+const learning = {engagement_present: 75, engagement_expected: 100, engagement_rate: 75, score_n: 1100, score_mean: 16.4, centres: centres.map((c, i) => ({centre_id: c.id, engagement_rate: 70 + i, score_mean: 15 + i}))};
 
 function setup(options: {capabilities?: {reviewedCharts: boolean; reviewedAttendanceSeries: boolean}; service?: Partial<OverviewService>; role?: string} = {}) {
-  const rpc = vi.fn();
+  const rpc = vi.fn(async (name: string) => name === 'annual_learning_metrics' ? learning : []);
   const backend = {
     rpc,
     readReferences: vi.fn(async () => refs),
@@ -51,8 +52,9 @@ describe('Overview', () => {
     expect(screen.getByRole('group', {name: 'Centers'})).toHaveTextContent('12');
     expect(screen.getByRole('group', {name: 'Donors represented'})).toHaveTextContent('2');
     expect(screen.getByRole('group', {name: 'Students scoring above 20'})).toHaveTextContent('438');
-    expect(screen.getByRole('group', {name: 'Students with good engagement'})).toHaveTextContent('—');
-    for (const reference of ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '1.10', '1.11', '1.12', '1.13']) expect(screen.getAllByText(reference).length).toBeGreaterThan(0);
+    expect(screen.getByRole('group', {name: 'Activity Day engagement'})).toHaveTextContent('75.0%');
+    expect(screen.getByRole('group', {name: 'Average Exam Score'})).toHaveTextContent('16.4 / 25');
+    for (const reference of ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '1.10', '1.11', '1.12', '1.13', '1.14']) expect(screen.getAllByText(reference).length).toBeGreaterThan(0);
   });
 
   it('renders the grade, gender and shift charts and the monthly line', async () => {
@@ -76,13 +78,13 @@ describe('Overview', () => {
     const bodyRows = within(table).getAllByRole('row').slice(1);
     expect(bodyRows).toHaveLength(10);
     expect(within(bodyRows[0]).getAllByRole('cell')[0]).toHaveTextContent('Centre 01');
-    expect(within(table).getAllByText('Unknown').length).toBeGreaterThanOrEqual(2);
+    expect(within(table).getAllByText('Unknown').length).toBeGreaterThanOrEqual(1);
     expect(within(table).getByText('16.0 / 25')).toBeInTheDocument();
     await user.click(screen.getByRole('button', {name: 'Next page'}));
     expect(within(table).getAllByRole('row').slice(1)).toHaveLength(2);
   });
 
-  it('asks the service for the chosen month and donor scope', async () => {
+  it('asks the service for the chosen academic year and donor scope', async () => {
     const user = userEvent.setup();
     const {service} = setup();
     await screen.findByRole('group', {name: 'Students enrolled'});
@@ -91,8 +93,8 @@ describe('Overview', () => {
       const last = vi.mocked(service.report).mock.calls.at(-1)![0];
       expect(last.centres).toEqual(['c2', 'c4', 'c6', 'c8', 'c10', 'c12']);
     });
-    await user.selectOptions(screen.getByLabelText('Reporting month'), '2026-08');
-    await waitFor(() => expect(vi.mocked(service.report).mock.calls.at(-1)![0].month).toBe('2026-08'));
+    const env = vi.mocked(service.report).mock.calls.at(-1)![1];
+    expect(env.period).toEqual({on: '2026-11-14', from: '2026-04-01', until: '2027-04-01'});
   });
 
   it('loads historical activity with the selected month and donor scope on demand', async () => {
@@ -101,25 +103,22 @@ describe('Overview', () => {
     const rpc = vi.mocked(backend.rpc);
     rpc.mockResolvedValue([{centre_id: 'c2', shift_code: 'Evening', recorded_students: 8, students_at_least_two: 4, cultural_responses: 10, sports_responses: 6, missing_responses: 2}]);
     const disclosure = await screen.findByText('Historical activity participation');
-    expect(rpc).not.toHaveBeenCalled();
+    expect(rpc.mock.calls.map(call => call[0])).not.toContain('monthly_activity_history_summary');
     await user.selectOptions(screen.getByLabelText('Donor'), 'Donor B');
-    await user.selectOptions(screen.getByLabelText('Reporting month'), '2026-10');
     await user.click(disclosure);
     expect(await screen.findByRole('img', {name: /Cultural 10, Sports 6/})).toBeInTheDocument();
     expect(rpc).toHaveBeenLastCalledWith('monthly_activity_history_summary', {
       p_centres: ['c2', 'c4', 'c6', 'c8', 'c10', 'c12'],
-      p_month: '2026-10-01', p_shift: null, p_grade: null, p_gender: null,
+      p_month: '2026-11-01', p_shift: null, p_grade: null, p_gender: null,
     });
     expect(within(screen.getByRole('table', {name: 'By centre and shift'})).getByText('Centre 02')).toBeInTheDocument();
   });
 
-  it('shows a notice instead of data for a future month', async () => {
-    const user = userEvent.setup();
+  it('offers the Academic Year filter and no reporting-month filter', async () => {
     setup();
     await screen.findByRole('group', {name: 'Students enrolled'});
-    await user.selectOptions(screen.getByLabelText('Reporting month'), '2026-12');
-    expect((await screen.findAllByText(/Future reporting periods/)).length).toBeGreaterThan(0);
-    expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('—');
+    expect(screen.getByLabelText('Academic year')).toHaveValue('y1');
+    expect(screen.queryByLabelText('Reporting month')).not.toBeInTheDocument();
   });
 
   it('shows the shared error state with retry when the report fails, and recovers', async () => {
@@ -160,7 +159,7 @@ describe('Overview', () => {
   });
 
   it('uses the real service with a fake rpc and never makes per-centre calls', async () => {
-    const rpc = vi.fn(async (name: string) => name === 'reviewed_attendance_series' ? [] : name === 'reviewed_shift_counts' ? {Morning: 300, Evening: 502} : report);
+    const rpc = vi.fn(async (name: string) => name === 'annual_learning_metrics' ? learning : name === 'reviewed_attendance_series' ? [] : name === 'reviewed_shift_counts' ? {Morning: 300, Evening: 502} : report);
     const backend = {rpc, readReferences: async () => refs, readCapabilities: async () => ({reviewedCharts: true, reviewedAttendanceSeries: true}), readDirectory: async () => []} as unknown as LiveBackend;
     render(<Overview backend={backend} context={context} role="Leadership" service={createOverviewService(rpc as never)} />);
     await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));

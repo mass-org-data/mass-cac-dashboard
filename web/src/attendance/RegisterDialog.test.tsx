@@ -5,7 +5,7 @@ import {RegisterDialog} from './RegisterDialog';
 import type {AttendanceService, RegisterCapabilities, RegisterRead} from './service';
 import {violations} from '../test/axe';
 
-const caps: RegisterCapabilities = {version: 6, enabled: true, session_entry: true, register_paging: true, holiday_code: true};
+const caps: RegisterCapabilities = {version: 7, enabled: true, session_entry: true, student_sessions: true, register_paging: true, holiday_code: true};
 const centres = [{id: 'c1', label: 'Centre 01'}, {id: 'c2', label: 'Centre 02'}];
 const roster = [{id: 'e1', name: 'Asha', grade: '4'}, {id: 'e2', name: 'Ravi', grade: '5'}, {id: 'e3', name: null, grade: '5'}];
 const empty: RegisterRead = {roster, marks: [], token: 'tok-new', recorded: 0, notes: ''};
@@ -15,7 +15,8 @@ function setup(read: RegisterRead = empty, overrides: Partial<AttendanceService>
   const service = {
     capabilities: vi.fn(), page: vi.fn(), distribution: vi.fn(),
     readRegister: vi.fn(async () => read),
-    saveClassroom: vi.fn(async () => ({})), saveHoliday: vi.fn(async () => ({})), deleteRegister: vi.fn(async () => ({})),
+    readStudentSession: vi.fn(async () => read),
+    saveClassroom: vi.fn(async () => ({})), saveHoliday: vi.fn(async () => ({})), saveStudentSession: vi.fn(async () => ({})), deleteRegister: vi.fn(async () => ({})),
     ...overrides,
   } as unknown as AttendanceService;
   const onSaved = vi.fn(async () => undefined), onClose = vi.fn(), confirm = vi.fn(() => true);
@@ -154,10 +155,18 @@ describe('Attendance register dialog', () => {
     expect(onSaved).toHaveBeenCalledWith('Holiday saved.');
   });
 
-  it('does not offer Monthly Meeting here and sends people to the standard application', async () => {
-    setup();
+  it('records Activity Day attendance with the selected subtype', async () => {
+    const user = userEvent.setup();
+    const {service} = setup();
     await screen.findByText('Asha');
-    expect(screen.getByRole('option', {name: /Monthly Meeting/})).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText('Session Type'), 'Activity Day');
+    await waitFor(() => expect(service.readStudentSession).toHaveBeenCalledWith('c1', 'Morning', '2026-11-12', 'Activity Day', 'Cultural Activity 1'));
+    await user.selectOptions(screen.getByLabelText('Activity type'), 'Sports Activity 2');
+    await waitFor(() => expect(service.readStudentSession).toHaveBeenLastCalledWith('c1', 'Morning', '2026-11-12', 'Activity Day', 'Sports Activity 2'));
+    await user.click(screen.getByRole('button', {name: 'Mark all present'}));
+    await user.click(screen.getByRole('button', {name: 'Save session attendance'}));
+    await waitFor(() => expect(service.saveStudentSession).toHaveBeenCalled());
+    expect(vi.mocked(service.saveStudentSession).mock.calls[0][0]).toMatchObject({p_type: 'Activity Day', p_subtype: 'Sports Activity 2'});
   });
 
   it('asks before discarding unsaved changes when the selection or the dialog changes', async () => {

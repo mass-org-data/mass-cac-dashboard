@@ -21,13 +21,13 @@ export interface ReadStudent {
   centre_id?: string; child_id: string; student_id: string; enrolment_id: string; grade_label: string; shift_code: string; starts_on: string;
   status_code: string; row_version: number; full_name: string | null; gender_code: string | null; class10_board_passed: boolean | null;
 }
-export interface AcademicYear {academic_year_id: string; enrolment_id: string; label: string; grade: string; status: string | null; version: number; editable: boolean}
+export interface AcademicYear {academic_year_id: string; enrolment_id: string; enrolment_version?: number; label: string; grade: string; status: string | null; version: number; editable: boolean}
 
 export const PROFILE_PAGE_SIZE = 10;
 export const isProfileSupported = (c: ProfileCapabilities | null): c is ProfileCapabilities => Boolean(c && c.profile_pages && c.profile_sort_v2);
 
 export interface NewStudent {request: string; centre: string; grade: string; shift: string; start: string; name: string; gender: string | null}
-export interface ProfileEdit {child: string; enrolment: string; revision: number; name: string; gender: string | null; board: boolean | null; year?: {id: string; status: string; version: number}}
+export interface ProfileEdit {child: string; enrolment: string; revision: number; name: string; gender: string | null; board: boolean | null; year?: {id: string; status: string; grade: string; version: number; enrolmentVersion: number}}
 export interface StudentDeletionPreview {child_id: string; counts: Record<string, number>; token: string}
 
 export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unknown>) => Promise<unknown> = createLimiter(6), now: () => number = Date.now) {
@@ -88,7 +88,7 @@ export function createProfilesService(rpc: Rpc, limit: (job: () => Promise<unkno
     saveProfile(edit: ProfileEdit) {
       const base = {p_child: edit.child, p_name: edit.name.trim(), p_gender: edit.gender, p_board: edit.board};
       return edit.year
-        ? rpc<unknown>('save_student_profile_year', {...base, p_enrolment: edit.enrolment, p_profile_expected: edit.revision, p_year: edit.year.id, p_status: edit.year.status, p_year_expected: edit.year.version})
+        ? rpc<unknown>('save_student_profile_year_v2', {...base, p_enrolment: edit.enrolment, p_profile_expected: edit.revision, p_enrolment_expected: edit.year.enrolmentVersion, p_year: edit.year.id, p_status: edit.year.status, p_grade: edit.year.grade, p_year_expected: edit.year.version})
         : rpc<unknown>('correct_profile', {...base, p_expected: edit.revision});
     },
     /** Closes the open enrolment as Promoted on 1 April and opens the next-grade enrolment atomically (gate: enrolments). */

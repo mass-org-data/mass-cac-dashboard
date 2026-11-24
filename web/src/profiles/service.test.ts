@@ -52,8 +52,8 @@ describe('profiles service', () => {
   it('chooses the year-aware save when a current academic year exists and the plain correction otherwise', async () => {
     const rpc = vi.fn(async () => 1);
     const service = createProfilesService(rpc as never);
-    await service.saveProfile({child: 'c', enrolment: 'e', revision: 5, name: ' A ', gender: null, board: true, year: {id: 'y', status: 'Active', version: 2}});
-    expect(rpc).toHaveBeenLastCalledWith('save_student_profile_year', {p_child: 'c', p_name: 'A', p_gender: null, p_board: true, p_enrolment: 'e', p_profile_expected: 5, p_year: 'y', p_status: 'Active', p_year_expected: 2});
+    await service.saveProfile({child: 'c', enrolment: 'e', revision: 5, name: ' A ', gender: null, board: true, year: {id: 'y', status: 'Active', grade: '5', version: 2, enrolmentVersion: 3}});
+    expect(rpc).toHaveBeenLastCalledWith('save_student_profile_year_v2', {p_child: 'c', p_name: 'A', p_gender: null, p_board: true, p_enrolment: 'e', p_profile_expected: 5, p_enrolment_expected: 3, p_year: 'y', p_status: 'Active', p_grade: '5', p_year_expected: 2});
     await service.saveProfile({child: 'c', enrolment: 'e', revision: 5, name: 'A', gender: 'Girl', board: null});
     expect(rpc).toHaveBeenLastCalledWith('correct_profile', {p_child: 'c', p_name: 'A', p_gender: 'Girl', p_board: null, p_expected: 5});
   });

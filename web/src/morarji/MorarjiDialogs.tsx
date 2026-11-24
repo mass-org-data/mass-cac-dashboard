@@ -6,6 +6,7 @@ import {AsyncState} from '../components/AsyncState';
 import type {Grade5Student, MorarjiService} from './service';
 import {useI18n} from '../i18n/I18n';
 import {english} from '../components/FilterPanel';
+import {CentreCombobox} from '../components/CentreCombobox';
 
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'The request could not be completed.');
 const selectClass = 'min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink';
@@ -78,7 +79,7 @@ export function AddMorarjiDialog({service, enabled, centres, initialCentre, coho
         <div><DialogTitle>{t('morarji.addRecord')}</DialogTitle><DialogDescription id="morarji-add-help">{t('morarji.addHelp', {cohort: cohortLabel})}</DialogDescription></div>
         {enabled ? null : <p role="status" className="rounded-md bg-warn-soft p-3 text-sm text-warn">{t('common.activationPending')}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className={labelClass}>{t('common.centre')}<select value={centre} disabled={busy || centres.length === 1} onChange={event => setCentre(event.target.value)} className={selectClass}>{centres.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
+          <CentreCombobox label={t('common.centre')} value={centre} options={centres} disabled={busy || centres.length === 1} onChange={setCentre} />
           <label className={labelClass}>{t('common.student')}
             <select value={enrolment} disabled={busy || load !== 'ready'} onChange={event => setEnrolment(event.target.value)} className={selectClass}>
               <option value="">{t('morarji.selectStudent')}</option>{students.map(s => <option key={s.enrolment} value={s.enrolment}>{s.name ?? t('common.nameMissing')} · {s.studentId}</option>)}

@@ -5,7 +5,7 @@
 import type {Rpc} from '../session/backend';
 
 export interface RegisterCapabilities {
-  version: number; enabled: boolean; session_entry?: boolean; register_paging?: boolean; present_distribution?: boolean; holiday_code?: boolean; register_timestamps?: boolean;
+  version: number; enabled: boolean; session_entry?: boolean; student_sessions?: boolean; register_paging?: boolean; present_distribution?: boolean; holiday_code?: boolean; register_timestamps?: boolean;
 }
 export interface Filters {month: string; centres: string[]; shift: string | null; grade: string | null; gender: string | null}
 export interface RegisterRow {
@@ -58,8 +58,10 @@ export function createAttendanceService(rpc: Rpc) {
       return rpc<Distribution>('attendance_present_distribution', scope(filters));
     },
     readRegister: (centre: string, shift: string, date: string) => rpc<RegisterRead>('read_attendance_register_v3', {p_centre: centre, p_shift: shift, p_date: date}),
+    readStudentSession: (centre: string, shift: string, date: string, type: string, subtype: string | null) => rpc<RegisterRead>('read_student_session_register', {p_centre: centre, p_shift: shift, p_date: date, p_type: type, p_subtype: subtype}),
     saveClassroom: (args: Record<string, unknown>) => rpc<unknown>('save_classroom_register', args),
     saveHoliday: (args: Record<string, unknown>) => rpc<unknown>('save_centre_holiday', args),
+    saveStudentSession: (args: Record<string, unknown>) => rpc<unknown>('save_student_session_register', args),
     deleteRegister: (args: Record<string, unknown>) => rpc<unknown>('delete_attendance_register_v3', args),
     deleteRecord: (request: string, record: string, expected: number, reason: string) => rpc<unknown>('delete_attendance_record', {p_request: request, p_record: record, p_expected: expected, p_reason: reason.trim()}),
   };

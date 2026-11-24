@@ -20,10 +20,10 @@ describe('new student rules', () => {
 describe('edit rules', () => {
   const year = {academic_year_id: 'y', enrolment_id: 'e', label: '2026–2027', grade: '4', status: 'Active', version: 2, editable: true};
   it('needs a name and, for the current year, a valid status', () => {
-    expect(validateEdit({name: '', gender: '', board: '', status: 'Active'}, year)).toBe('Enter the verified name.');
-    expect(validateEdit({name: 'A', gender: '', board: '', status: ''}, year)).toBe('Select the current academic year status.');
-    expect(validateEdit({name: 'A', gender: '', board: '', status: 'Dropped Out'}, year)).toBeNull();
-    expect(validateEdit({name: 'A', gender: '', board: '', status: ''}, undefined)).toBeNull();
+    expect(validateEdit({name: '', gender: '', board: '', status: 'Active', grade: '4'}, year)).toBe('Enter the verified name.');
+    expect(validateEdit({name: 'A', gender: '', board: '', status: '', grade: '4'}, year)).toBe('Select the current academic year status.');
+    expect(validateEdit({name: 'A', gender: '', board: '', status: 'Dropped Out', grade: '4'}, year)).toBeNull();
+    expect(validateEdit({name: 'A', gender: '', board: '', status: '', grade: ''}, undefined)).toBeNull();
   });
   it('maps the board answer to yes, no or unknown', () => {
     expect([boardValue('true'), boardValue('false'), boardValue('')]).toEqual([true, false, null]);

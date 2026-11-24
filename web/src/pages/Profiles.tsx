@@ -11,7 +11,7 @@ import {sharedOverview, sharedProfiles} from '../data/shared';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {useI18n} from '../i18n/I18n';
-import {activeFieldClass, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
+import {activeFieldClass, CentreFilter, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -126,7 +126,7 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
         <label className="flex min-w-56 flex-1 flex-col gap-1 text-xs font-semibold text-muted">{t('profile.search')}
           <Input type="search" value={search} onChange={event => setSearch(event.target.value)} maxLength={160} className={activeFieldClass(search !== '')} />
         </label>
-        {writable.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={writable.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        {writable.length > 1 ? <CentreFilter label={t('common.centre')} value={filters.centre} options={writable} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
         <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={english('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
         <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
         <Select label={t('common.gender')} value={filters.gender} options={[['Girl', english('common.girls')], ['Boy', english('common.boys')], ['Unknown', english('common.unknown')]]} allLabel={english('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
@@ -143,7 +143,7 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
       <p className="text-xs text-muted">{t('profile.footnote')}</p>
 
       {adding ? <AddStudentDialog service={service} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={filters.centre || writable[0]!.id} today={today} enabled={addEnabled} onSaved={afterSave} onClose={() => setAdding(false)} /> : null}
-      {editing ? <EditStudentDialog service={service} student={editing} centreLabel={nameOf.get(editing.centre) ?? editing.centre} enabled={editEnabled} enrolEnabled={writes.enrolments === true} onSaved={afterSave} onClose={() => setEditing(null)} onDelete={canDelete ? () => { setDeleting(editing); setEditing(null); } : undefined} /> : null}
+      {editing ? <EditStudentDialog service={service} student={editing} centreLabel={nameOf.get(editing.centre) ?? editing.centre} today={today} enabled={editEnabled} enrolEnabled={writes.enrolments === true} onSaved={afterSave} onClose={() => setEditing(null)} onDelete={canDelete ? () => { setDeleting(editing); setEditing(null); } : undefined} /> : null}
       {deleting ? <DeleteStudentDialog service={service} student={deleting} enabled={writes.student_deletion === true} onSaved={afterSave} onClose={() => setDeleting(null)} /> : null}
     </div>
   );
