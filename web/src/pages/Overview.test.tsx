@@ -95,6 +95,24 @@ describe('Overview', () => {
     await waitFor(() => expect(vi.mocked(service.report).mock.calls.at(-1)![0].month).toBe('2026-08'));
   });
 
+  it('loads historical activity with the selected month and donor scope on demand', async () => {
+    const user = userEvent.setup();
+    const {backend} = setup();
+    const rpc = vi.mocked(backend.rpc);
+    rpc.mockResolvedValue([{centre_id: 'c2', shift_code: 'Evening', recorded_students: 8, students_at_least_two: 4, cultural_responses: 10, sports_responses: 6, missing_responses: 2}]);
+    const disclosure = await screen.findByText('Historical activity participation');
+    expect(rpc).not.toHaveBeenCalled();
+    await user.selectOptions(screen.getByLabelText('Donor'), 'Donor B');
+    await user.selectOptions(screen.getByLabelText('Reporting month'), '2026-10');
+    await user.click(disclosure);
+    expect(await screen.findByRole('img', {name: /Cultural 10, Sports 6/})).toBeInTheDocument();
+    expect(rpc).toHaveBeenLastCalledWith('monthly_activity_history_summary', {
+      p_centres: ['c2', 'c4', 'c6', 'c8', 'c10', 'c12'],
+      p_month: '2026-10-01', p_shift: null, p_grade: null, p_gender: null,
+    });
+    expect(within(screen.getByRole('table', {name: 'By centre and shift'})).getByText('Centre 02')).toBeInTheDocument();
+  });
+
   it('shows a notice instead of data for a future month', async () => {
     const user = userEvent.setup();
     setup();

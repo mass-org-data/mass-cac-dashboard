@@ -1,3 +1,4 @@
+import {HistoricalReports} from '../components/HistoricalReports';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {AsyncState, type LoadState} from '../components/AsyncState';
 import {ChartCard} from '../components/ChartCard';
@@ -149,6 +150,7 @@ export function Overview({backend, context, role, service: injected, tables: inj
           exportName={context.capabilities?.export === true ? `MASS-centre-comparison-${month}` : undefined} state={centreTable.result.status} server={centreTable.server}
           errorMessage={centreTable.error} emptyMessage={t('overview.noCentres')} onRetry={centreTable.retry}
         />
+        {selection ? <HistoricalReports kind="activity" rpc={backend.rpc} centres={selected} month={selection.month} shift={selection.shift} grade={selection.grade} gender={selection.gender} /> : null}
         <p className="text-xs text-muted">{t('overview.footnote', {unknown: UNKNOWN, rate: formatPercent(stats?.attendance.percentage ?? null)})}</p>
       </>}
     </div>
