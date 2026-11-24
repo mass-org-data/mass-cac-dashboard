@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
 import {Menu} from 'lucide-react';
 import {SessionProvider, useSession} from '../session/SessionProvider';
 import {createSessionController} from '../session/controller';
@@ -17,6 +17,7 @@ import {ROUTES, useRoute} from './route';
 import {SideMenu, unavailableReasonKey} from './SideMenu';
 import {I18nProvider, LanguageToggle, useI18n, type Language} from '../i18n/I18n';
 import {UserMenu} from './UserMenu';
+import {isSampleCentre, selectCentreScope} from './centreScope';
 import {UserAdministration} from '../admin/UserAdministration';
 import {InviteAcceptance} from '../admin/InviteAcceptance';
 
@@ -31,6 +32,12 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
   const [route, go] = useRoute();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sampleScopeUser, setSampleScopeUser] = useState<string | null>(null);
+  useEffect(() => { if (state.status !== 'ready') setSampleScopeUser(null); }, [state.status]);
+  const context = state.status === 'ready' ? state.context : null;
+  const hasSampleCentres = context?.role === 'Leadership' && context.centres.some(isSampleCentre);
+  const showSamples = hasSampleCentres && sampleScopeUser === context.user_id;
+  const selectedContext = useMemo(() => context ? selectCentreScope(context, showSamples) : null, [context, showSamples]);
   const toggleCollapsed = useCallback(() => setCollapsed(value => { writeCollapsed(!value); return !value; }), []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   useEffect(() => { if (state.status === 'ready') setLanguage(state.defaultLanguage); }, [setLanguage, state.status, state.status === 'ready' ? state.userId : '', state.status === 'ready' ? state.defaultLanguage : '']);
@@ -39,6 +46,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
   if (state.status === 'error') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="error" errorMessage={t(state.messageKey)} onRetry={() => void controller.start()} /></main>;
   if (state.status === 'signed-out') return <SignIn message={state.messageKey ? t(state.messageKey) : state.message ?? (inviteSaved ? t('invite.saved') : undefined)} onSignIn={(email, password) => controller.signIn(email, password)} />;
   const currentRoute = ROUTES.find(r => r.id === route)!;
+  const pageContext = selectedContext ?? state.context;
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-4 py-2">
@@ -49,6 +57,14 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold">{state.role}</span>
+          {hasSampleCentres ? <label className="flex items-center gap-2 text-sm">
+            <span>{t('scope.centres')}</span>
+            <select className="rounded-md border border-line bg-white px-2 py-1" value={showSamples ? 'sample' : 'programme'}
+              onChange={event => setSampleScopeUser(event.target.value === 'sample' ? state.userId : null)}>
+              <option value="programme">{t('scope.programme')}</option>
+              <option value="sample">{t('scope.sample')}</option>
+            </select>
+          </label> : null}
           <LanguageToggle compact />
           <UserMenu email={state.email} defaultLanguage={state.defaultLanguage} onSaveLanguage={controller.setDefaultLanguage} onSignOut={controller.signOut} />
         </div>
@@ -58,6 +74,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
         <main className="min-w-0 flex-1 overflow-y-auto">
           <div className="w-full space-y-6 p-4 md:p-6">
           <h1 className="text-2xl font-bold text-ink">{currentRoute.number === null ? null : <span className="text-brand-dark">{currentRoute.number}.</span>}{currentRoute.number === null ? '' : ' '}{t(currentRoute.labelKey)}</h1>
+        <Fragment key={showSamples ? 'sample' : 'programme'}>
         {unavailableReasonKey(state.role, route, state.context.capabilities)
           ? <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t(unavailableReasonKey(state.role, route, state.context.capabilities)!)}</p>
           : route === 'admin'
@@ -65,20 +82,21 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
             ? <UserAdministration call={backend.administration} actor={state.userId} centres={state.context.centres} />
             : <p role="alert">{t('admin.forbidden')}</p>
           : route === 'attendance'
-          ? <Attendance backend={backend} context={state.context} role={state.role} key={`a-${state.role}`} />
+          ? <Attendance backend={backend} context={pageContext} role={state.role} key={`a-${state.role}`} />
           : route === 'profiles'
-          ? <Profiles backend={backend} context={state.context} role={state.role} key={`p-${state.role}`} />
+          ? <Profiles backend={backend} context={pageContext} role={state.role} key={`p-${state.role}`} />
           : route === 'about'
-          ? <About context={state.context} role={state.role} />
+          ? <About context={pageContext} role={state.role} />
           : route === 'donors'
-          ? <AnnualDonor backend={backend} context={state.context} role={state.role} key={`d-${state.role}`} />
+          ? <AnnualDonor backend={backend} context={pageContext} role={state.role} key={`d-${state.role}`} />
           : route === 'morarji'
-          ? <Morarji backend={backend} context={state.context} role={state.role} key={`m-${state.role}`} />
+          ? <Morarji backend={backend} context={pageContext} role={state.role} key={`m-${state.role}`} />
           : route === 'visits'
-          ? <Visits backend={backend} context={state.context} role={state.role} key={`v-${state.role}`} />
+          ? <Visits backend={backend} context={pageContext} role={state.role} key={`v-${state.role}`} />
           : route === 'assessments'
-          ? <Assessments backend={backend} context={state.context} role={state.role} key={`s-${state.role}`} />
-          : <Overview backend={backend} context={state.context} role={state.role} key={`o-${state.role}`} />}
+          ? <Assessments backend={backend} context={pageContext} role={state.role} key={`s-${state.role}`} />
+          : <Overview backend={backend} context={pageContext} role={state.role} key={`o-${state.role}`} />}
+        </Fragment>
           </div>
         </main>
       </div>
