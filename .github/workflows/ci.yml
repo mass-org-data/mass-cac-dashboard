@@ -43,6 +43,7 @@ jobs:
       - run: npm ci
       - run: python -m pip install -r requirements-dev.txt
       - run: npm run test:monthly-activity
+      - run: npm run test:historical-visits
       - run: npm run test:sql:portable
       - run: npm run test:attendance
       - run: npm run test:staff-access

@@ -32,7 +32,8 @@
     "web:build": "node scripts/build.mjs",
     "web:typecheck": "tsc -p web/tsconfig.json",
     "test:web": "vitest run --config web/vite.config.ts",
-    "test:monthly-activity": "node tests/monthly-activity/import.mjs"
+    "test:monthly-activity": "node tests/monthly-activity/import.mjs",
+    "test:historical-visits": "node tests/monthly-activity/visits.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",
