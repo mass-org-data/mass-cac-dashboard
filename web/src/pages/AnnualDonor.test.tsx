@@ -10,13 +10,13 @@ import {testTableService} from '../test/tableService';
 
 vi.mock('../lib/dates', async importOriginal => ({...(await importOriginal<typeof import('../lib/dates')>()), todayIst: () => '2026-09-14'}));
 
-const ctx = (roles: string[]): ProgrammeContext => ({user_id: 'u1', role: roles[0], centres: [{id: 'c1', label: 'Centre 01', can_write: false}, {id: 'c2', label: 'Centre 02', can_write: false}]});
+const ctx = (roles: string[]): ProgrammeContext => ({user_id: 'u1', role: roles[0], capabilities: {export: roles[0] === 'Leadership'}, centres: [{id: 'c1', label: 'Centre 01', can_write: false}, {id: 'c2', label: 'Centre 02', can_write: false}]});
 const refs = {academic_years: [{id: 'y1', starts_on: '2026-04-01', ends_before: '2027-04-01'}, {id: 'y0', starts_on: '2025-04-01', ends_before: '2026-04-01'}], assessment_periods: [], assessment_definitions: []};
 const att = (p: number, a: number, l = 0) => ({p, a, l, excluded: 0, percentage: p + a + l ? 100 * p / (p + a + l) : null});
 const month = (n: number): Report => ({children: 30, grades: {}, genders: {}, attendance: att(100 * n, 10 * n), quarters: [], centres: [{id: 'c1', children: 18, attendance: att(60 * n, 5 * n), quarters: []}, {id: 'c2', children: 12, attendance: att(40 * n, 5 * n), quarters: []}]});
 const byMonth: Record<string, Report> = {'2026-04': month(1), '2026-05': month(2), '2026-06': month(3), '2026-07': month(4), '2026-08': month(5), '2026-09': month(6)};
 
-function setup(options: {role?: string; failMonth?: string; failAll?: boolean; failOnce?: string} = {}) {
+function setup(options: {role?: string; failMonth?: string; failAll?: boolean; failOnce?: string; exportAllowed?: boolean} = {}) {
   const seen = new Set<string>();
   const report = vi.fn(async (selection: Selection) => {
     if (options.failOnce === selection.month && !seen.has(selection.month)) { seen.add(selection.month); throw new Error('statement timeout'); }
@@ -27,12 +27,21 @@ function setup(options: {role?: string; failMonth?: string; failAll?: boolean; f
   const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: {}})), readDirectory: vi.fn(async () => [{centre_id: 'c1', donor_label: 'Donor A'}, {centre_id: 'c2', donor_label: 'Donor B'}])} as unknown as LiveBackend;
   const role = options.role ?? 'Leadership';
   const annual = [{id: 'c1', name: 'Centre 01', donor: 'Donor A', students: 18, p: 1260, a: 105, l: 0, percentage: 1260 / 13.65, loaded: 6}, {id: 'c2', name: 'Centre 02', donor: 'Donor B', students: 12, p: 840, a: 105, l: 0, percentage: 840 / 9.45, loaded: 6}];
-  const view = render(<AnnualDonor backend={backend} context={ctx([role])} role={role} overview={overview} tables={testTableService({annual_centres: annual})} />);
+  const context = ctx([role]);
+  if (options.exportAllowed === false) context.capabilities = {export: false};
+  const view = render(<AnnualDonor backend={backend} context={context} role={role} overview={overview} tables={testTableService({annual_centres: annual})} />);
   return {report, ...view};
 }
 const comparison = async () => screen.findByRole('table', {name: 'Centre comparison'});
 
 describe('Annual donor summary', () => {
+  it('suppresses official exports for a Leadership sample-centre view', async () => {
+    setup({exportAllowed: false});
+    const table = await comparison();
+    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(3));
+    expect(screen.queryByRole('button', {name: /Export CSV/})).not.toBeInTheDocument();
+  });
+
   it('adds P, A and L over the loaded months before dividing, not an average of monthly percentages', async () => {
     setup();
     const table = await comparison();

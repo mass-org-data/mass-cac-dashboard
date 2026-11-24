@@ -141,9 +141,9 @@ export function AnnualDonor({backend, context, role, overview: injected, tables:
         <LineChart points={points} description={t('donor.attendanceDescription')} />
       </ChartCard>
 
-      <DataTable<Line> reference="7.5" searchLabel={t('donor.searchCentre')} caption={t('donor.centreComparison')} columns={columns} data={centreTable.rows} getRowId={r => r.id} exportName={`MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}`}
+      <DataTable<Line> reference="7.5" searchLabel={t('donor.searchCentre')} caption={t('donor.centreComparison')} columns={columns} data={centreTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-annual-donor-summary-${year?.starts_on.slice(0, 4) ?? 'year'}` : undefined}
         state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} server={centreTable.server} />
-      <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('donor.exportLead')}</strong> {t('donor.exportBody')}</p>
+      {context.capabilities?.export === true ? <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('donor.exportLead')}</strong> {t('donor.exportBody')}</p> : null}
       <p className="text-xs text-muted">{t('donor.footnote')}</p>
     </div>
   );
