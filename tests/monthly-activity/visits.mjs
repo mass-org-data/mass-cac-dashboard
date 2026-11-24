@@ -12,6 +12,7 @@ try{
  await db.exec(read('tests/core/bootstrap.sql'));
  for(const n of fs.readdirSync('supabase/migrations').filter(n=>n.endsWith('.sql')&&n<'202610290000').sort())await db.exec(read('supabase/migrations/'+n));
  await db.exec(read('supabase/migrations/20261124062419_historical_officer_visits.sql'));
+ await db.exec(read('supabase/migrations/20261124120334_historical_visit_summary.sql'));
  await db.exec(`INSERT INTO mass_core.centres(id,label) VALUES('10000000-0000-4000-8000-000000000001','Synthetic Centre');`);
  execFileSync('python',['-c',`import sys,json,pathlib,datetime,openpyxl
 sys.path.insert(0,'scripts/imports')
@@ -45,6 +46,32 @@ except ValueError:pass
   await error('42501','SELECT * FROM mass_import.historical_officer_assignments');
   await db.exec('RESET ROLE');
  }
+ const centre = '10000000-0000-4000-8000-000000000001';
+ const outside = '10000000-0000-4000-8000-000000000002';
+ const reader = '40000000-0000-4000-8000-000000000001';
+ const verifier = '40000000-0000-4000-8000-000000000002';
+ await db.exec(`INSERT INTO auth.users(id) VALUES('${reader}'),('${verifier}');
+   INSERT INTO mass_core.centres(id,label) VALUES('${outside}','Out of Scope');
+   INSERT INTO mass_core.user_scope_grants(user_id,centre_id,role_code,starts_at,verified_by,verified_at)
+     VALUES('${reader}','${centre}','Cluster Officer','2000-01-01','${verifier}','2000-01-01');`);
+ const summarise = (centres, month = '2026-10-01', shift = 'NULL', officer = 'NULL') =>
+   `SELECT * FROM mass_api.historical_visit_summary(ARRAY[${centres.map(id => `'${id}'`).join(',')}]::uuid[], '${month}', ${shift}, ${officer})`;
+ await db.exec('SET ROLE authenticated;');
+ await error('42501', summarise([centre]));
+ await db.exec(`SELECT set_config('request.jwt.claims','{"sub":"${reader}","role":"authenticated"}',false);`);
+ const rows = (await db.query(summarise([centre]))).rows;
+ assert.deepEqual(rows.map(row => [row.shift_code, Number(row.recorded_visits)]), [['Evening', 1], ['Morning', 1]]);checks++;
+ ok((await db.query(summarise([centre], '2026-10-01', "'Morning'"))).rows.length === 1);
+ ok((await db.query(summarise([centre], '2026-10-01', 'NULL', "'20000000-0000-4000-8000-000000000001'"))).rows.length === 2);
+ ok((await db.query(summarise([centre], '2026-10-01', 'NULL', "'20000000-0000-4000-8000-000000000002'"))).rows.length === 0);
+ ok((await db.query(summarise([centre], '2026-11-01'))).rows.length === 0);
+ await error('42501', summarise([centre, outside]));
+ await error('22023', summarise([centre], '2026-10-02'));
+ for (const role of ['anon', 'service_role']) {
+   await db.exec(`RESET ROLE; SET ROLE ${role};`);
+   await error('42501', summarise([centre]));
+ }
+ await db.exec('RESET ROLE;');
  for(const table of ['historical_officer_assignments','historical_officer_visits']){
   await error('55000',`UPDATE mass_import.${table} SET payload_hmac=repeat('a',64)`);
   await error('55000',`DELETE FROM mass_import.${table}`);await error('55000',`TRUNCATE mass_import.${table} CASCADE`);
@@ -55,5 +82,5 @@ except ValueError:pass
  await error('23514',insert({...visit,id:'30000000-0000-4000-8000-000000000001',source_sha256:'a'.repeat(64)}));
  await error('23514',insert({...visit,id:'30000000-0000-4000-8000-000000000002',visit_date:'9999-10-01',reporting_month:'9999-10-01'}));
  ok((await db.query("SELECT bool_and(relrowsecurity AND relforcerowsecurity) ok FROM pg_class WHERE oid IN('mass_import.historical_officer_assignments'::regclass,'mass_import.historical_officer_visits'::regclass)")).rows[0].ok);
- console.log(`PASS ${checks} historical visit checks: reviewed aliases, duplicate/date holds, rollback, exact retry, immutable evidence, source validation, no login/scope creation and app access denial.`);
+ console.log(`PASS ${checks} historical visit checks: reviewed aliases, duplicate/date holds, rollback, exact retry, immutable evidence, source validation, no login/scope creation, scoped summaries and direct-access denial.`);
 }finally{await db.close();fs.rmSync(tmp,{recursive:true,force:true});}

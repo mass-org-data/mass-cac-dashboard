@@ -1,3 +1,4 @@
+import {HistoricalReports} from '../components/HistoricalReports';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {AsyncState} from '../components/AsyncState';
 import {DataTable, type Column} from '../components/DataTable';
@@ -172,6 +173,7 @@ export function Visits({backend, context, role, service: injected, tables: injec
         <DataTable<VisitRow> reference="5.7" caption={t('visit.log')} columns={logColumns} data={logTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-visit-log-${month}` : undefined}
           state={logTable.result.status} server={logTable.server} errorMessage={logTable.error} emptyMessage={t('visit.noMonth')} onRetry={logTable.retry} />
       ) : null}
+      {month && selected.length > 0 ? <HistoricalReports kind="visits" rpc={backend.rpc} centres={selected} month={month} shift={filters.shift || null} officer={officer} /> : null}
       <p className="text-xs text-muted">{t('visit.footnote')}</p>
 
       {recording ? <VisitDialog service={service} assignments={boot.value.assignments} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} initialShift={filters.shift} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setRecording(false)} /> : null}

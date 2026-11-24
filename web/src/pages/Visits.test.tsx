@@ -29,7 +29,7 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; summar
   const summary = options.summary ?? [sum('c1', 2, 2), sum('c2', 1, 0)];
   const officerLines = [{id: 'o1', label: 'Meera', completed: 5, target: 8, records: 5}];
   const view = render(<Visits backend={backend} context={ctx([role])} role={role} service={service} tables={testTableService({visit_centres: summary, visit_officers: officerLines, visit_log: [visit]})} />);
-  return {service, ...view};
+  return {backend, service, ...view};
 }
 
 describe('Visits page', () => {
@@ -40,6 +40,22 @@ describe('Visits page', () => {
     expect(screen.queryByText(/Standard target 8/)).not.toBeInTheDocument();
     expect(within(coverage).getByText('Recorded target achieved')).toBeInTheDocument();
     expect(within(coverage).getByText('Recorded target not achieved')).toBeInTheDocument();
+  });
+  it('reports historical entries for the selected shift without adding them to completed visits', async () => {
+    const user = userEvent.setup();
+    const {backend} = setup();
+    const rpc = vi.mocked(backend.rpc);
+    rpc.mockResolvedValue([{centre_id: 'c1', shift_code: 'Morning', recorded_visits: 14}]);
+    const disclosure = await screen.findByText('Historical visit records');
+    expect(rpc).not.toHaveBeenCalled();
+    await user.selectOptions(screen.getByLabelText('Reporting month'), '2026-10');
+    await user.selectOptions(screen.getByLabelText('Shift'), 'Morning');
+    await user.click(disclosure);
+    expect(await screen.findByRole('img', {name: /Recorded historical visits by shift.*Morning 14/})).toBeInTheDocument();
+    expect(rpc).toHaveBeenLastCalledWith('historical_visit_summary', {
+      p_centres: ['c1', 'c2'], p_month: '2026-10-01', p_shift: 'Morning', p_officer: 'o1',
+    });
+    expect(screen.getByRole('group', {name: 'Visits completed'})).toHaveTextContent('3');
   });
   it('asks only for the officer own coverage as a Cluster Officer', async () => {
     const {service} = setup();

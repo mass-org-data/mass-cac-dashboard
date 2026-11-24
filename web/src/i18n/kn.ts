@@ -1,4 +1,4 @@
-import type {MessageKey} from './en';
+import {en, type MessageKey} from './en';
 
 /**
  * MACHINE-DRAFTED KANNADA — PROGRAMME REVIEW REQUIRED.
@@ -6,6 +6,22 @@ import type {MessageKey} from './en';
  * Latin numerals are intentional and approved.
  */
 export const kn: Record<MessageKey, string> = {
+  'history.activity': en['history.activity'],
+  'history.visits': en['history.visits'],
+  'history.activityChart': en['history.activityChart'],
+  'history.activityBasis': en['history.activityBasis'],
+  'history.visitChart': en['history.visitChart'],
+  'history.visitBasis': en['history.visitBasis'],
+  'history.empty': en['history.empty'],
+  'history.error': en['history.error'],
+  'history.students': en['history.students'],
+  'history.two': en['history.two'],
+  'history.cultural': en['history.cultural'],
+  'history.sports': en['history.sports'],
+  'history.missing': en['history.missing'],
+  'history.yesResponses': en['history.yesResponses'],
+  'history.visitCount': en['history.visitCount'],
+  'history.byCentre': en['history.byCentre'],
   'route.admin': "ಬಳಕೆದಾರರ ನಿರ್ವಹಣೆ",
   'admin.teacher': "ಶಿಕ್ಷಕರು",
   'admin.officer': "ಕ್ಲಸ್ಟರ್ ಅಧಿಕಾರಿ",
