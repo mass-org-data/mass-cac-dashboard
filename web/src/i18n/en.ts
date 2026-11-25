@@ -276,6 +276,7 @@ export const en = {
   'register.clear': 'Clear',
   'register.reasonCorrection': 'Reason for correction or deletion',
   'register.reasonCorrectionPlaceholder': 'Required when you change or delete saved attendance',
+  'register.reasonSessionChangePlaceholder': 'Required when you change a saved session type',
   'register.saveHoliday': 'Save Holiday',
   'register.saveAttendance': 'Save Attendance',
   'register.deleteTitle': 'Delete attendance?',

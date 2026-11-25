@@ -5,18 +5,18 @@ import {RegisterDialog} from './RegisterDialog';
 import type {AttendanceService, RegisterCapabilities, RegisterRead} from './service';
 import {violations} from '../test/axe';
 
-const caps: RegisterCapabilities = {version: 7, enabled: true, session_entry: true, student_sessions: true, register_paging: true, holiday_code: true};
+const caps: RegisterCapabilities = {version: 8, enabled: true, session_entry: true, student_sessions: true, register_paging: true, holiday_code: true, all_session_registers: true, session_conversion: true};
 const centres = [{id: 'c1', label: 'Centre 01'}, {id: 'c2', label: 'Centre 02'}];
 const roster = [{id: 'e1', name: 'Asha', grade: '4'}, {id: 'e2', name: 'Ravi', grade: '5'}, {id: 'e3', name: null, grade: '5'}];
 const empty: RegisterRead = {roster, marks: [], token: 'tok-new', recorded: 0, notes: ''};
-const recorded: RegisterRead = {roster, marks: [{enrolment: 'e1', code: 'P'}, {enrolment: 'e2', code: 'P'}, {enrolment: 'e3', code: 'A'}], token: 'tok-saved', recorded: 3, notes: 'Saved note'};
+const recorded: RegisterRead = {roster, marks: [{enrolment: 'e1', code: 'P'}, {enrolment: 'e2', code: 'P'}, {enrolment: 'e3', code: 'A'}], token: 'tok-saved', marks_token: 'marks-saved', recorded: 3, notes: 'Saved note'};
 
 function setup(read: RegisterRead = empty, overrides: Partial<AttendanceService> = {}, props: Partial<React.ComponentProps<typeof RegisterDialog>> = {}) {
   const service = {
     capabilities: vi.fn(), page: vi.fn(), distribution: vi.fn(),
     readRegister: vi.fn(async () => read),
     readStudentSession: vi.fn(async () => read),
-    saveClassroom: vi.fn(async () => ({})), saveHoliday: vi.fn(async () => ({})), saveStudentSession: vi.fn(async () => ({})), deleteRegister: vi.fn(async () => ({})),
+    saveClassroom: vi.fn(async () => ({})), saveHoliday: vi.fn(async () => ({})), saveStudentSession: vi.fn(async () => ({})), convertSession: vi.fn(async () => ({})), deleteRegister: vi.fn(async () => ({})),
     ...overrides,
   } as unknown as AttendanceService;
   const onSaved = vi.fn(async () => undefined), onClose = vi.fn(), confirm = vi.fn(() => true);
@@ -167,6 +167,23 @@ describe('Attendance register dialog', () => {
     await user.click(screen.getByRole('button', {name: 'Save session attendance'}));
     await waitFor(() => expect(service.saveStudentSession).toHaveBeenCalled());
     expect(vi.mocked(service.saveStudentSession).mock.calls[0][0]).toMatchObject({p_type: 'Activity Day', p_subtype: 'Sports Activity 2'});
+  });
+
+  it('converts a saved register without reloading or losing its roster and marks', async () => {
+    const user = userEvent.setup();
+    const {service, onSaved} = setup(recorded);
+    await screen.findByText('Asha');
+    await user.selectOptions(screen.getByLabelText('Session Type'), 'Monthly Meeting');
+    expect(service.readStudentSession).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', {name: 'Present: Asha'})).toHaveAttribute('aria-pressed', 'true');
+    await user.type(screen.getByLabelText(/Reason for correction/), 'This was the monthly meeting');
+    await user.click(screen.getByRole('button', {name: 'Save session attendance'}));
+    await waitFor(() => expect(service.convertSession).toHaveBeenCalled());
+    expect(vi.mocked(service.convertSession).mock.calls[0][0]).toMatchObject({
+      p_from_type: 'Classroom', p_from_subtype: null, p_to_type: 'Monthly Meeting', p_to_subtype: null,
+      p_token: 'marks-saved', p_rows: [{enrolment: 'e1', code: 'P'}, {enrolment: 'e2', code: 'P'}, {enrolment: 'e3', code: 'A'}],
+    });
+    expect(onSaved).toHaveBeenCalledWith('Attendance session type updated.');
   });
 
   it('asks before discarding unsaved changes when the selection or the dialog changes', async () => {

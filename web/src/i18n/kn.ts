@@ -6,6 +6,7 @@ import {en, type MessageKey} from './en';
  * Latin numerals are intentional and approved.
  */
 export const kn: Record<MessageKey, string> = {
+  'register.reasonSessionChangePlaceholder': en['register.reasonSessionChangePlaceholder'],
   'history.activity': en['history.activity'],
   'history.visits': en['history.visits'],
   'history.activityChart': en['history.activityChart'],

@@ -117,21 +117,26 @@ export function Attendance({backend, context, service: injected, overview: injec
     if (!centre) return;
     const date = selection?.date ?? (month === today.slice(0, 7) ? today : `${month}-01`);
     setNotice('');
-    setEditor({centre, shift: selection?.shift ?? (filters.shift || 'Morning'), date});
+    setEditor({centre, shift: selection?.shift ?? (filters.shift || 'Morning'), date, sessionType: selection?.sessionType, activitySubtype: selection?.activitySubtype});
   };
 
-  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', present: 'present', percentage: 'percentage', last_edited_at: 'last_edited_at'} as Record<SortKey, string>)[page.sort];
+  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', session: 'session', present: 'present', percentage: 'percentage', last_edited_at: 'last_edited_at'} as Record<SortKey, string>)[page.sort];
+  const sessionLabel = (row: RegisterRow) => {
+    const label = row.session_type === 'Holiday' ? t('register.holiday') : row.session_type === 'Monthly Meeting' ? t('register.monthlyMeeting') : row.session_type === 'Activity Day' ? t('register.activityDay') : t('register.classroom');
+    return row.session_type === 'Activity Day' && row.session_subtype ? `${label} — ${row.session_subtype}` : label;
+  };
   const columns = useMemo<Column<RegisterRow>[]>(() => [
     {id: 'centre', header: t('common.centre'), value: r => nameOf.get(r.centre_id) ?? r.centre_id},
     {id: 'shift', header: t('common.shift'), value: r => r.shift_code},
     {id: 'date', header: t('common.date'), value: r => r.attendance_date},
+    {id: 'session', header: t('register.sessionType'), value: sessionLabel},
     {id: 'present', header: t('attendance.presentCount'), value: r => attendanceSummaryDisplay(r).ratio, numeric: true},
     {id: 'percentage', header: t('attendance.presentPercent'), value: r => attendanceSummaryDisplay(r).percentage, numeric: true, cell: r => { const d = attendanceSummaryDisplay(r); return <>{d.percentage}{d.incomplete ? <span className="block text-xs text-muted">{t('attendance.incomplete')}</span> : null}</>; }},
     {id: 'last_edited_at', header: t('attendance.lastEdited'), value: r => r.last_edited_at ?? null, cell: r => <time dateTime={r.last_edited_at ?? undefined} title={formatDateTime(r.last_edited_at)}>{formatRelativeTime(r.last_edited_at)}</time>},
     {id: 'action', header: t('attendance.edit'), sortable: false, value: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday') : writable.some(c => c.id === r.centre_id) && canWrite ? t('attendance.edit') : t('attendance.viewOnly'),
       cell: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday')
         : writable.some(c => c.id === r.centre_id) && canWrite
-          ? <Button variant="ghost" size="sm" className="-ml-3" aria-label={t('attendance.editLabel', {centre: nameOf.get(r.centre_id) ?? r.centre_id, shift: r.shift_code, date: r.attendance_date})} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>{t('attendance.edit')}</Button>
+          ? <Button variant="ghost" size="sm" className="-ml-3" aria-label={t('attendance.editLabel', {centre: nameOf.get(r.centre_id) ?? r.centre_id, shift: r.shift_code, date: r.attendance_date})} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date, sessionType: r.session_type as Selection['sessionType'], activitySubtype: r.session_subtype as Selection['activitySubtype']})}>{t('attendance.edit')}</Button>
           : <span className="text-xs text-muted">{t('attendance.viewOnly')}</span>},
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [nameOf, writable, canWrite, t]);
@@ -185,7 +190,7 @@ export function Attendance({backend, context, service: injected, overview: injec
       {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
         <div aria-busy={registerBusy} className={registerBusy ? 'opacity-60 transition-opacity' : undefined}>
         <DataTable<RegisterRow>
-          reference="3.3" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}`}
+          reference="3.3" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}|${r.session_type}|${r.session_subtype ?? ''}`}
           exportName={context.capabilities?.export === true ? `MASS-attendance-register-${month}` : undefined} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
           headerActions={canWrite ? <Button size="sm" onClick={() => openEditor()}>{t('attendance.add')}</Button> : null}
         />

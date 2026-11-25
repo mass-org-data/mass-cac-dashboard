@@ -72,7 +72,7 @@ describe('Attendance page', () => {
     expect(within(table).queryByRole('columnheader', {name: 'Created by'})).not.toBeInTheDocument();
     expect(within(table).queryByRole('columnheader', {name: 'Last edited by'})).not.toBeInTheDocument();
     expect(within(table).getByRole('columnheader', {name: /Last edited at/})).toBeInTheDocument();
-    const edited = within(bodyRows(table)[1]).getAllByRole('cell')[5].querySelector('time');
+    const edited = within(bodyRows(table)[1]).getAllByRole('cell')[6].querySelector('time');
     expect(edited).toHaveAttribute('dateTime', '2026-11-13 10:00');
     expect(edited).toHaveAttribute('title', expect.stringMatching(/2026/));
     expect(edited).toHaveTextContent(/ago/);
