@@ -91,6 +91,7 @@ export function Assessments({backend, context, service: injected, overview: inje
   const stats = report.status === 'ready' ? report.value : null;
   const q = stats?.quarters.find(item => item.quarter === round);
   const bands = q?.n ? [['0–8', q.low], ['9–15', q.developing], ['16–20', q.good], ['21–25', q.strong]].map(([label, value]) => ({label: String(label), value: Number(value ?? 0)})) : [];
+  const progress = ROUNDS.map(([value, label]) => ({label, value: one(stats?.quarters.find(item => item.quarter === Number(value))?.mean)}));
   const tableContext = useMemo(() => year ? {on: today, from: `${today.slice(0, 7)}-01`, until: (() => { const d = new Date(`${today.slice(0, 7)}-01T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), year: year.id, grade: selection.grade, shift: selection.shift, gender: selection.gender, earlier: fromQuarter, later: toQuarter, quarter: round} : null, [year, today, key, round]);
   const loadCentres = useCallback((request: TableRequest) => tableContext ? tables.page<CentreRow>('reviewed_centres', selection.centres, tableContext, request) : Promise.resolve({rows: [], total: 0}), [tables, key, tableContext]);
   const centreTable = useServerTable<CentreRow>({key: JSON.stringify([key, round]), load: loadCentres, initialSort: 'centre', refreshKey});
@@ -132,10 +133,7 @@ export function Assessments({backend, context, service: injected, overview: inje
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{t('assessment.operationalIntro')}</p>
-        {canEnter ? <Button onClick={() => { setNotice(''); setEntering(true); }}>{t('assessment.enter')}</Button> : <p className="text-xs text-muted">{t('assessment.noEntry')}</p>}
-      </div>
+      <p className="text-sm text-muted">{t('assessment.operationalIntro')}</p>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
       <FilterPanel label={t('assessment.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
@@ -162,8 +160,13 @@ export function Assessments({backend, context, service: injected, overview: inje
       <DataTable<CentreRow> reference="4.5" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
         state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
 
-      <DataTable<RegisterRow> reference="4.6" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
-        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')} />
+      <ChartCard reference="4.6" title={t('assessment.progress')} subtitle={t('assessment.progressHelp')} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
+        <ColumnChart axis={t('assessment.averageOutOf25')} description={t('assessment.progressDescription')} items={progress} maximum={25} />
+      </ChartCard>
+
+      <DataTable<RegisterRow> reference="4.7" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
+        getRowId={r => `${r.centre_id}|${r.shift_code}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')}
+        headerActions={canEnter ? <Button size="sm" onClick={() => { setNotice(''); setEntering(true); }}>{t('assessment.enter')}</Button> : null} />
       <p className="text-xs text-muted">{t('assessment.registerFootnote')}</p>
 
       {entering && year && refs ? <EntryDialog service={service} refs={refs} year={year} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.some(c => c.id === filters.centre) ? filters.centre : writable[0]!.id} today={today} enabled={entryEnabled} onSaved={afterSave} onClose={() => setEntering(false)} /> : null}

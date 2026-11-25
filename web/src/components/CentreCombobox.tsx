@@ -65,7 +65,7 @@ export function CentreCombobox({label, value, options, onChange, allLabel, disab
           autoComplete="off"
           disabled={disabled}
           value={query}
-          onFocus={() => { setOpen(true); setHighlighted(0); }}
+          onFocus={() => { setOpen(true); setHighlighted(0); if (value === '' && allLabel !== undefined) setQuery(''); }}
           onChange={event => { setQuery(event.target.value); setOpen(true); setHighlighted(0); }}
           onKeyDown={event => {
             if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setHighlighted(index => Math.min(matches.length - 1, index + 1)); }

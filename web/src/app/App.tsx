@@ -78,7 +78,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
         {unavailableReasonKey(state.role, route, state.context.capabilities)
           ? <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t(unavailableReasonKey(state.role, route, state.context.capabilities)!)}</p>
           : route === 'admin'
-          ? state.context.capabilities?.manage_users === true
+          ? state.role === 'Leadership'
             ? <UserAdministration call={backend.administration} actor={state.userId} centres={state.context.centres} />
             : <p role="alert">{t('admin.forbidden')}</p>
           : route === 'attendance'

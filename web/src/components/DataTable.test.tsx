@@ -170,4 +170,11 @@ describe('DataTable', () => {
     const title = screen.getByRole('heading', {name: 'Centres'});
     expect(title.parentElement).toContainElement(screen.getByRole('button', {name: /Export/}));
   });
+
+  it('puts page actions after export in the title row', () => {
+    renderTable(make(12), {headerActions: <button type="button">Add centre</button>});
+    const titleRow = screen.getByRole('heading', {name: 'Centres'}).parentElement!;
+    const buttons = within(titleRow).getAllByRole('button');
+    expect(buttons.map(button => button.textContent)).toEqual(['Export CSV', 'Add centre']);
+  });
 });

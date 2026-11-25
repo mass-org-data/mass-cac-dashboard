@@ -12,8 +12,11 @@ export function niceTicks(max: number, count = 4): {top: number; ticks: number[]
 const fill = {brand: 'var(--color-brand-dark)', accent: 'var(--color-warn)'} as const;
 
 /** Accessible SVG column chart. Unknown values draw no bar and read "not recorded". */
-export function ColumnChart({items, axis = 'Students', description}: {items: ColumnItem[]; axis?: string; description: string}) {
-  const {top, ticks} = niceTicks(Math.max(0, ...items.map(item => item.value ?? 0)));
+export function ColumnChart({items, axis = 'Students', description, maximum}: {items: ColumnItem[]; axis?: string; description: string; maximum?: number}) {
+  const scale = maximum === undefined
+    ? niceTicks(Math.max(0, ...items.map(item => item.value ?? 0)))
+    : {top: maximum, ticks: Array.from({length: 6}, (_, index) => maximum * index / 5)};
+  const {top, ticks} = scale;
   const width = 380, height = 278, left = 44, right = 12, baseline = 202, plot = 168;
   const step = (width - left - right) / Math.max(1, items.length);
   const barWidth = Math.min(34, step * 0.62);

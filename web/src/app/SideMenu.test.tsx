@@ -23,31 +23,26 @@ describe('side menu', () => {
   it('shows the numbered screens in the original menu style, with the active one marked', () => {
     render(<Harness role="Cluster Officer" initial="attendance" />);
     expect(screen.getByText('Programme')).toBeInTheDocument();
-    expect(labels().slice(0, 5)).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments', '5. Visits']);
-    expect(screen.getByRole('link', {name: '2. Attendance'})).toHaveAttribute('aria-current', 'page');
+    expect(labels().slice(0, 5)).toEqual(['1. Overview', '2. Student profiles', '3. Attendance', '4. Assessments', '5. Visits']);
+    expect(screen.getByRole('link', {name: '3. Attendance'})).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', {name: '1. Overview'})).not.toHaveAttribute('aria-current');
   });
-  it('lists the seven numbered screens for every role, with About last and unnumbered; User administration is 8', () => {
-    for (const role of ['Leadership', 'Teacher', 'Cluster Officer']) expect(itemsFor(role).map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, 7, null]);
-    expect(itemsFor('Leadership', {manage_users: true}).map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, null]);
-    expect(itemsFor('Leadership', {manage_users: true}).at(-1)?.id).toBe('about');
+  it('keeps canonical numbers while omitting role-inapplicable destinations', () => {
+    expect(itemsFor('Teacher').map(i => i.number)).toEqual([1, 2, 3, 4, 6, null]);
+    expect(itemsFor('Cluster Officer').map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, null]);
+    expect(itemsFor('Leadership').map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, null]);
+    expect(itemsFor('Leadership').at(-1)?.id).toBe('about');
   });
-  it('greys out the screens a role cannot open, with the reason, and does not make them links', () => {
+  it('omits role-inapplicable screens and keeps server-disabled profile access unavailable', () => {
     expect(unavailableReason('Leadership', 'profiles', {read_profiles: true})).toBeNull();
-    expect(unavailableReason('Teacher', 'donors', {export: false})).toBeTruthy();
-    expect(unavailableReason('Cluster Officer', 'donors', {export: false})).toBeTruthy();
-    expect(unavailableReason('Teacher', 'visits', {read_visits: false})).toBeTruthy();
-    expect(unavailableReason('Cluster Officer', 'visits', {read_visits: true})).toBeNull();
-    expect(unavailableReason('Leadership', 'visits', {read_visits: true})).toBeNull();
     const view = render(<Harness role="Teacher" />);
-    expect(labels()).toEqual(['1. Overview', '2. Attendance', '3. Student profiles', '4. Assessments', '6. Morarji scholarship', 'About']);
+    expect(labels()).toEqual(['1. Overview', '2. Student profiles', '3. Attendance', '4. Assessments', '6. Morarji scholarship', 'About']);
     const nav = within(screen.getByRole('navigation', {name: 'Primary'}));
-    expect(nav.getByText('Annual donor summary').closest('[aria-disabled="true"]')).not.toBeNull();
-    expect(nav.getByText('Visits').closest('[aria-disabled="true"]')).not.toBeNull();
-    expect(nav.getByText(/unavailable: Leadership reporting only/)).toBeInTheDocument();
+    expect(nav.queryByText('Annual donor summary')).not.toBeInTheDocument();
+    expect(nav.queryByText('Visits')).not.toBeInTheDocument();
     view.unmount();
     render(<Harness role="Leadership" />);
-    expect(screen.getByRole('link', {name: '3. Student profiles'})).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: '2. Student profiles'})).toBeInTheDocument();
     expect(screen.getByRole('link', {name: '8. User administration'})).toBeInTheDocument();
   });
   it('navigates without leaving the page and reports the screen', async () => {
@@ -66,12 +61,12 @@ describe('side menu', () => {
     await user.click(toggle);
     expect(screen.getByRole('button', {name: 'Expand menu'})).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('complementary', {name: 'Menu'})).toHaveAttribute('data-collapsed', 'true');
-    const link = screen.getByRole('link', {name: '2. Attendance'});            // still has its accessible name
-    expect(link).toHaveAttribute('title', '2. Attendance');
+    const link = screen.getByRole('link', {name: '3. Attendance'});            // still has its accessible name
+    expect(link).toHaveAttribute('title', '3. Attendance');
     expect(within(link).getByText('Attendance')).toHaveClass('md:sr-only');
     await user.click(screen.getByRole('button', {name: 'Expand menu'}));
     expect(screen.getByRole('complementary', {name: 'Menu'})).toHaveAttribute('data-collapsed', 'false');
-    expect(within(screen.getByRole('link', {name: '2. Attendance'})).getByText('Attendance')).not.toHaveClass('md:sr-only');
+    expect(within(screen.getByRole('link', {name: '3. Attendance'})).getByText('Attendance')).not.toHaveClass('md:sr-only');
   });
   it('opens on a phone with a scrim, closes with the scrim, Escape or a choice', async () => {
     const user = userEvent.setup();

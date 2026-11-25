@@ -8,16 +8,17 @@ import type {ProgrammeCapabilities} from '../session/controller';
 
 const ICONS: Record<Route, LucideIcon> = {overview: Home, attendance: CalendarDays, profiles: Users, assessments: BookOpen, visits: MapPin, morarji: BarChart3, donors: Heart, about: Info, admin: UserCog};
 
-/** Every role sees all eight numbered screens so a number always means the same screen. A screen the role cannot use is
- *  shown greyed out and cannot be opened; `unavailableReason` says why (null means the role can open it). */
 export const unavailableReasonKey = (_role: string, id: Route, capabilities?: ProgrammeCapabilities): MessageKey | null => {
   if (id === 'profiles' && capabilities?.read_profiles === false) return 'menu.profilesLeadership';
-  if (id === 'donors' && capabilities?.export !== true) return 'menu.donorsLeadership';
-  if (id === 'visits' && capabilities?.read_visits !== true) return 'menu.visitsTeacher';
   return null;
 };
 export const unavailableReason = (role: string, id: Route, capabilities?: ProgrammeCapabilities): string | null => { const key = unavailableReasonKey(role, id, capabilities); return key ? en[key] : null; };
-export const itemsFor = (_role: string, capabilities?: ProgrammeCapabilities) => ROUTES.filter(item => item.id !== 'admin' || capabilities?.manage_users === true);
+export const itemsFor = (role: string, _capabilities?: ProgrammeCapabilities) => ROUTES.filter(item => {
+  if (item.id === 'admin') return role === 'Leadership';
+  if (item.id === 'donors') return role === 'Leadership';
+  if (item.id === 'visits') return role !== 'Teacher';
+  return true;
+});
 
 interface Props {
   role: string;

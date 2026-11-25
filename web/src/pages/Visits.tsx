@@ -143,10 +143,7 @@ export function Visits({backend, context, role, service: injected, tables: injec
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{t('visit.intro', {heading})}</p>
-        {canRecord ? <Button onClick={() => { setNotice(''); setRecording(true); }}>{t('visit.recordButton')}</Button> : null}
-      </div>
+      <p className="text-sm text-muted">{t('visit.intro', {heading})}</p>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
       <FilterPanel label={t('visit.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
@@ -171,7 +168,8 @@ export function Visits({backend, context, role, service: injected, tables: injec
 
       {role !== 'Teacher' ? (
         <DataTable<VisitRow> reference="5.7" caption={t('visit.log')} columns={logColumns} data={logTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-visit-log-${month}` : undefined}
-          state={logTable.result.status} server={logTable.server} errorMessage={logTable.error} emptyMessage={t('visit.noMonth')} onRetry={logTable.retry} />
+          state={logTable.result.status} server={logTable.server} errorMessage={logTable.error} emptyMessage={t('visit.noMonth')} onRetry={logTable.retry}
+          headerActions={canRecord ? <Button size="sm" onClick={() => { setNotice(''); setRecording(true); }}>{t('visit.recordButton')}</Button> : null} />
       ) : null}
       {month && selected.length > 0 ? <HistoricalReports kind="visits" rpc={backend.rpc} centres={selected} month={month} shift={filters.shift || null} officer={officer} /> : null}
       <p className="text-xs text-muted">{t('visit.footnote')}</p>
