@@ -2,6 +2,15 @@
 
 This file is the reusable working context for coding agents. Read it before changing the repository. Treat dated deployment and PR details as a snapshot: fetch the remotes and inspect GitHub, Vercel, and Supabase before acting on them.
 
+## Current Vercel feedback work (24 November 2026)
+
+- Implement the approved feedback on `fix/vercel-feedback-round-3`, created directly from `origin/main` at `c0ec88b`. Keep the work within four implementation phases and open the finished PR against `staging` only. Immediately before that PR, bring remote `staging` up to `main` only when it is a safe fast-forward.
+- Activity Day and Monthly Meeting are attendance session types. Store their student present/absent records in the attendance model with an explicit session type; do not add new writes or dependencies on `activity_events` or `activity_participation`. Only Classroom P/A/L records contribute to the attendance-rate denominator. The legacy Activities/Monthly Meeting tables are intended for removal in a separately reviewed later migration; do not remove or rewrite their retained data in this work.
+- Activity Day has four approved subtypes: Cultural Activity 1, Cultural Activity 2, Sports Activity 1 and Sports Activity 2. Engagement is present students divided by expected students across Activity Day sessions in the selected academic year. Monthly Meeting and Activity Day records never affect the classroom attendance denominator.
+- The Overview Academic Year filter applies to every Overview metric. Average academic score uses all recorded assessment marks in the selected academic year and excludes missing marks. Do not alter the duplicate Masaraguppi centre records.
+- Hosted database mutations for this work are authorized only on Preview Supabase `nilzfsahxoxibvrwsqkd`. Show the student-deletion interface on all deployments, but activate its backend gate only on Preview. When preparing a merge to `main`, explicitly remind the owner that Production deletion remains gated and requires separate authorization.
+- Do not start Production database work, merge, or promote a deployment without a new explicit approval. Preserve all existing audit, optimistic-concurrency and idempotency boundaries.
+
 ## Current permission work (21 November 2026)
 
 Use this section for the current handoff. Dated status statements below and the earlier phase documents are historical. Fetch and verify the relevant remotes and hosted state before deployment-sensitive work.

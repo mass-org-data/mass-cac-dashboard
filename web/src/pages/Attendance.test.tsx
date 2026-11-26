@@ -72,7 +72,7 @@ describe('Attendance page', () => {
     expect(within(table).queryByRole('columnheader', {name: 'Created by'})).not.toBeInTheDocument();
     expect(within(table).queryByRole('columnheader', {name: 'Last edited by'})).not.toBeInTheDocument();
     expect(within(table).getByRole('columnheader', {name: /Last edited at/})).toBeInTheDocument();
-    const edited = within(bodyRows(table)[1]).getAllByRole('cell')[5].querySelector('time');
+    const edited = within(bodyRows(table)[1]).getAllByRole('cell')[6].querySelector('time');
     expect(edited).toHaveAttribute('dateTime', '2026-11-13 10:00');
     expect(edited).toHaveAttribute('title', expect.stringMatching(/2026/));
     expect(edited).toHaveTextContent(/ago/);
@@ -122,6 +122,19 @@ describe('Attendance page', () => {
     const centreTable = await screen.findByRole('table', {name: 'Attendance by centre'});
     expect(within(centreTable).getByText('91.0%')).toBeInTheDocument();
     expect(within(centreTable).getByText('Unknown')).toBeInTheDocument();
+  });
+
+  it('keeps scorecards and charts above both tables, with the attendance register last', async () => {
+    setup();
+    const trend = await screen.findByRole('img', {name: /Attendance by month/});
+    const bands = await screen.findByRole('img', {name: /Students by days present/});
+    const centreTable = await screen.findByRole('table', {name: 'Attendance by centre'});
+    const attendanceTable = await register();
+    expect(trend.compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bands.compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(centreTable.compareDocumentPosition(attendanceTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('3.3', {selector: 'span'})).toBeInTheDocument();
+    expect(screen.getByText('3.6', {selector: 'span'})).toBeInTheDocument();
   });
 
   it('returns to page one and newest first when a filter changes', async () => {

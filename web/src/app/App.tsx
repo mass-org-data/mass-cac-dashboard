@@ -14,7 +14,7 @@ import {Morarji} from '../pages/Morarji';
 import {AnnualDonor} from '../pages/AnnualDonor';
 import {About} from '../pages/About';
 import {ROUTES, useRoute} from './route';
-import {SideMenu, unavailableReasonKey} from './SideMenu';
+import {itemsFor, SideMenu, unavailableReasonKey} from './SideMenu';
 import {I18nProvider, LanguageToggle, useI18n, type Language} from '../i18n/I18n';
 import {UserMenu} from './UserMenu';
 import {isSampleCentre, selectCentreScope} from './centreScope';
@@ -45,7 +45,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
   if (state.status === 'loading') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="loading" loadingLabel={t('session.checking')} /></main>;
   if (state.status === 'error') return <main className="mx-auto max-w-3xl p-6"><AsyncState state="error" errorMessage={t(state.messageKey)} onRetry={() => void controller.start()} /></main>;
   if (state.status === 'signed-out') return <SignIn message={state.messageKey ? t(state.messageKey) : state.message ?? (inviteSaved ? t('invite.saved') : undefined)} onSignIn={(email, password) => controller.signIn(email, password)} />;
-  const currentRoute = ROUTES.find(r => r.id === route)!;
+  const currentRoute = itemsFor(state.role, state.context.capabilities).find(r => r.id === route) ?? ROUTES.find(r => r.id === route)!;
   const pageContext = selectedContext ?? state.context;
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden">
@@ -78,7 +78,7 @@ function Shell({backend, inviteSaved}: {backend: LiveBackend; inviteSaved: boole
         {unavailableReasonKey(state.role, route, state.context.capabilities)
           ? <p role="alert" className="rounded-md bg-warn-soft p-4 text-sm text-warn">{t(unavailableReasonKey(state.role, route, state.context.capabilities)!)}</p>
           : route === 'admin'
-          ? state.context.capabilities?.manage_users === true
+          ? state.role === 'Leadership'
             ? <UserAdministration call={backend.administration} actor={state.userId} centres={state.context.centres} />
             : <p role="alert">{t('admin.forbidden')}</p>
           : route === 'attendance'

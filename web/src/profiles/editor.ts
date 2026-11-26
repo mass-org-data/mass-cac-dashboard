@@ -17,9 +17,10 @@ export function validateNewStudent(form: NewStudentForm, today: string, allowedC
 }
 export const buildNewStudent = (form: NewStudentForm, request: string): NewStudent => ({request, centre: form.centre, grade: form.grade, shift: form.shift, start: form.start, name: form.name, gender: form.gender || null});
 
-export interface EditForm {name: string; gender: string; board: string; status: string}
+export interface EditForm {name: string; gender: string; board: string; status: string; grade: string}
 export function validateEdit(form: EditForm, year: AcademicYear | undefined): string | null {
   if (!form.name.trim()) return 'Enter the verified name.';
+  if (year?.editable && !/^(10|[1-9])$/.test(form.grade)) return 'Select the current enrollment standard.';
   if (year?.editable && !(STATUSES as readonly string[]).includes(form.status)) return 'Select the current academic year status.';
   return null;
 }

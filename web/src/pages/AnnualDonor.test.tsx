@@ -24,13 +24,17 @@ function setup(options: {role?: string; failMonth?: string; failAll?: boolean; f
     return byMonth[selection.month]!;
   });
   const overview = {report, shifts: vi.fn(), series: vi.fn(), clear: vi.fn()} as unknown as OverviewService;
-  const backend = {rpc: vi.fn(), readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: {}})), readDirectory: vi.fn(async () => [{centre_id: 'c1', donor_label: 'Donor A'}, {centre_id: 'c2', donor_label: 'Donor B'}])} as unknown as LiveBackend;
+  const rpc = vi.fn(async (_name: string, args: {p_centres: string[]}) => {
+    const rows = [{centre_id: 'c1', engagement_rate: 75, score_mean: 18.25}, {centre_id: 'c2', engagement_rate: 80, score_mean: 16.5}].filter(row => args.p_centres.includes(row.centre_id));
+    return {engagement_present: rows.length * 30, engagement_expected: rows.length * 40, engagement_rate: 75, score_n: rows.length * 50, score_mean: rows.length === 1 ? rows[0]!.score_mean : 17.375, centres: rows};
+  });
+  const backend = {rpc, readReferences: vi.fn(async () => refs), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: {}})), readDirectory: vi.fn(async () => [{centre_id: 'c1', donor_label: 'Donor A'}, {centre_id: 'c2', donor_label: 'Donor B'}])} as unknown as LiveBackend;
   const role = options.role ?? 'Leadership';
   const annual = [{id: 'c1', name: 'Centre 01', donor: 'Donor A', students: 18, p: 1260, a: 105, l: 0, percentage: 1260 / 13.65, loaded: 6}, {id: 'c2', name: 'Centre 02', donor: 'Donor B', students: 12, p: 840, a: 105, l: 0, percentage: 840 / 9.45, loaded: 6}];
   const context = ctx([role]);
   if (options.exportAllowed === false) context.capabilities = {export: false};
   const view = render(<AnnualDonor backend={backend} context={context} role={role} overview={overview} tables={testTableService({annual_centres: annual})} />);
-  return {report, ...view};
+  return {report, rpc, ...view};
 }
 const comparison = async () => screen.findByRole('table', {name: 'Centre comparison'});
 
@@ -53,6 +57,10 @@ describe('Annual donor summary', () => {
     expect(within(table).queryByRole('columnheader', {name: /Annual present|Annual absent|Loaded months|Current donor association/})).not.toBeInTheDocument();
     expect(within(table).getByRole('columnheader', {name: /Students Enrolled/})).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', {name: /Overall Attendance/})).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', {name: /Activity Day engagement/})).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', {name: /Average Exam Score/})).toBeInTheDocument();
+    expect(within(row).getByText('75.0%')).toBeInTheDocument();
+    expect(within(row).getByText('18.3 / 25')).toBeInTheDocument();
   });
   it('loads one report per elapsed month of the selected year and no future month', async () => {
     const {report} = setup();
@@ -70,6 +78,8 @@ describe('Annual donor summary', () => {
     await waitFor(() => expect(screen.getByRole('group', {name: 'Average Attendance Across All Centers'})).toHaveTextContent(/9[0-9]\.[0-9]%/));
     expect(screen.queryByRole('group', {name: 'Recorded months'})).not.toBeInTheDocument();
     expect(screen.getAllByText('90.9%').length).toBeGreaterThan(0);  // 2100 / (2100 + 210)
+    expect(screen.getByRole('group', {name: 'Activity Day engagement'})).toHaveTextContent('75.0%');
+    expect(screen.getByRole('group', {name: 'Average Exam Score'})).toHaveTextContent('17.4 / 25');
   });
   it('treats a failed month as a gap, says so, and still reports the others', async () => {
     setup({failMonth: '2026-07'});
@@ -89,10 +99,11 @@ describe('Annual donor summary', () => {
   });
   it('filters by donor and asks again with only that donor centre', async () => {
     const user = userEvent.setup();
-    const {report} = setup();
+    const {report, rpc} = setup();
     await comparison();
     await user.selectOptions(screen.getByLabelText('Donor'), 'Donor B');
     await waitFor(() => expect(report.mock.calls.at(-1)![0].centres).toEqual(['c2']));
+    await waitFor(() => expect(rpc.mock.calls.at(-1)![1]).toEqual(expect.objectContaining({p_centres: ['c2'], p_year: 'y1'})));
     const table = await comparison();
     await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(2));
     expect(within(table).queryByText('Centre 01')).not.toBeInTheDocument();

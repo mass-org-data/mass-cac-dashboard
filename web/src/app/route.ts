@@ -4,8 +4,8 @@ import type {MessageKey} from '../i18n/en';
 export type Route = 'overview' | 'attendance' | 'profiles' | 'assessments' | 'visits' | 'morarji' | 'donors' | 'about' | 'admin';
 export const ROUTES: Array<{id: Route; /** Menu serial number; null for About, which closes the list without one. */ number: number | null; labelKey: MessageKey}> = [
   {id: 'overview', number: 1, labelKey: 'route.overview'},
-  {id: 'attendance', number: 2, labelKey: 'route.attendance'},
-  {id: 'profiles', number: 3, labelKey: 'route.profiles'},
+  {id: 'profiles', number: 2, labelKey: 'route.profiles'},
+  {id: 'attendance', number: 3, labelKey: 'route.attendance'},
   {id: 'assessments', number: 4, labelKey: 'route.assessments'},
   {id: 'visits', number: 5, labelKey: 'route.visits'},
   {id: 'morarji', number: 6, labelKey: 'route.morarji'},

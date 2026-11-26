@@ -34,32 +34,29 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; report
 }
 
 describe('Assessments page', () => {
-  it('shows the F2 scorecards, bands and comparison from the reviewed report', async () => {
+  it('shows the F2 scorecards and bands from the reviewed report', async () => {
     setup();
     expect(await screen.findByText('32 of 40 enrolled students have a score')).toBeInTheDocument();
     expect(screen.getAllByText('15.3').length).toBeGreaterThan(0);   // F2 mean 15.25
     expect(screen.getByText('8 of 40 enrolled students have no score')).toBeInTheDocument();       // 40 - 32 without a score, shown as 20.0% with the count underneath
     expect(screen.getByRole('group', {name: 'Students with exam scores recorded'})).toHaveTextContent('80.0%');
-    expect(screen.getByText('+25.0%')).toBeInTheDocument();          // (15 - 12) / 12
     expect(screen.getByText(/Recorded n=32; fractional marks unbanded=1/)).toBeInTheDocument();
-    expect(screen.getByText('Matched students')).toBeInTheDocument();
-    expect(screen.getAllByText('20').length).toBeGreaterThan(0);      // improved
+    expect(screen.queryByText('Matched students')).not.toBeInTheDocument();
   });
-  it('requests the report for the chosen compare pair and asks again when the round changes', async () => {
+  it('uses the fixed reporting basis and changes the displayed exam round', async () => {
     const user = userEvent.setup();
     const {overview} = setup();
     await screen.findByText('32 of 40 enrolled students have a score');
     const first = vi.mocked(overview.report).mock.calls[0]!;
     expect(first[1]).toEqual(expect.objectContaining({yearId: 'y1', fromQuarter: 1, toQuarter: 2}));
-    await user.selectOptions(screen.getByLabelText('Compare rounds'), '2|3');
-    await waitFor(() => expect(vi.mocked(overview.report).mock.calls.at(-1)![1]).toEqual(expect.objectContaining({fromQuarter: 2, toQuarter: 3})));
+    expect(screen.queryByLabelText('Compare rounds')).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Exam round'), '1');
     expect(await screen.findByText('30 of 40 enrolled students have a score')).toBeInTheDocument();
   });
   it('treats a missing score as unknown, never zero', async () => {
     setup({reportFn: vi.fn(async () => ({...report, quarters: [{quarter: 1, n: 0, mean: null}], changes: {n: 0, meanChange: null, earlierMean: null, laterMean: null, improved: 0, unchanged: 0, declined: 0}})) as never});
     expect(await screen.findByText('No scores are recorded for this round')).toBeInTheDocument();
-    expect(screen.getByText(/No students have a recorded score in both rounds/)).toBeInTheDocument();
+    expect(screen.queryByText(/recorded score in both rounds/)).not.toBeInTheDocument();
   });
   it('lists the saved assessment register with unknown historical dates', async () => {
     setup();
@@ -69,6 +66,20 @@ describe('Assessments page', () => {
     expect(within(table).queryByText('Source import / not recorded')).not.toBeInTheDocument();
     expect(within(table).getAllByRole('button', {name: 'Edit'}).length).toBeGreaterThan(0);
     expect(within(table).queryByRole('button', {name: 'Delete'})).not.toBeInTheDocument();
+  });
+  it('places current performance and progress together before the renumbered centre table', async () => {
+    const {container} = setup();
+    await screen.findByText('32 of 40 enrolled students have a score');
+    const performance = screen.getByRole('region', {name: 'Current exam performance'});
+    const progress = screen.getByRole('region', {name: 'Progress across exam rounds'});
+    const centreTable = screen.getByRole('table', {name: 'Average score by centre'});
+    expect(performance.parentElement).toBe(progress.parentElement);
+    expect(performance.parentElement).toHaveClass('lg:grid-cols-2');
+    expect(performance.compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(performance).getByText('4.4')).toBeInTheDocument();
+    expect(within(progress).getByText('4.5')).toBeInTheDocument();
+    expect(screen.getByText('4.6').compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container).toBeInTheDocument();
   });
   it('shows an error with retry when the report fails, without hiding the register', async () => {
     setup({reportFn: vi.fn(async () => { throw new Error('statement timeout'); }) as never});

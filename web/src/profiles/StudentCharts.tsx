@@ -14,8 +14,7 @@ const FROM_QUARTER = 1, TO_QUARTER = 2;
 const state = <T,>(slice: Slice<T>): 'loading' | 'ready' | 'error' | 'empty' => slice.status === 'ready' ? 'ready' : slice.status === 'error' ? 'error' : slice.status === 'future' ? 'empty' : 'loading';
 const cardState = <T,>(slice: Slice<T>): ScorecardState => slice.status === 'ready' ? 'ready' : slice.status === 'error' ? 'error' : slice.status === 'future' ? 'unavailable' : 'loading';
 
-/** The Overview's student count scorecard and grade, gender and shift charts, for the students this page lists
- *  (same centres and filters). Numbered 3.1 to 3.4; the table that follows is 3.5. */
+/** The Overview's student count scorecard and grade, gender and shift charts, for the students this page lists. */
 export function StudentCharts({backend, today, centres, shift, grade, gender}: {backend: LiveBackend; today: string; centres: string[]; shift: string | null; grade: string | null; gender: string | null}) {
   const {t} = useI18n();
   const service = useMemo(() => sharedOverview(backend), [backend]);
@@ -32,16 +31,16 @@ export function StudentCharts({backend, today, centres, shift, grade, gender}: {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Scorecard reference="3.1" label={t('overview.enrolled')} value={stats ? formatCount(stats.children) : null} state={refs ? cardState(report) : 'loading'} message={message} />
+        <Scorecard reference="2.1" label={t('overview.enrolled')} value={stats ? formatCount(stats.children) : null} state={refs ? cardState(report) : 'loading'} message={message} />
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard reference="3.2" title={t('overview.byGrade')} subtitle={t('overview.aggregateFilters')} state={refs ? state(report) : 'loading'} errorMessage={message} emptyMessage={t('common.future')} onRetry={retry}>
+        <ChartCard reference="2.2" title={t('overview.byGrade')} subtitle={t('overview.aggregateFilters')} state={refs ? state(report) : 'loading'} errorMessage={message} emptyMessage={t('common.future')} onRetry={retry}>
           {stats ? <ColumnChart axis={t('common.students')} description={t('overview.byGrade')} items={Array.from({length: 10}, (_, i) => ({label: String(i + 1), value: stats.grades[String(i + 1)] ?? 0}))} /> : null}
         </ChartCard>
-        <ChartCard reference="3.3" title={t('overview.byGender')} subtitle={t('overview.genderPrivacy')} state={refs ? state(report) : 'loading'} errorMessage={message} emptyMessage={t('common.future')} onRetry={retry}>
+        <ChartCard reference="2.3" title={t('overview.byGender')} subtitle={t('overview.genderPrivacy')} state={refs ? state(report) : 'loading'} errorMessage={message} emptyMessage={t('common.future')} onRetry={retry}>
           {stats ? <ColumnChart axis={t('common.students')} description={t('overview.byGender')} items={[{label: t('common.girls'), value: stats.genders.Girl ?? 0, tone: 'accent'}, {label: t('common.boys'), value: stats.genders.Boy ?? 0}]} /> : null}
         </ChartCard>
-        <ChartCard reference="3.4" title={t('overview.byShift')} subtitle={t('overview.shiftHelp')} state={refs ? state(shifts) : 'loading'} errorMessage={shifts.status === 'error' ? shifts.message : undefined} emptyMessage={t('common.future')} onRetry={retry}>
+        <ChartCard reference="2.4" title={t('overview.byShift')} subtitle={t('overview.shiftHelp')} state={refs ? state(shifts) : 'loading'} errorMessage={shifts.status === 'error' ? shifts.message : undefined} emptyMessage={t('common.future')} onRetry={retry}>
           {shifts.status === 'ready' ? <ColumnChart axis={t('common.students')} description={t('overview.byShift')} items={[{label: t('common.morning'), value: shifts.value.Morning}, {label: t('common.evening'), value: shifts.value.Evening}]} /> : null}
         </ChartCard>
       </div>

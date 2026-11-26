@@ -5,6 +5,7 @@ import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../componen
 import {Input} from '../components/ui/input';
 import {useI18n} from '../i18n/I18n';
 import type {MessageKey} from '../i18n/en';
+import {CentreCombobox} from '../components/CentreCombobox';
 import {
   AdministrationError, applicationRoles, type AdministrationCall, type AdministrationDirectory,
   type AdministrationResult, type AdministrationUser, type ApplicationRole,
@@ -77,12 +78,7 @@ function AccountAccess({user, own, centres, selectChange}: {
         </li>)}
       </ul>}
       {!user.pending && canAssign && available.length > 0 && <div className="flex flex-wrap items-end gap-2">
-        <label className="grid gap-1 text-sm">{t('admin.centre')}
-          <select className={selectClass} value={centre} onChange={event => setCentre(event.currentTarget.value)}>
-            <option value="">{t('admin.chooseCentre')}</option>
-            {available.map(item => <option value={item.id} key={item.id}>{item.label}</option>)}
-          </select>
-        </label>
+        <CentreCombobox label={t('admin.centre')} value={centre} options={available} allLabel={t('admin.chooseCentre')} onChange={setCentre} />
         <Button disabled={!centre} onClick={() => ask('assign', 'admin.confirmAssign', {centre})}>{t('admin.addAssignment')}</Button>
       </div>}
     </div>

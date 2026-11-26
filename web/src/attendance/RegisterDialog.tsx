@@ -3,13 +3,14 @@ import {Button} from '../components/ui/button';
 import {Dialog, DialogContent, DialogDescription, DialogTitle} from '../components/ui/dialog';
 import {Input} from '../components/ui/input';
 import {AsyncState} from '../components/AsyncState';
-import {applyRead, buildSave, canSubmit, initialEditor, isDirty, markedCount, validate, type Code, type EditorState, type SessionType} from './editor';
+import {ACTIVITY_SUBTYPES, applyRead, buildSave, canSubmit, initialEditor, isDirty, isStudentSession, markedCount, sessionChanged, validate, type ActivitySubtype, type Code, type EditorState, type SessionType} from './editor';
 import type {AttendanceService, RegisterCapabilities} from './service';
 import {cn} from '../lib/utils';
 import {useI18n} from '../i18n/I18n';
 import {english} from '../components/FilterPanel';
+import {CentreCombobox} from '../components/CentreCombobox';
 
-export interface Selection {centre: string; shift: string; date: string}
+export interface Selection {centre: string; shift: string; date: string; sessionType?: SessionType; activitySubtype?: ActivitySubtype}
 interface Props {
   service: AttendanceService;
   capabilities: RegisterCapabilities;
@@ -30,29 +31,45 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'saving' | 'committed'>('loading');
   const [loadError, setLoadError] = useState('');
   const [formError, setFormError] = useState('');
-  const [deletingMark, setDeletingMark] = useState<{id: string; version: number; student: string; request: string} | null>(null);
-  const [markDeleteReason, setMarkDeleteReason] = useState('');
   const sequence = useRef(0);
   const dirty = isDirty(state, capabilities);
 
-  const load = useCallback((centre: string, shift: string, date: string) => {
+  const load = useCallback((centre: string, shift: string, date: string, sessionType: SessionType, activitySubtype: ActivitySubtype) => {
     const run = ++sequence.current;
     setStatus('loading'); setLoadError('');
-    service.readRegister(centre, shift, date).then(read => {
+    const request = isStudentSession(sessionType)
+      ? service.readStudentSession(centre, shift, date, sessionType, sessionType === 'Activity Day' ? activitySubtype : null)
+      : service.readRegister(centre, shift, date);
+    request.then(read => {
       if (run !== sequence.current) return;
       setState(previous => applyRead({...previous, centre, shift, date}, read));
       setStatus('ready');
     }).catch(error => { if (run === sequence.current) { setLoadError(messageOf(error)); setStatus('error'); } });
   }, [service]);
 
-  useEffect(() => { load(initial.centre, initial.shift, initial.date); }, [load, initial.centre, initial.shift, initial.date]);
+  useEffect(() => { load(initial.centre, initial.shift, initial.date, initial.sessionType ?? 'Classroom', initial.activitySubtype ?? ACTIVITY_SUBTYPES[0]); }, [load, initial.centre, initial.shift, initial.date, initial.sessionType, initial.activitySubtype]);
 
   const changeContext = (field: 'centre' | 'shift' | 'date', value: string) => {
     if (dirty && !confirm('Discard unsaved attendance changes and change the selection?')) return;
     setFormError('');
     const next = {...state, [field]: value};
     setState({...next, loaded: false, saved: {}, draft: {}, savedRecords: {}, roster: [], deleting: false});
-    load(next.centre, next.shift, next.date);
+    load(next.centre, next.shift, next.date, next.sessionType, next.activitySubtype);
+  };
+
+  const changeSession = (sessionType: SessionType, activitySubtype: ActivitySubtype = state.activitySubtype) => {
+    if (state.recorded > 0 && sessionType !== 'Holiday') {
+      setFormError('');
+      setState(previous => ({...previous, sessionType, activitySubtype, deleting: false, confirmDelete: false}));
+      return;
+    }
+    if (dirty && !confirm('Discard unsaved attendance changes and change the session type?')) return;
+    setFormError('');
+    setState(previous => ({...previous, sessionType, activitySubtype, loaded: false, saved: {}, draft: {}, savedRecords: {}, roster: [], deleting: false}));
+    if (sessionType === 'Holiday') {
+      setState(previous => ({...previous, sessionType, activitySubtype, loaded: true, saved: {}, draft: {}, savedRecords: {}, roster: [], recorded: 0, token: '', deleting: false}));
+      setStatus('ready');
+    } else load(state.centre, state.shift, state.date, sessionType, activitySubtype);
   };
 
   const requestClose = () => {
@@ -74,13 +91,15 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
     try {
       if (plan.kind === 'holiday') await service.saveHoliday(plan.args);
       else if (plan.kind === 'delete') await service.deleteRegister(plan.args);
+      else if (plan.kind === 'studentSession') await service.saveStudentSession(plan.args);
+      else if (plan.kind === 'conversion') await service.convertSession(plan.args);
       else await service.saveClassroom(plan.args);
     } catch (error) {
       // The same request id is kept, so retrying the same save cannot create a duplicate.
       setFormError(messageOf(error)); setStatus('ready'); return;
     }
     setStatus('committed');
-    const message = plan.kind === 'holiday' ? 'Holiday saved.' : plan.kind === 'delete' ? 'Attendance deleted. History retained.' : 'Attendance saved and charts refreshed.';
+    const message = plan.kind === 'holiday' ? 'Holiday saved.' : plan.kind === 'delete' ? 'Attendance deleted. History retained.' : plan.kind === 'conversion' ? 'Attendance session type updated.' : plan.kind === 'studentSession' ? 'Student session attendance saved.' : 'Attendance saved and charts refreshed.';
     try { await onSaved(message); }
     catch { setFormError('Attendance was saved, but refreshed data could not be loaded. Reload this page; do not submit again.'); return; }
     onClose();
@@ -88,6 +107,7 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
 
   const single = centres.length === 1;
   const holiday = state.sessionType === 'Holiday';
+  const studentSession = isStudentSession(state.sessionType);
   const busy = status === 'loading' || status === 'saving';
   const cancelDelete = () => {
     setFormError('');
@@ -104,17 +124,19 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('register.sessionType')}
-            <select value={state.sessionType} disabled={busy} onChange={event => setState(s => ({...s, sessionType: event.target.value as SessionType}))} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
+            <select value={state.sessionType} disabled={busy || (state.recorded > 0 && !capabilities.session_conversion)} onChange={event => changeSession(event.target.value as SessionType)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
               <option value="Classroom">{t('register.classroom')}</option>
-              <option value="Holiday" disabled={!capabilities.session_entry}>{t('register.holiday')}</option>
-              <option value="Monthly meeting" disabled>{t('register.monthlyMeeting')}</option>
+              <option value="Holiday" disabled={!capabilities.session_entry || state.recorded > 0}>{t('register.holiday')}</option>
+              <option value="Monthly Meeting" disabled={!capabilities.student_sessions}>{t('register.monthlyMeeting')}</option>
+              <option value="Activity Day" disabled={!capabilities.student_sessions}>{t('register.activityDay')}</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('common.centre')}
-            <select value={state.centre} disabled={busy || single} onChange={event => changeContext('centre', event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
-              {centres.map(centre => <option key={centre.id} value={centre.id}>{centre.label}</option>)}
+          {state.sessionType === 'Activity Day' ? <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('register.activityType')}
+            <select value={state.activitySubtype} disabled={busy || (state.recorded > 0 && !capabilities.session_conversion)} onChange={event => changeSession('Activity Day', event.target.value as ActivitySubtype)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
+              {ACTIVITY_SUBTYPES.map(value => <option key={value} value={value}>{value}</option>)}
             </select>
-          </label>
+          </label> : null}
+          <CentreCombobox label={t('common.centre')} value={state.centre} options={centres} disabled={busy || single} onChange={value => changeContext('centre', value)} />
           <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('common.shift')}
             <select value={state.shift} disabled={busy} onChange={event => changeContext('shift', event.target.value)} className="min-h-11 rounded-md border border-line bg-white px-2 text-sm font-normal text-ink">
               <option value="Morning">{english('common.morning')}</option><option value="Evening">{english('common.evening')}</option>
@@ -130,7 +152,7 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
         {holiday ? (
           <p role="note" className="rounded-md bg-warn-soft p-3 text-sm text-warn">{t('register.holidayHelp')}</p>
         ) : (
-          <AsyncState state={status === 'loading' ? 'loading' : status === 'error' ? 'error' : 'ready'} loadingLabel={t('register.loadingStudents')} errorMessage={loadError} onRetry={() => load(state.centre, state.shift, state.date)} rows={4}>
+          <AsyncState state={status === 'loading' ? 'loading' : status === 'error' ? 'error' : 'ready'} loadingLabel={t('register.loadingStudents')} errorMessage={loadError} onRetry={() => load(state.centre, state.shift, state.date, state.sessionType, state.activitySubtype)} rows={4}>
             {state.roster.length === 0 ? <p role="note" className="rounded-md bg-brand-soft p-3 text-sm">{t('register.noStudents')}</p> : (
               <div>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -155,7 +177,6 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
                                   className={cn('min-h-11 min-w-11 rounded-md border px-3 font-semibold', code === 'P' ? 'border-ok bg-ok-soft text-ok' : 'border-bad bg-bad-soft text-bad', state.draft[student.id] === code && (code === 'P' ? 'bg-ok text-white' : 'bg-bad text-white'))}>{code}</button>
                               ))}
                               {state.draft[student.id] ? <button type="button" disabled={busy} onClick={() => clear(student.id)} className="min-h-11 px-2 text-xs font-semibold text-muted underline" aria-label={t('register.clearMark', {student: student.name || t('common.student')})}>{t('register.clear')}</button> : null}
-                              {state.savedRecords[student.id] ? <Button variant="ghost" size="sm" className="text-bad" disabled={busy} onClick={() => { const record = state.savedRecords[student.id]!; setDeletingMark({...record, student: student.name || t('common.student'), request: crypto.randomUUID()}); setMarkDeleteReason(''); setFormError(''); }}>{t('common.delete')}</Button> : null}
                             </div>
                           </td>
                         </tr>
@@ -174,16 +195,16 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
 
         {state.recorded > 0 && !holiday ? (
           <label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('register.reasonCorrection')}
-            <Input value={state.reason} disabled={busy} onChange={event => setState(s => ({...s, reason: event.target.value}))} placeholder={t('register.reasonCorrectionPlaceholder')} />
+            <Input value={state.reason} disabled={busy} onChange={event => setState(s => ({...s, reason: event.target.value}))} placeholder={sessionChanged(state) ? t('register.reasonSessionChangePlaceholder') : t('register.reasonCorrectionPlaceholder')} />
           </label>
         ) : null}
 
         <p role="alert" aria-live="polite" className="min-h-5 text-sm text-bad">{state.deleting ? '' : formError}</p>
         <div className="flex flex-wrap justify-end gap-2">
-          {state.recorded > 0 && !holiday ? <Button variant="outline" className="mr-auto border-bad text-bad" disabled={busy} onClick={() => { setFormError(''); setState(s => ({...s, deleting: true, confirmDelete: false})); }}>{t('common.delete')}</Button> : null}
+          {state.recorded > 0 && !holiday && !studentSession ? <Button variant="outline" className="mr-auto border-bad text-bad" disabled={busy} onClick={() => { setFormError(''); setState(s => ({...s, deleting: true, confirmDelete: false})); }}>{t('common.delete')}</Button> : null}
           <Button variant="outline" onClick={requestClose} disabled={status === 'saving'}>{t('common.cancel')}</Button>
           <Button onClick={() => void submit()} disabled={!canSubmit({...state, deleting: false, confirmDelete: false}) || busy || status === 'committed'}>
-            {t(status === 'saving' ? 'common.saving' : holiday ? 'register.saveHoliday' : 'register.saveAttendance')}
+            {t(status === 'saving' ? 'common.saving' : holiday ? 'register.saveHoliday' : studentSession ? 'register.saveSession' : 'register.saveAttendance')}
           </Button>
         </div>
       </DialogContent>
@@ -205,7 +226,6 @@ export function RegisterDialog({service, capabilities, centres, initial, today, 
           </div>
         </DialogContent>
       </Dialog>
-      <Dialog open={Boolean(deletingMark)} onOpenChange={open => { if (!open && status !== 'saving') setDeletingMark(null); }}><DialogContent role="alertdialog" className="z-[70] max-w-lg" overlayClassName="z-[60]" aria-describedby="delete-mark-help"><div><DialogTitle>{t('register.deleteMarkTitle')}</DialogTitle><DialogDescription id="delete-mark-help">{t('register.deleteMarkHelp', {student: deletingMark?.student ?? ''})}</DialogDescription></div><label className="flex flex-col gap-1 text-xs font-semibold text-muted">{t('register.reasonDeletion')}<Input value={markDeleteReason} maxLength={300} disabled={status === 'saving'} onChange={event => setMarkDeleteReason(event.target.value)} /></label><p role="alert" className="min-h-5 text-sm text-bad">{formError}</p><div className="flex justify-end gap-2"><Button variant="outline" disabled={status === 'saving'} onClick={() => setDeletingMark(null)}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" disabled={!deletingMark || !markDeleteReason.trim() || status === 'saving'} onClick={() => { if (!deletingMark) return; setStatus('saving'); service.deleteRecord(deletingMark.request, deletingMark.id, deletingMark.version, markDeleteReason).then(async () => { setDeletingMark(null); await onSaved(t('register.deleteMarkSuccess')); onClose(); }).catch(error => { setFormError(messageOf(error)); setStatus('ready'); }); }}>{t(status === 'saving' ? 'common.deleting' : 'common.delete')}</Button></div></DialogContent></Dialog>
     </Dialog>
   );
 }

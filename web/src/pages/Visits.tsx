@@ -15,7 +15,7 @@ import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
-import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
+import {CentreFilter, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -143,15 +143,12 @@ export function Visits({backend, context, role, service: injected, tables: injec
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{t('visit.intro', {heading})}</p>
-        {canRecord ? <Button onClick={() => { setNotice(''); setRecording(true); }}>{t('visit.recordButton')}</Button> : null}
-      </div>
+      <p className="text-sm text-muted">{t('visit.intro', {heading})}</p>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
       <FilterPanel label={t('visit.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
         <Select active={filters.month !== ''} label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        {scope.length > 1 ? <CentreFilter label={t('common.centre')} value={filters.centre} options={scope} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
         <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
         {role !== 'Cluster Officer' && officerChoices.length > 0 ? <Select label={t('visit.officer')} value={filters.officer} options={officerChoices.map(([id, label]) => [id, label])} allLabel={english('visit.allOfficers')} onChange={value => setFilters(f => ({...f, officer: value}))} /> : null}
       </FilterPanel>
@@ -171,7 +168,8 @@ export function Visits({backend, context, role, service: injected, tables: injec
 
       {role !== 'Teacher' ? (
         <DataTable<VisitRow> reference="5.7" caption={t('visit.log')} columns={logColumns} data={logTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-visit-log-${month}` : undefined}
-          state={logTable.result.status} server={logTable.server} errorMessage={logTable.error} emptyMessage={t('visit.noMonth')} onRetry={logTable.retry} />
+          state={logTable.result.status} server={logTable.server} errorMessage={logTable.error} emptyMessage={t('visit.noMonth')} onRetry={logTable.retry}
+          headerActions={canRecord ? <Button size="sm" onClick={() => { setNotice(''); setRecording(true); }}>{t('visit.recordButton')}</Button> : null} />
       ) : null}
       {month && selected.length > 0 ? <HistoricalReports kind="visits" rpc={backend.rpc} centres={selected} month={month} shift={filters.shift || null} officer={officer} /> : null}
       <p className="text-xs text-muted">{t('visit.footnote')}</p>

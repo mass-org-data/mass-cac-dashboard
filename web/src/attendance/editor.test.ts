@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest';
 import {applyRead, buildSave, canSubmit, initialEditor, isDirty, validate, changes, type EditorState} from './editor';
 import type {RegisterCapabilities, RegisterRead} from './service';
 
-const caps: RegisterCapabilities = {version: 6, enabled: true, session_entry: true, register_paging: true, holiday_code: true};
+const caps: RegisterCapabilities = {version: 8, enabled: true, session_entry: true, student_sessions: true, register_paging: true, holiday_code: true, all_session_registers: true, session_conversion: true};
 const read = (marks: Array<[string, string]> = [], notes = ''): RegisterRead => ({
   roster: [{id: 'e1', name: 'Asha', grade: '4'}, {id: 'e2', name: 'Ravi', grade: '5'}, {id: 'e3', name: null, grade: '5'}],
   marks: marks.map(([enrolment, code]) => ({enrolment, code, version: 1})), token: 'tok1', marks_token: 'mt1', recorded: marks.length, notes,
@@ -78,6 +78,26 @@ describe('attendance editor rules', () => {
     expect(canSubmit(holiday)).toBe(true);
     expect(buildSave(holiday, caps)).toEqual({kind: 'holiday', args: {p_request: holiday.request, p_centre: 'c1', p_shift: 'Evening', p_date: '2026-08-15', p_reason: 'Independence Day'}});
     expect(buildSave({...holiday, notes: ''}, caps).args).toMatchObject({p_reason: 'Holiday'});
+  });
+
+  it('builds complete Monthly Meeting and Activity Day attendance without classroom codes', () => {
+    const base = {...loaded(), draft: {e1: 'P', e2: 'A', e3: 'P'}};
+    const meeting = buildSave({...base, sessionType: 'Monthly Meeting'}, caps);
+    expect(meeting).toMatchObject({kind: 'studentSession', args: {p_type: 'Monthly Meeting', p_subtype: null, p_rows: [{enrolment: 'e1', code: 'P'}, {enrolment: 'e2', code: 'A'}, {enrolment: 'e3', code: 'P'}]}});
+    const activity = buildSave({...base, sessionType: 'Activity Day', activitySubtype: 'Sports Activity 2'}, caps);
+    expect(activity).toMatchObject({kind: 'studentSession', args: {p_type: 'Activity Day', p_subtype: 'Sports Activity 2'}});
+  });
+
+  it('converts a saved register in place with the original context, token, complete roster and reason', () => {
+    const saved = loaded([['e1', 'P'], ['e2', 'P'], ['e3', 'A']]);
+    const converted = {...saved, sessionType: 'Activity Day' as const, activitySubtype: 'Sports Activity 1' as const, reason: 'Originally classified incorrectly'};
+    expect(isDirty(converted, caps)).toBe(true);
+    expect(validate({...converted, reason: ''}, caps)).toBe('Enter a reason for changing the saved session type.');
+    expect(buildSave(converted, caps)).toEqual({kind: 'conversion', args: {
+      p_request: converted.request, p_centre: 'c1', p_shift: 'Morning', p_date: '2026-11-12',
+      p_from_type: 'Classroom', p_from_subtype: null, p_to_type: 'Activity Day', p_to_subtype: 'Sports Activity 1',
+      p_token: 'mt1', p_rows: [{enrolment: 'e1', code: 'P'}, {enrolment: 'e2', code: 'P'}, {enrolment: 'e3', code: 'A'}], p_reason: 'Originally classified incorrectly',
+    }});
   });
 
   it('keeps the same request id for a retry and renews it only when the register is read again', () => {

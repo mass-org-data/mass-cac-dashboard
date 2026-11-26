@@ -19,7 +19,7 @@ import {createTableService, type TableRequest, type TableService} from '../table
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
 import type {MessageKey} from '../i18n/en';
-import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
+import {CentreFilter, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -117,21 +117,26 @@ export function Attendance({backend, context, service: injected, overview: injec
     if (!centre) return;
     const date = selection?.date ?? (month === today.slice(0, 7) ? today : `${month}-01`);
     setNotice('');
-    setEditor({centre, shift: selection?.shift ?? (filters.shift || 'Morning'), date});
+    setEditor({centre, shift: selection?.shift ?? (filters.shift || 'Morning'), date, sessionType: selection?.sessionType, activitySubtype: selection?.activitySubtype});
   };
 
-  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', present: 'present', percentage: 'percentage', last_edited_at: 'last_edited_at'} as Record<SortKey, string>)[page.sort];
+  const sortId = ({centre: 'centre', shift: 'shift', date: 'date', session: 'session', present: 'present', percentage: 'percentage', last_edited_at: 'last_edited_at'} as Record<SortKey, string>)[page.sort];
+  const sessionLabel = (row: RegisterRow) => {
+    const label = row.session_type === 'Holiday' ? t('register.holiday') : row.session_type === 'Monthly Meeting' ? t('register.monthlyMeeting') : row.session_type === 'Activity Day' ? t('register.activityDay') : t('register.classroom');
+    return row.session_type === 'Activity Day' && row.session_subtype ? `${label} — ${row.session_subtype}` : label;
+  };
   const columns = useMemo<Column<RegisterRow>[]>(() => [
     {id: 'centre', header: t('common.centre'), value: r => nameOf.get(r.centre_id) ?? r.centre_id},
     {id: 'shift', header: t('common.shift'), value: r => r.shift_code},
     {id: 'date', header: t('common.date'), value: r => r.attendance_date},
+    {id: 'session', header: t('register.sessionType'), value: sessionLabel},
     {id: 'present', header: t('attendance.presentCount'), value: r => attendanceSummaryDisplay(r).ratio, numeric: true},
     {id: 'percentage', header: t('attendance.presentPercent'), value: r => attendanceSummaryDisplay(r).percentage, numeric: true, cell: r => { const d = attendanceSummaryDisplay(r); return <>{d.percentage}{d.incomplete ? <span className="block text-xs text-muted">{t('attendance.incomplete')}</span> : null}</>; }},
     {id: 'last_edited_at', header: t('attendance.lastEdited'), value: r => r.last_edited_at ?? null, cell: r => <time dateTime={r.last_edited_at ?? undefined} title={formatDateTime(r.last_edited_at)}>{formatRelativeTime(r.last_edited_at)}</time>},
     {id: 'action', header: t('attendance.edit'), sortable: false, value: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday') : writable.some(c => c.id === r.centre_id) && canWrite ? t('attendance.edit') : t('attendance.viewOnly'),
       cell: r => r.session_type === 'Holiday' ? t('attendance.recordedHoliday')
         : writable.some(c => c.id === r.centre_id) && canWrite
-          ? <Button variant="ghost" size="sm" aria-label={t('attendance.editLabel', {centre: nameOf.get(r.centre_id) ?? r.centre_id, shift: r.shift_code, date: r.attendance_date})} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date})}>{t('attendance.edit')}</Button>
+          ? <Button variant="ghost" size="sm" className="-ml-3" aria-label={t('attendance.editLabel', {centre: nameOf.get(r.centre_id) ?? r.centre_id, shift: r.shift_code, date: r.attendance_date})} onClick={() => openEditor({centre: r.centre_id, shift: r.shift_code, date: r.attendance_date, sessionType: r.session_type as Selection['sessionType'], activitySubtype: r.session_subtype as Selection['activitySubtype']})}>{t('attendance.edit')}</Button>
           : <span className="text-xs text-muted">{t('attendance.viewOnly')}</span>},
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [nameOf, writable, canWrite, t]);
@@ -165,50 +170,48 @@ export function Attendance({backend, context, service: injected, overview: injec
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{t('attendance.intro')}</p>
-        {canWrite ? <Button onClick={() => openEditor()}>{t('attendance.add')}</Button> : <p className="text-xs text-muted">{t(caps.enabled ? 'attendance.noCentreWrite' : 'attendance.disabled')}</p>}
-      </div>
+      <p className="text-sm text-muted">{t('attendance.intro')}</p>
+      {!canWrite ? <p className="text-xs text-muted">{t(caps.enabled ? 'attendance.noCentreWrite' : 'attendance.disabled')}</p> : null}
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
       <FilterPanel label={t('attendance.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
         <Select active={filters.month !== ''} label={t('overview.reportingMonth')} value={month} options={months.map(m => [m, monthLabel(m)])} onChange={value => setFilters(f => ({...f, month: value}))} />
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        {scope.length > 1 ? <CentreFilter label={t('common.centre')} value={filters.centre} options={scope} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
         <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
         <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={english('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
         <Select label={t('common.gender')} value={filters.gender} options={[['Girl', english('common.girls')], ['Boy', english('common.boys')], ['Unknown', english('common.unknown')]]} allLabel={english('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
       </FilterPanel>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Scorecard reference="2.1" label={t('attendance.studentRate')} value={stats ? formatPercent(stats.attendance.percentage) : null} state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : report.status === 'error' ? report.message : undefined} />
-        <Scorecard reference="2.2" label={t('attendance.low')} value={lowCount === null ? null : formatCount(lowCount)} hint={t('attendance.lowHelp')} state={future ? 'unavailable' : distribution.status === 'ready' ? 'ready' : distribution.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : distribution.status === 'error' ? distribution.message : undefined} tone="alert" />
+        <Scorecard reference="3.1" label={t('attendance.studentRate')} value={stats ? formatPercent(stats.attendance.percentage) : null} state={future ? 'unavailable' : stats ? 'ready' : report.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : report.status === 'error' ? report.message : undefined} />
+        <Scorecard reference="3.2" label={t('attendance.low')} value={lowCount === null ? null : formatCount(lowCount)} hint={t('attendance.lowHelp')} state={future ? 'unavailable' : distribution.status === 'ready' ? 'ready' : distribution.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : distribution.status === 'error' ? distribution.message : undefined} tone="alert" />
       </div>
 
-      {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
-        <div aria-busy={registerBusy} className={registerBusy ? 'opacity-60 transition-opacity' : undefined}>
-        <DataTable<RegisterRow>
-          reference="2.3" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}`}
-          exportName={context.capabilities?.export === true ? `MASS-attendance-register-${month}` : undefined} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
-        />
-        </div>
-      )}
-      <p className="text-xs text-muted">{t('attendance.registerFootnote')}</p>
-
-
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard reference="2.4" title={t('attendance.overTime')} subtitle={t('attendance.overTimeHelp')} state={asState(series)} errorMessage={series.status === 'error' ? series.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
+        <ChartCard reference="3.3" title={t('attendance.overTime')} subtitle={t('attendance.overTimeHelp')} state={asState(series)} errorMessage={series.status === 'error' ? series.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
           <LineChart points={trend} description={t('attendance.byMonth')} />
         </ChartCard>
-        <ChartCard reference="2.5" title={t('attendance.bands')} subtitle={t('attendance.bandsHelp')} state={future ? 'empty' : asState(distribution)} emptyMessage={t('common.future')} errorMessage={distribution.status === 'error' ? distribution.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
+        <ChartCard reference="3.4" title={t('attendance.bands')} subtitle={t('attendance.bandsHelp')} state={future ? 'empty' : asState(distribution)} emptyMessage={t('common.future')} errorMessage={distribution.status === 'error' ? distribution.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
           <ColumnChart axis={t('common.students')} description={t('attendance.byDays')} items={bandItems} />
           <p className="mt-2 text-xs text-muted">{t('attendance.recordedStudentHelp', {count: formatCount(distribution.status === 'ready' ? distribution.value.recorded_students ?? null : null)})}</p>
         </ChartCard>
       </div>
 
       <DataTable<CentreRow>
-        reference="2.6" caption={t('attendance.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-attendance-by-centre-${month}` : undefined}
+        reference="3.5" caption={t('attendance.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-attendance-by-centre-${month}` : undefined}
         state={future ? 'empty' : centreTable.result.status} server={centreTable.server} emptyMessage={future ? t('common.future') : t('overview.noCentres')} errorMessage={centreTable.error} onRetry={centreTable.retry}
       />
+
+      {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
+        <div aria-busy={registerBusy} className={registerBusy ? 'opacity-60 transition-opacity' : undefined}>
+        <DataTable<RegisterRow>
+          reference="3.6" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}|${r.session_type}|${r.session_subtype ?? ''}`}
+          exportName={context.capabilities?.export === true ? `MASS-attendance-register-${month}` : undefined} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
+          headerActions={canWrite ? <Button size="sm" onClick={() => openEditor()}>{t('attendance.add')}</Button> : null}
+        />
+        </div>
+      )}
+      <p className="text-xs text-muted">{t('attendance.registerFootnote')}</p>
 
       {editor && caps ? <RegisterDialog service={service} capabilities={caps} centres={writable.map(c => ({id: c.id, label: c.label}))} initial={editor} today={today} onSaved={afterSave} onClose={() => setEditor(null)} /> : null}
     </div>

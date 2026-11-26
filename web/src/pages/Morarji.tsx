@@ -18,7 +18,7 @@ import type {ProgrammeContext} from '../session/controller';
 import {createTableService, type TableRequest, type TableService} from '../tables/service';
 import {useServerTable} from '../tables/useServerTable';
 import {useI18n} from '../i18n/I18n';
-import {FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
+import {CentreFilter, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -122,14 +122,11 @@ export function Morarji({backend, context, role, service: injectedService, profi
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{t('morarji.intro', {followup: operational ? t('morarji.followupSuffix') : ''})}</p>
-        {canWrite && operational ? <Button onClick={() => { setNotice(''); setAdding(true); }}>{t('morarji.addRecord')}</Button> : null}
-      </div>
+      <p className="text-sm text-muted">{t('morarji.intro', {followup: operational ? t('morarji.followupSuffix') : ''})}</p>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
       <FilterPanel label={t('morarji.filters')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
         {cohorts.length ? <Select active={filters.cohort !== ''} label={t('morarji.cohortYear')} value={cohortLabel} options={cohorts.map(c => [c.label, c.label])} onChange={value => setFilters(f => ({...f, cohort: value}))} /> : null}
-        {scope.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={scope.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+        {scope.length > 1 ? <CentreFilter label={t('common.centre')} value={filters.centre} options={scope} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
       </FilterPanel>
       {none ? <p role="note" className="rounded-md bg-brand-soft p-4 text-sm">{t('morarji.noneImported')}</p> : null}
 
@@ -152,7 +149,8 @@ export function Morarji({backend, context, role, service: injectedService, profi
       {operational ? (
         <>
           <DataTable<CentreLine> reference="6.7" caption={t('morarji.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-morarji-by-centre-${cohortLabel}` : undefined} state={centreTable.result.status} errorMessage={centreTable.error} emptyMessage={t('morarji.noRecords')} onRetry={centreTable.retry} server={centreTable.server} />
-          <DataTable<FollowUp> reference="6.8" caption={t('morarji.followup')} columns={followColumns} data={followTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-morarji-follow-up-${cohortLabel}` : undefined} state={followTable.result.status} errorMessage={followTable.error} emptyMessage={t('morarji.noRecords')} onRetry={followTable.retry} server={followTable.server} />
+          <DataTable<FollowUp> reference="6.8" caption={t('morarji.followup')} columns={followColumns} data={followTable.rows} getRowId={r => r.id} exportName={context.capabilities?.export === true ? `MASS-morarji-follow-up-${cohortLabel}` : undefined} state={followTable.result.status} errorMessage={followTable.error} emptyMessage={t('morarji.noRecords')} onRetry={followTable.retry} server={followTable.server}
+            headerActions={canWrite ? <Button size="sm" onClick={() => { setNotice(''); setAdding(true); }}>{t('morarji.addRecord')}</Button> : null} />
         </>
       ) : <p className="text-xs text-muted">{t('morarji.leadership')}</p>}
       {adding && cohort ? <AddMorarjiDialog service={service} enabled={morarjiEnabled} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={writable.find(c => centreIds.includes(c.id))?.id ?? writable[0]!.id} cohortId={cohort.id} cohortLabel={cohort.label} onSaved={afterSave} onClose={() => setAdding(false)} /> : null}

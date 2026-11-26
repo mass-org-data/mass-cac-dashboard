@@ -50,6 +50,8 @@ export interface DataTableProps<T> {
   onRetry?: () => void;
   /** Page-numbered reference such as 1.13, shown before the title. */
   reference?: string;
+  /** Page-owned actions shown after Export CSV in the table title row. */
+  headerActions?: ReactNode;
   /** Text above the search box (default: Search). */
   searchLabel?: string;
   /** Server-side paging, sorting and optional search. The server returns one page. */
@@ -83,7 +85,7 @@ const sortValues: SortingFn<unknown> = (a, b, columnId) => {
 
 const asCsv = (value: string | number | null | undefined): CsvValue => (value === undefined ? null : value);
 
-export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage, onRetry, reference, searchLabel, server}: DataTableProps<T>) {
+export function DataTable<T>({columns, data, caption, getRowId, exportName, state = 'ready', errorMessage, emptyMessage, onRetry, reference, headerActions, searchLabel, server}: DataTableProps<T>) {
   const {t} = useI18n();
   const searchId = useId();
   const captionId = useId();
@@ -218,8 +220,11 @@ export function DataTable<T>({columns, data, caption, getRowId, exportName, stat
   return (
     <section aria-labelledby={`${captionId}-title`} className="rounded-lg border border-line bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 id={`${captionId}-title`} className="text-sm font-semibold text-ink">{reference ? <span className="mr-1 text-xs font-bold text-brand-dark">{reference}</span> : null}{caption}</h2>
-        {exportName && state === 'ready' && data.length > 0 ? <Button variant="outline" size="sm" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{t(exporting ? 'table.exporting' : 'table.export')}</Button> : null}
+        <h2 id={`${captionId}-title`} className="text-sm font-semibold text-muted">{reference ? <><span className="text-sm font-bold text-brand-dark">{reference}</span>{' '}</> : null}{caption}</h2>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {exportName && state === 'ready' && data.length > 0 ? <Button variant="outline" size="sm" onClick={() => void exportCsv()} disabled={filteredCount === 0 || exporting}><Download aria-hidden="true" className="size-4" />{t(exporting ? 'table.exporting' : 'table.export')}</Button> : null}
+          {headerActions}
+        </div>
       </div>
       <AsyncState state={state === 'ready' && data.length === 0 ? 'empty' : state} errorMessage={errorMessage} emptyMessage={emptyMessage ?? t('table.noRecords')} onRetry={onRetry}>{body}</AsyncState>
     </section>

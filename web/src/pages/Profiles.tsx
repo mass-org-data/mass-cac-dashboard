@@ -2,7 +2,6 @@ import {useCallback, useEffect, useMemo, useState} from 'react';
 import {AsyncState} from '../components/AsyncState';
 import {DataTable, type Column} from '../components/DataTable';
 import {Button} from '../components/ui/button';
-import {Input} from '../components/ui/input';
 import {StudentCharts} from '../profiles/StudentCharts';
 import {AddStudentDialog, DeleteStudentDialog, EditStudentDialog} from '../profiles/StudentDialogs';
 import {isProfileSupported, PROFILE_PAGE_SIZE, type ProfileCapabilities, type ProfilePageRequest, type ProfileSort, type ProfilesService, type StudentRow} from '../profiles/service';
@@ -11,7 +10,7 @@ import {sharedOverview, sharedProfiles} from '../data/shared';
 import type {LiveBackend} from '../session/backend';
 import type {ProgrammeContext} from '../session/controller';
 import {useI18n} from '../i18n/I18n';
-import {activeFieldClass, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
+import {CentreFilter, FilterPanel, FilterSelect as Select, english} from '../components/FilterPanel';
 
 type Slice<T> = {status: 'loading'} | {status: 'ready'; value: T} | {status: 'error'; message: string};
 const messageOf = (error: unknown) => (error instanceof Error && error.message ? error.message : 'This could not be loaded.');
@@ -116,34 +115,30 @@ export function Profiles({backend, context, role, service: injected}: {backend: 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{t('profile.intro')}</p>
-        {canEdit ? <Button onClick={() => { setNotice(''); setAdding(true); }}>{t('profile.add')}</Button> : <p className="text-xs text-muted">{t('profile.noEntry')}</p>}
-      </div>
+      <p className="text-sm text-muted">{t('profile.intro')}</p>
       <p role="status" aria-live="polite" className={notice ? 'rounded-md bg-ok-soft p-3 text-sm text-ok' : 'sr-only'}>{notice}</p>
 
-      <FilterPanel role="search" label={t('profile.searchRegion')} active={search !== '' || JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => { setSearch(''); setFilters(INITIAL_FILTERS); }}>
-        <label className="flex min-w-56 flex-1 flex-col gap-1 text-xs font-semibold text-muted">{t('profile.search')}
-          <Input type="search" value={search} onChange={event => setSearch(event.target.value)} maxLength={160} className={activeFieldClass(search !== '')} />
-        </label>
-        {writable.length > 1 ? <Select label={t('common.centre')} value={filters.centre} options={writable.map(c => [c.id, c.label])} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
+      <FilterPanel label={t('profile.searchRegion')} active={JSON.stringify(filters) !== JSON.stringify(INITIAL_FILTERS)} onClear={() => setFilters(INITIAL_FILTERS)}>
+        {writable.length > 1 ? <CentreFilter label={t('common.centre')} value={filters.centre} options={writable} allLabel={english('common.allCentres')} onChange={value => setFilters(f => ({...f, centre: value}))} /> : null}
         <Select label={t('common.grade')} value={filters.grade} options={Array.from({length: 10}, (_, i) => [String(i + 1), String(i + 1)] as [string, string])} allLabel={english('common.allGrades')} onChange={value => setFilters(f => ({...f, grade: value}))} />
         <Select label={t('common.shift')} value={filters.shift} options={[['Morning', english('common.morning')], ['Evening', english('common.evening')]]} allLabel={english('common.bothShifts')} onChange={value => setFilters(f => ({...f, shift: value}))} />
         <Select label={t('common.gender')} value={filters.gender} options={[['Girl', english('common.girls')], ['Boy', english('common.boys')], ['Unknown', english('common.unknown')]]} allLabel={english('common.allGenders')} onChange={value => setFilters(f => ({...f, gender: value}))} />
       </FilterPanel>
 
-      <StudentCharts backend={backend} today={today} centres={profileFilters.centres} shift={profileFilters.shift} grade={profileFilters.grade} gender={profileFilters.gender} />
+      <StudentCharts key={refreshKey} backend={backend} today={today} centres={profileFilters.centres} shift={profileFilters.shift} grade={profileFilters.grade} gender={profileFilters.gender} />
 
       {result.status === 'error' ? <AsyncState state="error" errorMessage={result.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
         <div aria-busy={busy} className={busy ? 'opacity-60 transition-opacity' : undefined}>
-          <DataTable<StudentRow> reference="3.5" caption={t('profile.caption')} columns={columns} data={result.status === 'ready' ? result.value.rows : []} getRowId={r => r.enrolment}
-            exportName={context.capabilities?.export === true ? 'MASS-student-profiles' : undefined} state={result.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('profile.noMatches')} server={server} />
+          <DataTable<StudentRow> reference="2.5" caption={t('profile.caption')} columns={columns} data={result.status === 'ready' ? result.value.rows : []} getRowId={r => r.enrolment}
+            exportName={context.capabilities?.export === true ? 'MASS-student-profiles' : undefined} state={result.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('profile.noMatches')}
+            searchLabel={t('profile.search')} headerActions={canEdit ? <Button size="sm" onClick={() => { setNotice(''); setAdding(true); }}>{t('profile.add')}</Button> : null}
+            server={server ? {...server, query: search, onQueryChange: setSearch} : undefined} />
         </div>
       )}
       <p className="text-xs text-muted">{t('profile.footnote')}</p>
 
       {adding ? <AddStudentDialog service={service} centres={writable.map(c => ({id: c.id, label: c.label}))} initialCentre={filters.centre || writable[0]!.id} today={today} enabled={addEnabled} onSaved={afterSave} onClose={() => setAdding(false)} /> : null}
-      {editing ? <EditStudentDialog service={service} student={editing} centreLabel={nameOf.get(editing.centre) ?? editing.centre} enabled={editEnabled} enrolEnabled={writes.enrolments === true} onSaved={afterSave} onClose={() => setEditing(null)} onDelete={canDelete ? () => { setDeleting(editing); setEditing(null); } : undefined} /> : null}
+      {editing ? <EditStudentDialog service={service} student={editing} centreLabel={nameOf.get(editing.centre) ?? editing.centre} today={today} enabled={editEnabled} enrolEnabled={writes.enrolments === true} onSaved={afterSave} onClose={() => setEditing(null)} onDelete={canDelete ? () => { setDeleting(editing); setEditing(null); } : undefined} /> : null}
       {deleting ? <DeleteStudentDialog service={service} student={deleting} enabled={writes.student_deletion === true} onSaved={afterSave} onClose={() => setDeleting(null)} /> : null}
     </div>
   );

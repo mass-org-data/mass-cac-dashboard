@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {administrationHandler} from '../../supabase/functions/leadership-admin/handler.mjs';
+import {administrationHandler, projectPreviewOrigin} from '../../supabase/functions/leadership-admin/handler.mjs';
 
 const origin = 'https://dashboard.example.invalid';
 const actor = '00000000-0000-4000-8000-000000000001';
@@ -82,6 +82,35 @@ test('Edge administration denies anonymous, unauthorized and other-origin reques
   assert.equal((await handler(request({action:'directory'}))).status, 403);
   assert.equal((await handler(request(deactivate))).status, 403);
   assert.deepEqual(steps, []);
+});
+
+test('Edge administration reflects an explicitly allowed preview origin', async () => {
+  const preview = 'https://mass-cac-dashboard-git-feedback-team.vercel.app';
+  const {handler} = fixture();
+  const allowed = administrationHandler({
+    origin: value => value === preview,
+    verify: async () => ({id: actor, session}),
+    listAccounts: async () => ({accounts: [], more: false}),
+    resolveAccount: async () => null,
+    withDatabase: async (_session, action) => action({authorize: async () => {}, directory: async () => ({users: []})}),
+    administer: async () => subject,
+  });
+  const preflight = await allowed(new Request(preview, {method: 'OPTIONS', headers: {origin: preview}}));
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), preview);
+  assert.equal((await handler(request({action:'directory'}, true, preview))).status, 403);
+});
+
+test('Preview CORS accepts only this Vercel project deployment hostname pattern', () => {
+  assert.equal(projectPreviewOrigin('https://mass-cac-dashboard-git-fix-vercel-fe-ed5737-mass-data-dashboard.vercel.app'), true);
+  assert.equal(projectPreviewOrigin('https://mass-cac-dashboard-hfaqwsy7t-mass-data-dashboard.vercel.app'), true);
+  for (const origin of [
+    'http://mass-cac-dashboard-hfaqwsy7t-mass-data-dashboard.vercel.app',
+    'https://mass-cac-dashboard-hfaqwsy7t-other-team.vercel.app',
+    'https://other-project-hfaqwsy7t-mass-data-dashboard.vercel.app',
+    'https://mass-cac-dashboard-hfaqwsy7t-mass-data-dashboard.vercel.app.attacker.invalid',
+    'https://user@mass-cac-dashboard-hfaqwsy7t-mass-data-dashboard.vercel.app',
+  ]) assert.equal(projectPreviewOrigin(origin), false, origin);
 });
 
 test('Edge deactivates application access before ban and finalization, then replays without Auth', async () => {
