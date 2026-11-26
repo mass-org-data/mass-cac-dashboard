@@ -21,6 +21,7 @@ function setup(options: {role?: string; writes?: Record<string, boolean>; caps?:
     page: vi.fn(async (_f, p) => ({ids: all.slice(p.offset, p.offset + 10).map(s => s.enrolment), total: all.length})),
     students: vi.fn(async (_c, ids: string[]) => ids.map(id => all.find(s => s.enrolment === id)!)),
     clear: vi.fn(), history: vi.fn(async () => []), revision: vi.fn(async () => 7), register: vi.fn(async () => ({})), saveProfile: vi.fn(async () => 8),
+    previewDeletion: vi.fn(async () => ({token: 'delete-token', counts: {children: 1, enrolments: 1}})), deleteStudent: vi.fn(async () => undefined),
   } as unknown as ProfilesService;
   const backend = {rpc: vi.fn(), readCapabilities: vi.fn(async () => ({reviewedCharts: true, reviewedAttendanceSeries: true, writes: options.writes ?? {}}))} as unknown as LiveBackend;
   const role = options.role ?? 'Teacher';
@@ -114,6 +115,25 @@ describe('Student profiles page', () => {
     await user.type(screen.getByLabelText('Full name'), 'Student One');
     await user.click(screen.getByRole('button', {name: 'Save profile'}));
     await waitFor(() => expect(service.saveProfile).toHaveBeenCalledWith(expect.objectContaining({child: 'k1', revision: 7, name: 'Student One'})));
+  });
+  it('requires the exact student name before deletion and keeps a fixed audit reason', async () => {
+    const user = userEvent.setup();
+    const {service} = setup({role: 'Leadership', writes: {profiles: true, student_deletion: true}});
+    const t = await table();
+    await user.click(within(t).getByRole('button', {name: 'Edit profile: Student 1'}));
+    await screen.findByLabelText('Full name');
+    await user.click(screen.getByRole('button', {name: 'Delete'}));
+    const dialog = await screen.findByRole('alertdialog', {name: 'Permanently delete student?'});
+    const confirmation = within(dialog).getByLabelText('Type the student name “Student 1” to confirm');
+    const remove = within(dialog).getByRole('button', {name: 'Delete'});
+    expect(remove).toBeDisabled();
+    await user.type(confirmation, 'student 2');
+    expect(remove).toBeDisabled();
+    await user.clear(confirmation);
+    await user.type(confirmation, '  student 1  ');
+    expect(remove).toBeEnabled();
+    await user.click(remove);
+    await waitFor(() => expect(service.deleteStudent).toHaveBeenCalledWith(expect.any(String), 'k1', 'delete-token', 'Student deletion confirmed by exact name entry.'));
   });
   it('shows View only when the role cannot write the centres', async () => {
     setup({write: false});

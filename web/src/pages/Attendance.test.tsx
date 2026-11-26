@@ -124,6 +124,19 @@ describe('Attendance page', () => {
     expect(within(centreTable).getByText('Unknown')).toBeInTheDocument();
   });
 
+  it('keeps scorecards and charts above both tables, with the attendance register last', async () => {
+    setup();
+    const trend = await screen.findByRole('img', {name: /Attendance by month/});
+    const bands = await screen.findByRole('img', {name: /Students by days present/});
+    const centreTable = await screen.findByRole('table', {name: 'Attendance by centre'});
+    const attendanceTable = await register();
+    expect(trend.compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bands.compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(centreTable.compareDocumentPosition(attendanceTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('3.3', {selector: 'span'})).toBeInTheDocument();
+    expect(screen.getByText('3.6', {selector: 'span'})).toBeInTheDocument();
+  });
+
   it('returns to page one and newest first when a filter changes', async () => {
     const user = userEvent.setup();
     const {service} = setup();

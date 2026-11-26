@@ -27,6 +27,7 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
   const [roster, setRoster] = useState<RosterStudent[]>([]);
   const [saved, setSaved] = useState<Map<string, SavedResult>>(new Map());
   const [entered, setEntered] = useState<Entered>({});
+  const [invalidEnrolment, setInvalidEnrolment] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [load, setLoad] = useState<'ready' | 'loading' | 'error'>('ready');
   const [status, setStatus] = useState<'ready' | 'saving' | 'committed'>('ready');
@@ -58,9 +59,16 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
 
   const submit = async () => {
     if (status !== 'ready' || !mapped) return;
+    const invalid = roster.find(student => {
+      const text = (entered[student.enrolment] ?? '').trim();
+      if (text === '') return false;
+      const score = Number(text);
+      return !Number.isFinite(score) || score < 0 || score > MAX_SCORE;
+    });
+    if (invalid) { setInvalidEnrolment(invalid.enrolment); setError('Marks must be 0–25.'); return; }
     let rows;
     try { rows = buildScores(roster, entered, saved, date, mapped.definitionId); } catch (e) { setError(messageOf(e)); return; }
-    setError(''); setStatus('saving');
+    setInvalidEnrolment(null); setError(''); setStatus('saving');
     try { await service.save(rows); } catch (e) { setError(messageOf(e)); setStatus('ready'); return; }
     setStatus('committed');
     try { await onSaved(t('assessment.savedCount', {count: rows.length, round: mapped.label})); }
@@ -106,11 +114,11 @@ export function EntryDialog({service, refs, year, centres, initialCentre, today,
                     </tr></thead>
                     <tbody>
                       {shown.map(s => (
-                        <tr key={s.enrolment} className="odd:bg-white even:bg-paper">
+                        <tr key={s.enrolment} className={invalidEnrolment === s.enrolment ? 'bg-bad-soft' : 'odd:bg-white even:bg-paper'}>
                           <td className="border-b border-line px-3 py-1">{s.grade}</td>
                           <td className="border-b border-line px-3 py-1">{s.name || t('common.nameMissing')}</td>
                           <td className="border-b border-line px-3 py-1">{s.gender ?? t('common.unknown')}</td>
-                          <td className="border-b border-line px-3 py-1"><Input type="number" inputMode="decimal" min={0} max={MAX_SCORE} step="any" aria-label={t('assessment.marksFor', {student: s.name || s.studentId})} value={entered[s.enrolment] ?? ''} disabled={busy} onChange={event => setEntered(v => ({...v, [s.enrolment]: event.target.value}))} /></td>
+                          <td className="border-b border-line px-3 py-1"><Input type="number" inputMode="decimal" min={0} max={MAX_SCORE} step="any" aria-invalid={invalidEnrolment === s.enrolment || undefined} aria-label={t('assessment.marksFor', {student: s.name || s.studentId})} value={entered[s.enrolment] ?? ''} disabled={busy} onChange={event => { setInvalidEnrolment(current => current === s.enrolment ? null : current); setEntered(v => ({...v, [s.enrolment]: event.target.value})); }} /></td>
                         </tr>
                       ))}
                     </tbody>

@@ -187,32 +187,31 @@ export function Attendance({backend, context, service: injected, overview: injec
         <Scorecard reference="3.2" label={t('attendance.low')} value={lowCount === null ? null : formatCount(lowCount)} hint={t('attendance.lowHelp')} state={future ? 'unavailable' : distribution.status === 'ready' ? 'ready' : distribution.status === 'error' ? 'error' : 'loading'} message={future ? t('common.future') : distribution.status === 'error' ? distribution.message : undefined} tone="alert" />
       </div>
 
-      {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
-        <div aria-busy={registerBusy} className={registerBusy ? 'opacity-60 transition-opacity' : undefined}>
-        <DataTable<RegisterRow>
-          reference="3.3" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}|${r.session_type}|${r.session_subtype ?? ''}`}
-          exportName={context.capabilities?.export === true ? `MASS-attendance-register-${month}` : undefined} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
-          headerActions={canWrite ? <Button size="sm" onClick={() => openEditor()}>{t('attendance.add')}</Button> : null}
-        />
-        </div>
-      )}
-      <p className="text-xs text-muted">{t('attendance.registerFootnote')}</p>
-
-
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard reference="3.4" title={t('attendance.overTime')} subtitle={t('attendance.overTimeHelp')} state={asState(series)} errorMessage={series.status === 'error' ? series.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
+        <ChartCard reference="3.3" title={t('attendance.overTime')} subtitle={t('attendance.overTimeHelp')} state={asState(series)} errorMessage={series.status === 'error' ? series.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
           <LineChart points={trend} description={t('attendance.byMonth')} />
         </ChartCard>
-        <ChartCard reference="3.5" title={t('attendance.bands')} subtitle={t('attendance.bandsHelp')} state={future ? 'empty' : asState(distribution)} emptyMessage={t('common.future')} errorMessage={distribution.status === 'error' ? distribution.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
+        <ChartCard reference="3.4" title={t('attendance.bands')} subtitle={t('attendance.bandsHelp')} state={future ? 'empty' : asState(distribution)} emptyMessage={t('common.future')} errorMessage={distribution.status === 'error' ? distribution.message : undefined} onRetry={() => setRefreshKey(k => k + 1)}>
           <ColumnChart axis={t('common.students')} description={t('attendance.byDays')} items={bandItems} />
           <p className="mt-2 text-xs text-muted">{t('attendance.recordedStudentHelp', {count: formatCount(distribution.status === 'ready' ? distribution.value.recorded_students ?? null : null)})}</p>
         </ChartCard>
       </div>
 
       <DataTable<CentreRow>
-        reference="3.6" caption={t('attendance.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-attendance-by-centre-${month}` : undefined}
+        reference="3.5" caption={t('attendance.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-attendance-by-centre-${month}` : undefined}
         state={future ? 'empty' : centreTable.result.status} server={centreTable.server} emptyMessage={future ? t('common.future') : t('overview.noCentres')} errorMessage={centreTable.error} onRetry={centreTable.retry}
       />
+
+      {register.status === 'error' ? <AsyncState state="error" errorMessage={register.message} onRetry={() => setRefreshKey(k => k + 1)} /> : (
+        <div aria-busy={registerBusy} className={registerBusy ? 'opacity-60 transition-opacity' : undefined}>
+        <DataTable<RegisterRow>
+          reference="3.6" caption={t('attendance.register')} columns={columns} data={register.status === 'ready' ? register.value.rows : []} getRowId={r => `${r.centre_id}|${r.shift_code}|${r.attendance_date}|${r.session_type}|${r.session_subtype ?? ''}`}
+          exportName={context.capabilities?.export === true ? `MASS-attendance-register-${month}` : undefined} state={register.status === 'ready' ? 'ready' : 'loading'} emptyMessage={t('attendance.noSaved')} server={server}
+          headerActions={canWrite ? <Button size="sm" onClick={() => openEditor()}>{t('attendance.add')}</Button> : null}
+        />
+        </div>
+      )}
+      <p className="text-xs text-muted">{t('attendance.registerFootnote')}</p>
 
       {editor && caps ? <RegisterDialog service={service} capabilities={caps} centres={writable.map(c => ({id: c.id, label: c.label}))} initial={editor} today={today} onSaved={afterSave} onClose={() => setEditor(null)} /> : null}
     </div>

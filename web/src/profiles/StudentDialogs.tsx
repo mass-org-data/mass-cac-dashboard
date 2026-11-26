@@ -191,15 +191,18 @@ export function DeleteStudentDialog({service, student, enabled, onSaved, onClose
   const {t} = useI18n();
   const [preview, setPreview] = useState<StudentDeletionPreview | null>(null);
   const [loadError, setLoadError] = useState('');
-  const [reason, setReason] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [status, setStatus] = useState<'loading' | 'ready' | 'deleting'>('loading');
   const request = useRef(newRequest());
+  const confirmationValue = student.name?.trim() || student.studentId;
+  const confirmed = confirmation.trim().toLocaleLowerCase() === confirmationValue.toLocaleLowerCase();
   const load = () => { setStatus('loading'); setLoadError(''); service.previewDeletion(student.child).then(value => { setPreview(value); setStatus('ready'); }).catch(error => { setLoadError(messageOf(error)); setStatus('ready'); }); };
   useEffect(load, [service, student.child]); // eslint-disable-line react-hooks/exhaustive-deps
   const submit = async () => {
-    if (!enabled || !preview || status !== 'ready' || !reason.trim()) return;
+    if (!enabled || !preview || status !== 'ready' || !confirmed) return;
     setStatus('deleting'); setLoadError('');
-    try { await service.deleteStudent(request.current, student.child, preview.token, reason); }
+    const auditReason = student.name?.trim() ? 'Student deletion confirmed by exact name entry.' : 'Student deletion confirmed by exact student ID entry.';
+    try { await service.deleteStudent(request.current, student.child, preview.token, auditReason); }
     catch (error) { setLoadError(messageOf(error)); setStatus('ready'); return; }
     await onSaved(t('profile.deleteSuccess'));
     onClose();
@@ -212,9 +215,9 @@ export function DeleteStudentDialog({service, student, enabled, onSaved, onClose
         {Object.entries(preview.counts).filter(([key]) => !key.endsWith('_retained')).map(([key, count]) => <li key={key} className="flex justify-between gap-3"><span>{key.replaceAll('_', ' ')}</span><strong>{count}</strong></li>)}
       </ul> : null}
       <p className="text-sm font-semibold text-bad">{t('profile.deleteCascadeWarning')}</p>
-      <label className={labelClass}>{t('profile.deleteReason')}<Input value={reason} maxLength={300} disabled={status === 'deleting'} onChange={event => setReason(event.target.value)} /></label>
+      <label className={labelClass}>{t(student.name?.trim() ? 'profile.deleteConfirmName' : 'profile.deleteConfirmId', {student: confirmationValue})}<Input value={confirmation} autoComplete="off" disabled={status === 'deleting'} onChange={event => setConfirmation(event.target.value)} /></label>
       <p role="alert" className="min-h-5 text-sm text-bad">{loadError}</p>
-      <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose} disabled={status === 'deleting'}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" onClick={() => void submit()} disabled={!enabled || !preview || status !== 'ready' || !reason.trim()}>{t(status === 'deleting' ? 'common.deleting' : 'common.delete')}</Button></div>
+      <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose} disabled={status === 'deleting'}>{t('common.cancel')}</Button><Button className="bg-bad hover:bg-bad" onClick={() => void submit()} disabled={!enabled || !preview || status !== 'ready' || !confirmed}>{t(status === 'deleting' ? 'common.deleting' : 'common.delete')}</Button></div>
     </DialogContent>
   </Dialog>;
 }
