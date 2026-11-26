@@ -67,6 +67,20 @@ describe('Assessments page', () => {
     expect(within(table).getAllByRole('button', {name: 'Edit'}).length).toBeGreaterThan(0);
     expect(within(table).queryByRole('button', {name: 'Delete'})).not.toBeInTheDocument();
   });
+  it('places current performance and progress together before the renumbered centre table', async () => {
+    const {container} = setup();
+    await screen.findByText('32 of 40 enrolled students have a score');
+    const performance = screen.getByRole('region', {name: 'Current exam performance'});
+    const progress = screen.getByRole('region', {name: 'Progress across exam rounds'});
+    const centreTable = screen.getByRole('table', {name: 'Average score by centre'});
+    expect(performance.parentElement).toBe(progress.parentElement);
+    expect(performance.parentElement).toHaveClass('lg:grid-cols-2');
+    expect(performance.compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(performance).getByText('4.4')).toBeInTheDocument();
+    expect(within(progress).getByText('4.5')).toBeInTheDocument();
+    expect(screen.getByText('4.6').compareDocumentPosition(centreTable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container).toBeInTheDocument();
+  });
   it('shows an error with retry when the report fails, without hiding the register', async () => {
     setup({reportFn: vi.fn(async () => { throw new Error('statement timeout'); }) as never});
     expect((await screen.findAllByText(/statement timeout/)).length).toBeGreaterThan(0);

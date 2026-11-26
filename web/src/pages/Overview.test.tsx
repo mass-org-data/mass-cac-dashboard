@@ -151,6 +151,15 @@ describe('Overview', () => {
     expect(await screen.findByRole('group', {name: 'Centers'})).toHaveTextContent('12');
   });
 
+  it('updates the centre scorecard when an officer selects one centre', async () => {
+    const user = userEvent.setup();
+    setup({role: 'Cluster Officer'});
+    await screen.findByRole('group', {name: 'Centers'});
+    await user.click(screen.getByLabelText('Centre'));
+    await user.click(screen.getByRole('option', {name: 'Centre 04'}));
+    await waitFor(() => expect(screen.getByRole('group', {name: 'Centers'})).toHaveTextContent('1'));
+  });
+
   it('has no automatically detectable accessibility violations', async () => {
     const {container} = setup({service: {report: vi.fn(async () => report)}});
     await waitFor(() => expect(screen.getByRole('group', {name: 'Girls'})).toHaveTextContent('54.6%'));

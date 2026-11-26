@@ -136,7 +136,7 @@ export function Overview({backend, context, role, service: injected, tables: inj
 
       {selected.length === 0 ? <AsyncState state="empty" emptyMessage={t('overview.noCentres')} /> : <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Scorecard reference="1.1" label={t(role === 'Cluster Officer' ? 'overview.assignedCentres' : 'overview.selectionCentres')} value={formatCount(role === 'Cluster Officer' ? scope.length : selected.length)} />
+          <Scorecard reference="1.1" label={t(role === 'Cluster Officer' ? 'overview.assignedCentres' : 'overview.selectionCentres')} value={formatCount(selected.length)} />
           <Scorecard reference="1.2" label={t('overview.enrolled')} value={stats ? formatCount(stats.children) : null} state={cardState(report)} message={reportMessage} />
           <Scorecard reference="1.3" label={t('common.girls')} value={stats && population > 0 ? formatPercent((girls / population) * 100) : null} hint={stats ? t('overview.studentCount', {count: formatCount(girls)}) : undefined} state={cardState(report)} message={reportMessage} />
           <Scorecard reference="1.4" label={t('common.boys')} value={stats && population > 0 ? formatPercent((boys / population) * 100) : null} hint={stats ? t('overview.studentCount', {count: formatCount(boys)}) : undefined} state={cardState(report)} message={reportMessage} />

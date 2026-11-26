@@ -18,7 +18,7 @@ export const itemsFor = (role: string, _capabilities?: ProgrammeCapabilities) =>
   if (item.id === 'donors') return role === 'Leadership';
   if (item.id === 'visits') return role !== 'Teacher';
   return true;
-});
+}).map(item => role === 'Teacher' && item.id === 'morarji' ? {...item, number: 5} : item);
 
 interface Props {
   role: string;

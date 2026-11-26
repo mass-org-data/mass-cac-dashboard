@@ -1,5 +1,5 @@
 import postgres from 'npm:postgres@3.4.8';
-import {administrationHandler} from './handler.mjs';
+import {administrationHandler, projectPreviewOrigin} from './handler.mjs';
 
 const required = (name: string) => {
   const value = Deno.env.get(name);
@@ -14,6 +14,11 @@ const inviteUrl = new URL(required('MASS_ADMIN_INVITE_URL'));
 if (inviteUrl.protocol !== 'https:' || inviteUrl.pathname !== '/' || inviteUrl.search || inviteUrl.hash || inviteUrl.username || inviteUrl.password) {
   throw new Error('Leadership invitation origin must be a fixed HTTPS site root.');
 }
+const previewProject = authUrl.hostname === 'nilzfsahxoxibvrwsqkd.supabase.co';
+const allowedOrigin = (value: string | null) => {
+  if (value === inviteUrl.origin) return true;
+  return previewProject && projectPreviewOrigin(value);
+};
 const authRequest = (url: URL, init: RequestInit) => fetch(url, {
   ...init, redirect: 'error', signal: AbortSignal.timeout(8000),
 });
@@ -41,7 +46,7 @@ function verifiedTokenSession(authorization: string, subject: string) {
 
 
 Deno.serve(administrationHandler({
-  origin: inviteUrl.origin,
+  origin: allowedOrigin,
   async verify(authorization: string) {
     const response = await authRequest(new URL('user', authUrl), {headers: {apikey: publicKey, authorization}});
     if (response.status === 401 || response.status === 403) return null;

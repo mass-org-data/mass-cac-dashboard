@@ -151,18 +151,17 @@ export function Assessments({backend, context, service: injected, overview: inje
       </div>
       <p className="rounded-md bg-brand-soft p-3 text-sm"><strong>{t('assessment.ruleLead')}</strong> {t('assessment.ruleBody')}</p>
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <ChartCard reference="4.4" title={t('assessment.currentPerformance')} subtitle={t('assessment.records25', {round: round_label})} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
           {bands.length ? <><ColumnChart axis={t('common.students')} description={t('assessment.bandDescription', {round: round_label})} items={bands} /><p className="mt-2 text-xs text-muted">{t('assessment.recordedN', {count: q?.n ?? 0, unbanded: q?.precision_review ?? 0})}</p></> : <p className="text-sm text-muted">{t('assessment.noScoresZero')}</p>}
         </ChartCard>
+        <ChartCard reference="4.5" title={t('assessment.progress')} subtitle={t('assessment.progressHelp')} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
+          <ColumnChart axis={t('assessment.averageOutOf25')} description={t('assessment.progressDescription')} items={progress} maximum={25} />
+        </ChartCard>
       </div>
 
-      <DataTable<CentreRow> reference="4.5" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
+      <DataTable<CentreRow> reference="4.6" caption={t('assessment.byCentre')} columns={centreColumns} data={centreTable.rows} getRowId={r => r.centre_id} exportName={context.capabilities?.export === true ? `MASS-assessment-by-centre-${round_label}` : undefined}
         state={centreTable.result.status} server={centreTable.server} errorMessage={centreTable.error} emptyMessage={t('assessment.noCentres')} onRetry={centreTable.retry} />
-
-      <ChartCard reference="4.6" title={t('assessment.progress')} subtitle={t('assessment.progressHelp')} state={asState(report)} errorMessage={reportMessage} onRetry={() => setRefreshKey(k => k + 1)} emptyMessage={t('assessment.noScoresRound')}>
-        <ColumnChart axis={t('assessment.averageOutOf25')} description={t('assessment.progressDescription')} items={progress} maximum={25} />
-      </ChartCard>
 
       <DataTable<RegisterRow> reference="4.7" caption={t('assessment.register')} columns={registerColumns} data={registerTable.rows}
         getRowId={r => `${r.centre_id}|${r.shift_code}|${r.quarter}`} exportName={context.capabilities?.export === true ? 'MASS-assessment-register' : undefined} state={registerTable.result.status} server={registerTable.server} errorMessage={registerTable.error} onRetry={registerTable.retry} emptyMessage={t('assessment.noSaved')}

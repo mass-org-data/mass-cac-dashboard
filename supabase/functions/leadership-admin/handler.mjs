@@ -3,6 +3,15 @@ const roles = new Set(['Teacher', 'Cluster Officer', 'Leadership']);
 const lifecycle = new Set(['invite', 'deactivate', 'reactivate']);
 const version = value => Number.isSafeInteger(value) && value > 0;
 
+export function projectPreviewOrigin(value) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.port === '' && url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password
+      && url.hostname.startsWith('mass-cac-dashboard-') && url.hostname.endsWith('-mass-data-dashboard.vercel.app');
+  } catch { return false; }
+}
+
 function parse(body) {
   const {action, id, subject, centre, assignment, assignmentVersion} = body ?? {};
   if (action === 'directory') {
@@ -33,8 +42,10 @@ function parse(body) {
 
 export function administrationHandler({origin, verify, withDatabase, listAccounts, resolveAccount, administer}) {
   return async request => {
-    const cors = request.headers.get('origin') === origin
-      ? {'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
+    const requestOrigin = request.headers.get('origin');
+    const originAllowed = typeof origin === 'function' ? origin(requestOrigin) : requestOrigin === origin;
+    const cors = originAllowed && requestOrigin
+      ? {'access-control-allow-origin': requestOrigin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
          'access-control-allow-methods': 'POST, OPTIONS', vary: 'Origin'}
       : {};
     const reply = (status, body) => Response.json(body, {status, headers: {...cors, 'cache-control': 'no-store'}});

@@ -27,8 +27,8 @@ describe('side menu', () => {
     expect(screen.getByRole('link', {name: '3. Attendance'})).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', {name: '1. Overview'})).not.toHaveAttribute('aria-current');
   });
-  it('keeps canonical numbers while omitting role-inapplicable destinations', () => {
-    expect(itemsFor('Teacher').map(i => i.number)).toEqual([1, 2, 3, 4, 6, null]);
+  it('renumbers Teacher destinations while omitting role-inapplicable screens', () => {
+    expect(itemsFor('Teacher').map(i => i.number)).toEqual([1, 2, 3, 4, 5, null]);
     expect(itemsFor('Cluster Officer').map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, null]);
     expect(itemsFor('Leadership').map(i => i.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, null]);
     expect(itemsFor('Leadership').at(-1)?.id).toBe('about');
@@ -36,7 +36,7 @@ describe('side menu', () => {
   it('omits role-inapplicable screens and keeps server-disabled profile access unavailable', () => {
     expect(unavailableReason('Leadership', 'profiles', {read_profiles: true})).toBeNull();
     const view = render(<Harness role="Teacher" />);
-    expect(labels()).toEqual(['1. Overview', '2. Student profiles', '3. Attendance', '4. Assessments', '6. Morarji scholarship', 'About']);
+    expect(labels()).toEqual(['1. Overview', '2. Student profiles', '3. Attendance', '4. Assessments', '5. Morarji scholarship', 'About']);
     const nav = within(screen.getByRole('navigation', {name: 'Primary'}));
     expect(nav.queryByText('Annual donor summary')).not.toBeInTheDocument();
     expect(nav.queryByText('Visits')).not.toBeInTheDocument();
