@@ -2,6 +2,13 @@
 
 This file is the reusable working context for coding agents. Read it before changing the repository. Treat dated deployment and PR details as a snapshot: fetch the remotes and inspect GitHub, Vercel, and Supabase before acting on them.
 
+## Admin and Morarji UI work (26 November 2026)
+
+- Continue the next UI round on `feature/admin-morarji-ui`, created from `fix/vercel-feedback-round-3` at `e421afc`. Scope this branch to the Administration page UI and Morarji scholarship page UI unless the owner explicitly expands it.
+- Preserve the approved permission architecture, role and centre authorization, audit/concurrency/idempotency boundaries, and the existing Morarji programme rules and data model. Do not mutate a hosted database, change Vercel/Supabase control-plane settings, merge, promote, or act on Production without separate explicit approval.
+- Treat Vercel comment threads as owner-managed. Agents may fetch, reconcile, report, and verify Vercel comments, and may update the Google Sheet when requested, but must never mark a Vercel comment resolved or reopen a Vercel thread. The owner will manage Vercel comment status manually.
+- Follow the existing branch workflow: propose the finished pull request against `staging`, not `main`, unless the owner explicitly directs otherwise.
+
 ## Current Vercel feedback work (24 November 2026)
 
 - Implement the approved feedback on `fix/vercel-feedback-round-3`, created directly from `origin/main` at `c0ec88b`. Keep the work within four implementation phases and open the finished PR against `staging` only. Immediately before that PR, bring remote `staging` up to `main` only when it is a safe fast-forward.
@@ -427,3 +434,8 @@ Plan and release evidence:
 ## CI on pull requests (23 November 2026)
 
 Every pull request runs `frontend` (lint, check, tests, build, web typecheck and tests, audit) and `portable-sql` (portable SQL, attendance, staff-access), plus the Vercel deployment check. The real-browser `browser-acceptance` job (it fails on a legacy `user_scope_grants` fixture since Phase 8) and `test:centre-events` (fails on `Missing expected rejection` at the pre-Phase-7 baseline) moved to the manual workflow `.github/workflows/extended-tests.yml` (Actions tab, Run workflow). Fix those suites before returning them to every pull request. The `Vercel Preview Comments` check is Vercel's own: it reports unresolved comment threads and goes green when they are resolved. It is not a required check (staging has no branch protection) and cannot be changed to a warning from this repository.
+
+## Reminders (23 November 2026)
+
+- **Set up a GitHub Actions workflow to apply future Supabase migrations to Production.** Keep the Supabase "Deploy to production" GitHub integration OFF (checked 23 November). The workflow must sit behind a GitHub Environment approval and run: backup, dry run in a rolled-back transaction, one migration per transaction with `supabase/activation/seal.sql` and a ledger row, then postflight.
+- Production release of the 20 migrations `20261117180000` to `20261123120000` is planned after the owner's 2 pm call on 23 November. A `pg_dump` backup exists on Google Drive. Draft PR #29 (`staging` into `main`) is merged only after the database release. Do not touch Production until the owner asks.
